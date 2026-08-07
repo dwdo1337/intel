@@ -860,6 +860,36 @@ function MsgCard({ event, active, onClick, index = 0 }) {
         </div>
       )}
 
+      {/* WHERE it has been called. The callers row above answers "who", which
+          is a different question once a CA starts spreading: the same token
+          turning up in a second group and then in a Discord server you also
+          watch is the signal, and it was invisible because the API collapsed
+          mentions by author. Only shown once it has reached more than one room --
+          on a single-room call it would just repeat the Source row. */}
+      {Array.isArray(event.mentionLog) && event.mentionLog.length > 1 && (
+        <div className="fc-row">
+          <span className="fc-key">Called in <b className="fc-key-n">{event.mentionLog.length}</b></span>
+          <div className="fc-val rooms-col">
+            {event.mentionLog.slice(0, 5).map((r, i) => (
+              <div key={(r.source || '') + r.chatName + i} className="room-line">
+                <span className={`room-src room-${r.source === 'discord' ? 'dc' : 'tg'}`}>
+                  {r.source === 'discord' ? 'DC' : 'TG'}
+                </span>
+                <span className="room-name" title={r.chatName}>{r.chatName}</span>
+                <span className="room-who">
+                  {r.callers.slice(0, 3).map(c => '@' + (c.author || '?')).join(' ')}
+                  {r.callers.length > 3 && ` +${r.callers.length - 3}`}
+                </span>
+                {i === 0 && <span className="room-tag">first</span>}
+              </div>
+            ))}
+            {event.mentionLog.length > 5 && (
+              <div className="room-more">+{event.mentionLog.length - 5} more rooms</div>
+            )}
+          </div>
+        </div>
+      )}
+
       <div className="fc-row">
         <span className="fc-key">Message</span>
         <div className="fc-val"><MessageQuote body={rawBody} address={address} /></div>

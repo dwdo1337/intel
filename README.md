@@ -43,6 +43,7 @@ yourself, work a chart, sleep, do your job. **The calls still arrive.**
 | 🛰️ **Reads every room** | Telegram groups + Discord servers — whole servers or single channels, with per-source member allow/block lists. One account here reached **18 servers / 1,295 channels**. |
 | 🧹 **Kills the noise** | Echo bots dropped outright. One human = one call — so *"called 3×"* means three different people, and the card names them. **205 of 500** tracked tokens were genuinely called by more than one person. |
 | 🔔 **Interrupts you properly** | A desktop notification that fills in *live*: market data instantly, then DEX-paid, artwork, holders and KOL handles — measured **50–460 ms** behind the alert. |
+| 🗺️ **Tracks the spread** | The same CA turning up in a second group — then in a Discord server you also watch — is the signal. Every room it has been called in, who called it there, and when. |
 | 🐋 **Shows who's in it** | KOL and smart-money wallets **currently holding**, not everyone who ever touched it. |
 | 🧊 **Freezes the entry** | Market cap captured at the moment of the call, so the multiplier measures *the call* rather than drifting with the chart. |
 | ⭐ **Watches your picks** | Star a token: get told when it's called again, re-scanned, or when smart money buys it. |
@@ -91,6 +92,10 @@ quick-buy link.
 Star a token and it re-alerts you when that token is **called again**,
 **re-scanned**, or when **smart money buys it** — labelled so a re-alert is
 never mistaken for a fresh call.
+
+A "called again" alert shows **the mention that triggered it**: who just called
+it, in which room, on which platform, what they said, and how many rooms it has
+now spread to. Not the original call from three days ago.
 
 ---
 

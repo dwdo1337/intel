@@ -93,6 +93,13 @@ html,body{height:100%;overflow:hidden;background:transparent;font-family:'Inter'
 .wallets .wl-more{color:var(--dim);font-size:9.5px;padding:2px 4px}
 .counts b{color:var(--text);margin-right:3px}
 .recall{display:flex;align-items:center;gap:8px;padding:8px 11px;border-radius:8px;background:rgba(245,158,11,0.09);border:1px solid rgba(245,158,11,0.26)}
+/* Violet to match the watchlist pill -- same event, same colour. */
+.newmention{padding:9px 11px;border-radius:8px;background:rgba(168,130,255,0.10);border:1px solid rgba(168,130,255,0.30)}
+.nm-head{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.nm-who{font-size:12.5px;font-weight:800;color:#c4a8ff}
+.nm-where{font-size:10.5px;font-weight:600;color:var(--muted)}
+.nm-text{margin-top:5px;font-size:12px;line-height:1.5;color:var(--text);
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .recall-icon{color:#f59e0b;font-size:13px;flex-shrink:0}
 .recall-text{font-size:11.5px;color:#e3b463;font-weight:500;line-height:1.45}
 .recall-text b{color:#ffd699;font-weight:600}
@@ -188,6 +195,16 @@ html,body{height:100%;overflow:hidden;background:transparent;font-family:'Inter'
     <!-- Who is actually in it. A count alone ("KOL 3") is not something you can
          act on; a name is. Same reasoning as the feed card, which lists them. -->
     <div class="wallets" id="walletNames" style="display:none"></div>
+    <!-- What just happened, on a watchlist re-alert: who called it, in which
+         room, on which platform, and what they said. Without this the toast
+         showed the ORIGINAL call and you had no idea why it fired again. -->
+    <div class="newmention" id="newMention" style="display:none">
+      <div class="nm-head">
+        <span class="nm-who" id="nmWho"></span>
+        <span class="nm-where" id="nmWhere"></span>
+      </div>
+      <div class="nm-text" id="nmText"></div>
+    </div>
     <div class="recall" id="recallRow" style="display:none">
       <span class="recall-icon">&#8635;</span>
       <span class="recall-text" id="recallText"></span>
@@ -406,6 +423,32 @@ function renderDisplay(data){
       bannerEl.classList.add('on');
     };
     probe.src = data.header_url;
+  }
+
+  // ---- the mention that triggered a watchlist re-alert -----------------
+  const nm = document.getElementById('newMention');
+  const trg = data.trigger;
+  if (nm && trg && trg.author) {
+    const esc = t => String(t == null ? '' : t).replace(/[&<>"]/g, c =>
+      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    const platform = trg.source === 'discord' ? 'Discord'
+      : trg.source === 'telegram' ? 'Telegram' : (trg.source || '');
+    document.getElementById('nmWho').textContent = '@' + (trg.author || 'someone');
+    // Room count is the spread signal: the same CA reaching a third room is a
+    // different event from the same person posting twice.
+    const rooms = trg.room_count > 1 ? ' · ' + trg.room_count + ' rooms' : '';
+    document.getElementById('nmWhere').textContent =
+      (platform ? platform + ' · ' : '') + (trg.chat_name || 'unknown') + rooms;
+    const t = (trg.text || '').trim();
+    const tx = document.getElementById('nmText');
+    // A message that is only the contract address adds nothing next to the CA
+    // row directly below it.
+    const onlyCA = t && data.ca && t.replace(data.ca, '').replace(/[\s`*_]/g, '').length === 0;
+    if (t && !onlyCA) { tx.innerHTML = esc(t.slice(0, 180)); tx.style.display = ''; }
+    else { tx.style.display = 'none'; }
+    nm.style.display = '';
+  } else if (nm) {
+    nm.style.display = 'none';
   }
 
   const count = Number(data.mention_count || 1);

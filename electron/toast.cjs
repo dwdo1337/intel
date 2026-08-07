@@ -295,6 +295,7 @@ function showToast(data) {
     caller_record: data.caller_record || null,
     alert_kind: data.alert_kind || 'new',
     watched: !!data.watched,
+    trigger: data.trigger || null,
   };
 
   if (activeToasts.length >= calcMaxVisible()) {

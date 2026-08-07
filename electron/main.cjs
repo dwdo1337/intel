@@ -243,6 +243,10 @@ function toastPayload(hit) {
     // only runs when the toast is created.
     alert_kind: hit._alert_kind || null,
     watched: !!hit.watched,
+    // The mention that triggered a watchlist re-alert: who just called it,
+    // where, and what they said. Null on every other kind, so the merge in
+    // updateToast leaves it alone.
+    trigger: hit._trigger || null,
   };
 }
 

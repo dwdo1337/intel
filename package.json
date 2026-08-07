@@ -58,11 +58,39 @@
       "client/dist/**"
     ],
     "win": {
-      "target": "portable",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
       "icon": "build/icon.ico",
       "signAndEditExecutable": false,
       "signingHashAlgorithms": [],
       "forceCodeSigning": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "allowElevation": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "intel. Command Deck",
+      "deleteAppDataOnUninstall": false,
+      "artifactName": "intel-Command-Deck-Setup-${version}.${ext}",
+      "uninstallDisplayName": "intel. Command Deck ${version}"
+    },
+    "portable": {
+      "artifactName": "intel-Command-Deck-Portable-${version}.${ext}"
     }
   }
 }

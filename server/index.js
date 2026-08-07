@@ -525,7 +525,23 @@ async function handleMention({ ca, chain, source, chat_name, chat_id_hint, autho
   if (isNew) {
     emitAlert(hit, 'new');
   } else if (hit.watched) {
-    emitAlert(hit, 'watchlist-mention');
+    // Carry the mention that TRIGGERED this alert. Without it the toast shows
+    // the ORIGINAL call -- the author and room from days ago -- which is the
+    // opposite of what a "called again" alert is for. You need to know who just
+    // called it, where, and what they said.
+    emitAlert(hit, 'watchlist-mention', {
+      author: mention.author,
+      source: mention.source,
+      chat_name: mention.chat_name,
+      text: mention.text || '',
+      at: mention.detected_at,
+      // How many DISTINCT rooms it has now been called in -- the spread signal.
+      room_count: new Set(
+        hit.mentions
+          .filter(m => !isEchoBot(m.author, (config.filters && config.filters.ignored_authors) || []))
+          .map(m => (m.source || '') + ' ' + (m.chat_name || ''))
+      ).size,
+    });
   } else {
     io.emit('ca_update', hit);
   }
@@ -1795,8 +1811,15 @@ function shouldNotify(chain) {
  * The chain filter still applies to every kind. Starring a token says "tell me
  * more about this one", not "override the chains I muted".
  */
-function emitAlert(hit, kind) {
-  io.emit('ca', { ...hit, _notify: shouldNotify(hit.chain), _alert_kind: kind });
+function emitAlert(hit, kind, trigger) {
+  io.emit('ca', {
+    ...hit,
+    _notify: shouldNotify(hit.chain),
+    _alert_kind: kind,
+    // The event that caused THIS alert (a new mention, say). Underscored and
+    // never persisted -- it describes the alert, not the token.
+    _trigger: trigger || null,
+  });
 }
 
 app.get('/api/notify-prefs', (req, res) => {
@@ -2283,6 +2306,40 @@ app.get('/api/react-feed', (req, res) => {
           }
         }
         return [...byAuthor.values()];
+      })(),
+      // WHERE it has been called, in time order.
+      //
+      // The array above is deduped by AUTHOR, which is right for "called 3x"
+      // and for caller scoring, but it throws away the thing you actually want
+      // when a CA spreads: the same token showing up in a second Telegram group
+      // and then in a Discord server you also watch. It also dropped the message
+      // text, which was stored all along.
+      //
+      // Grouped by room so two calls in one server read as one room with two
+      // callers, rather than two identical-looking rows.
+      mentionLog: (() => {
+        const ignored = (config.filters && config.filters.ignored_authors) || [];
+        const rooms = new Map();
+        for (const m of d.mentions) {
+          if (isEchoBot(m.author, ignored)) continue;
+          const room = m.chat_name || 'unknown';
+          const key = (m.source || '') + ' ' + room;
+          if (!rooms.has(key)) {
+            rooms.set(key, {
+              source: m.source, chatName: room,
+              firstAt: m.detected_at, lastAt: m.detected_at,
+              callers: [],
+            });
+          }
+          const e = rooms.get(key);
+          e.lastAt = m.detected_at;
+          // One entry per person per room; a repost by the same person in the
+          // same room is not new information.
+          if (!e.callers.some(c => (c.author || '').toLowerCase() === (m.author || '').toLowerCase())) {
+            e.callers.push({ author: m.author, at: m.detected_at, text: m.text || '' });
+          }
+        }
+        return [...rooms.values()].sort((a, b) => String(a.firstAt).localeCompare(String(b.firstAt)));
       })(),
       // What people said back. Newest last, so the card reads as a
       // conversation rather than a reversed one.
