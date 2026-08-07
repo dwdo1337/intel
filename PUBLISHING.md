@@ -138,8 +138,8 @@ git subtree push --prefix landing origin gh-pages
 Then Settings → Pages → Source: `gh-pages` branch. It appears at
 `https://dwdo1337.github.io/intel/`.
 
-Update the download links in that file to point at your Release URLs before
-publishing — they are placeholders otherwise.
+Its download buttons already point at this repo's Releases page, so they work
+as soon as you publish a release.
 
 ---
 
