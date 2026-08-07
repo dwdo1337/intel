@@ -209,10 +209,23 @@ confident blank.
 
 ## Screenshots
 
-Not included yet — deliberately. The card and notification layouts were
-reworked recently and the old captures show an app that no longer exists. Run
-it (`node server/index.js` → http://127.0.0.1:5050) and you are looking at the
-real thing.
+Captured from the running build, unretouched.
+
+![The deck](assets/screenshots/deck.png)
+
+Filters left, live feed centre, inspector right. The **CALLED IN** row on the
+card is the cross-source history — this token reached two Telegram groups and a
+Discord server, and each room lists who called it there.
+
+<img src="assets/screenshots/toast.png" width="424" alt="Desktop notification">
+
+The notification. It opens the instant a call is detected and fills in as
+providers answer. `TOP 10` and `RISK` render as `—` on chains with no safety
+provider rather than showing a confident zero.
+
+There is a one-page visual overview in
+[`assets/showcase.html`](assets/showcase.html) — self-contained, open it in any
+browser.
 
 ---
 
