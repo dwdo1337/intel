@@ -786,8 +786,22 @@
    server is one room with two names, which is what you actually want to
    scan. Telegram and Discord sit in the same list, tagged, because the
    whole point is seeing a CA spread across platforms. */
-.rooms-col { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-.room-line { display: flex; align-items: baseline; gap: 7px; min-width: 0; font-size: 12px; }
+/* `align-items` and `justify-self` are set EXPLICITLY, not left to defaults.
+   An upstream rule gives this column `align-items:center`, and `.fc-val` is a
+   grid on this card variant -- together they centred every line, so the room
+   list had a ragged left edge while every other row on the card lined up on
+   the same x. The label gutter only works if the value column starts where the
+   other values start. */
+.rooms-col {
+  display: flex; flex-direction: column; gap: 4px;
+  align-items: stretch;      /* lines fill the column instead of centring */
+  justify-self: stretch;     /* the column fills its grid cell */
+  width: 100%; min-width: 0;
+}
+.room-line {
+  display: flex; align-items: baseline; justify-content: flex-start;
+  gap: 7px; min-width: 0; width: 100%; font-size: 12px;
+}
 .room-src {
   flex: none; font-size: 8.5px; font-weight: 800; letter-spacing: .06em;
   padding: 2px 5px; border-radius: 4px; line-height: 1.3;
