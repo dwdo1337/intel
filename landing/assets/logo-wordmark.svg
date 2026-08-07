@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 64" width="320" height="64">
+  <!-- icon -->
+  <g transform="translate(10, 6)" transform-origin="center">
+    <!-- outer pale mint arc -->
+    <path d="M 12 34 Q 26 16 40 34" fill="none" stroke="#9FE8C3" stroke-width="7" stroke-linecap="round"/>
+    <!-- inner spring green arc -->
+    <path d="M 18 40 Q 26 30 34 40" fill="none" stroke="#4FE3A8" stroke-width="7" stroke-linecap="round"/>
+    
+    <!-- i body -->
+    <rect x="21" y="43" width="10" height="22" rx="5" fill="#E8F2EC"/>
+  </g>
+
+  <!-- wordmark -->
+  <text x="64" y="45" font-family="Inter, -apple-system, BlinkMacSystemFont, sans-serif" font-size="32" font-weight="800" fill="#ffffff" letter-spacing="-0.03em">intel<tspan fill="#4FE3A8">.</tspan></text>
+</svg>
