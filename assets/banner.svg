@@ -1,0 +1,120 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1500 500" width="1500" height="500" role="img" aria-label="intel. Command Deck">
+  <title>intel. Command Deck</title>
+
+  <defs>
+    <!-- Near-black with a faint lift toward the signal source, so the arcs
+         read as emitting light rather than sitting on a flat panel. -->
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0"   stop-color="#0a0b10"/>
+      <stop offset="0.55" stop-color="#0c0f15"/>
+      <stop offset="1"   stop-color="#080910"/>
+    </linearGradient>
+
+    <radialGradient id="glow" cx="0.72" cy="0.5" r="0.55">
+      <stop offset="0"   stop-color="#4FE3A8" stop-opacity="0.16"/>
+      <stop offset="0.6" stop-color="#4FE3A8" stop-opacity="0.04"/>
+      <stop offset="1"   stop-color="#4FE3A8" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- The noise the product exists to remove: dense, illegible, low
+         contrast. It fades IN from the left, then is cut back out again by a
+         radial hole centred on the mark — so the chatter visibly clears where
+         the signal resolves, rather than crossing over it. The image states
+         the thesis instead of decorating it. -->
+    <linearGradient id="noiseFade" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0"    stop-color="#ffffff" stop-opacity="0"/>
+      <stop offset="0.40" stop-color="#ffffff" stop-opacity="0.22"/>
+      <stop offset="1"    stop-color="#ffffff" stop-opacity="0.80"/>
+    </linearGradient>
+    <radialGradient id="clearing" cx="0.76" cy="0.52" r="0.30">
+      <stop offset="0"    stop-color="#000000" stop-opacity="1"/>
+      <stop offset="0.55" stop-color="#000000" stop-opacity="0.82"/>
+      <stop offset="1"    stop-color="#000000" stop-opacity="0"/>
+    </radialGradient>
+    <mask id="noiseMask">
+      <rect width="1500" height="500" fill="url(#noiseFade)"/>
+      <rect width="1500" height="500" fill="url(#clearing)"/>
+    </mask>
+
+    <clipPath id="frame"><rect width="1500" height="500" rx="0"/></clipPath>
+  </defs>
+
+  <g clip-path="url(#frame)">
+    <rect width="1500" height="500" fill="url(#bg)"/>
+    <rect width="1500" height="500" fill="url(#glow)"/>
+
+    <!-- ── the noise field ────────────────────────────────────────────
+         Rows of chat chatter and contract fragments, deliberately dim and
+         cropped. This is the raw material; the arcs on the right are what
+         gets pulled out of it. -->
+    <g mask="url(#noiseMask)" font-family="ui-monospace, 'JetBrains Mono', Menlo, monospace" font-size="12" fill="#7f8a99" opacity="0.42">
+      <text x="900" y="60">0x6BdBdd25a17795B5597eC86Dd0e89600ee348888   rick ▸ MC $42.1K  LP —</text>
+      <text x="960" y="88">ser is this the one              phanes ▸ 0x6bdb…8888  vol 58K</text>
+      <text x="880" y="116">EPXWa7…x2nJBY   ▸ same CA, 4 groups, one caller</text>
+      <text x="1010" y="144">maestro ▸ snipe  |  bullx ▸ chart  |  photon ▸ stats</text>
+      <text x="930" y="172">aped 2 sol      dev already sold?      wen</text>
+      <text x="990" y="200">Ai66LHZG9MCzg1WKdawwqduVAXpNDUuV8M3uyq5ppump</text>
+      <text x="870" y="228">gm       0xd3E9…  0xd3e9…  ▸ same token, two records</text>
+      <text x="1040" y="256">trojan ▸ buy  |  gmgn ▸ scan  |  bubblemaps ▸ clusters</text>
+      <text x="920" y="284">called 7×  ▸  six of them were bots</text>
+      <text x="980" y="312">5Qw2N9SV…EbMmqo   ▸ contract address only</text>
+      <text x="890" y="340">DYvoYmQhom92FNb5vF6PEoKSbP2DYaxYM5HTErTDpump</text>
+      <text x="1030" y="368">chart looks ready        top10 88.9%       lp 0%</text>
+      <text x="940" y="396">0x0500DFe945a09940270fA004cA650af02aad158b</text>
+      <text x="1000" y="424">who is actually holding this                   —</text>
+      <text x="880" y="452">7qCuB9464URwHCPAGCYYs5pJWP5E6eFv7ESqN6Cxpump</text>
+    </g>
+
+    <!-- ── the signal ─────────────────────────────────────────────────
+         The mark from the logo, scaled up and given two extra outer arcs so
+         it reads as a sweep resolving out of the noise rather than a static
+         icon dropped onto a background. -->
+    <g transform="translate(1140, 250)" fill="none" stroke-linecap="round">
+      <path d="M -232 46 Q 0 -196 232 46"  stroke="#4FE3A8" stroke-width="9"  opacity="0.10"/>
+      <path d="M -186 60 Q 0 -134 186 60"  stroke="#9FE8C3" stroke-width="12" opacity="0.22"/>
+      <path d="M -140 74 Q 0 -74  140 74"  stroke="#9FE8C3" stroke-width="19" opacity="0.60"/>
+      <path d="M -88  96 Q 0 -18   88 96"  stroke="#4FE3A8" stroke-width="19" opacity="1"/>
+      <rect x="-15" y="106" width="30" height="86" rx="15" fill="#E8F2EC" stroke="none"/>
+    </g>
+
+    <!-- ── wordmark + line ───────────────────────────────────────────── -->
+    <g transform="translate(96, 0)">
+      <text x="0" y="222"
+            font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+            font-size="92" font-weight="800" letter-spacing="-0.035em" fill="#ffffff">intel<tspan fill="#4FE3A8">.</tspan></text>
+
+      <text x="4" y="262"
+            font-family="ui-monospace, 'JetBrains Mono', Menlo, monospace"
+            font-size="15" font-weight="500" letter-spacing="0.30em" fill="#4FE3A8" opacity="0.9">COMMAND DECK</text>
+
+      <!-- No tagline. A slogan here would be the one line on the asset that is
+           an opinion rather than a fact, and the capability strip below already
+           says what the app does in its own vocabulary. -->
+      <text x="3" y="326"
+            font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+            font-size="26" font-weight="500" fill="#8b96a3">Telegram and Discord &#183; Solana, BSC, Base, ETH, Robinhood</text>
+
+      <!-- Capability strip. Monospace because every one of these is a
+           measured field on a real card, not a marketing adjective. -->
+      <g font-family="ui-monospace, 'JetBrains Mono', Menlo, monospace" font-size="12.5" letter-spacing="0.06em">
+        <g transform="translate(3, 410)">
+          <rect x="0"   y="-17" width="150" height="26" rx="6" fill="#4FE3A8" fill-opacity="0.10" stroke="#4FE3A8" stroke-opacity="0.28"/>
+          <text x="14"  y="1" fill="#9FE8C3">DISTINCT CALLERS</text>
+
+          <rect x="164" y="-17" width="126" height="26" rx="6" fill="#4FE3A8" fill-opacity="0.10" stroke="#4FE3A8" stroke-opacity="0.28"/>
+          <text x="178" y="1" fill="#9FE8C3">KOL HOLDERS</text>
+
+          <rect x="304" y="-17" width="132" height="26" rx="6" fill="#4FE3A8" fill-opacity="0.10" stroke="#4FE3A8" stroke-opacity="0.28"/>
+          <text x="318" y="1" fill="#9FE8C3">SMART MONEY</text>
+
+          <rect x="450" y="-17" width="150" height="26" rx="6" fill="#4FE3A8" fill-opacity="0.10" stroke="#4FE3A8" stroke-opacity="0.28"/>
+          <text x="464" y="1" fill="#9FE8C3">BUNDLER / SNIPER</text>
+        </g>
+      </g>
+    </g>
+
+    <!-- A single accent rule at the foot, the same weight as the card's own
+         left edge in the app. -->
+    <rect x="0" y="496" width="1500" height="4" fill="#4FE3A8" opacity="0.75"/>
+  </g>
+</svg>

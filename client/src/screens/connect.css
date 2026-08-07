@@ -1,0 +1,371 @@
+/* ==========================================================================
+   Sources / connect screen
+   --------------------------------------------------------------------------
+   Namespaced `cs-` and self-contained. The old .settings-* markup had no
+   brand identity (two identical grey boxes), cramped label/value rows, and
+   dead flat surfaces -- nothing signalled which service you were looking at
+   or whether it was live.
+
+   Now: each card carries its real brand mark and brand colour, the whole
+   card lights up when that source connects, and the numbers that matter
+   (chats/servers watched) are readable at a glance instead of buried in
+   right-aligned label rows.
+   ========================================================================== */
+
+.cs {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 26px 28px 22px;
+  width: min(880px, 94vw);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  box-shadow: var(--shadow-lg);
+}
+
+/* ── header ─────────────────────────────────────────────────────── */
+.cs-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
+.cs-head h2 {
+  margin: 0 0 5px;
+  font-family: var(--sans);
+  font-size: 19px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+.cs-head p {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--muted);
+  max-width: 52ch;
+}
+.cs-overall {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  flex-shrink: 0;
+  padding: 6px 12px;
+  border-radius: 20px;
+  border: 1px solid var(--line2);
+  background: var(--bg);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.cs-overall-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--dim);
+  flex-shrink: 0;
+}
+.cs-overall.on { color: var(--accent); border-color: rgba(79, 227, 168, 0.35); }
+.cs-overall.on .cs-overall-dot {
+  background: var(--accent);
+  animation: cs-pulse 2.4s ease-in-out infinite;
+}
+@keyframes cs-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(79, 227, 168, 0.5); }
+  60%      { box-shadow: 0 0 0 6px rgba(79, 227, 168, 0); }
+}
+
+/* ── cards ──────────────────────────────────────────────────────── */
+.cs-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+@media (max-width: 720px) { .cs-grid { grid-template-columns: 1fr; } }
+
+.cs-card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 18px;
+  border-radius: 13px;
+  border: 1px solid var(--line);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent 40%),
+    var(--surface2);
+  position: relative;
+  overflow: hidden;
+  transition: border-color .2s ease, box-shadow .2s ease;
+}
+/* Brand-coloured seam along the top edge -- the fastest way to tell the two
+   cards apart without reading either heading. */
+.cs-card::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 2px;
+  opacity: .5;
+  transition: opacity .2s ease;
+}
+.cs-card.tg::before { background: linear-gradient(90deg, #2AABEE, transparent 75%); }
+.cs-card.dc::before { background: linear-gradient(90deg, #5865F2, transparent 75%); }
+.cs-card.on::before { opacity: 1; }
+.cs-card.tg.on { border-color: rgba(42, 171, 238, 0.35); }
+.cs-card.dc.on { border-color: rgba(88, 101, 242, 0.35); }
+
+.cs-card-head {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+.cs-brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px; height: 38px;
+  flex-shrink: 0;
+  border-radius: 10px;
+}
+.cs-brand.tg { background: rgba(42, 171, 238, 0.14); color: #2AABEE; }
+.cs-brand.dc { background: rgba(88, 101, 242, 0.14); color: #7d87f7; }
+
+.cs-card-title { flex: 1 1 auto; min-width: 0; }
+.cs-card-title h3 {
+  margin: 0;
+  font-size: 14.5px;
+  font-weight: 500;
+  color: var(--text);
+  letter-spacing: -0.005em;
+}
+.cs-card-sub {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cs-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+  padding: 4px 9px;
+  border-radius: 14px;
+  background: var(--bg);
+  border: 1px solid var(--line2);
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.cs-pill-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--dim); }
+.cs-pill.ok { color: var(--accent); border-color: rgba(79, 227, 168, 0.35); }
+.cs-pill.ok .cs-pill-dot { background: var(--accent); }
+
+/* ── stats: the numbers, made actually readable ─────────────────── */
+.cs-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  background: var(--line);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  overflow: hidden;
+}
+.cs-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  background: var(--bg);
+}
+.cs-stat-v {
+  font-family: var(--mono);
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+.cs-stat-k {
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+
+/* ── forms ──────────────────────────────────────────────────────── */
+.cs-form { display: flex; flex-direction: column; gap: 9px; }
+
+.cs-label {
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+/* Label on the left, tutorial link on the right, sharing one line so the link
+   costs no vertical space in an already-dense form. */
+.cs-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.cs-tutorial {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 8px; border-radius: 6px;
+  border: 1px solid rgba(88,101,242,0.35);      /* Discord blurple, not the app accent --
+                                                    this is a link about Discord, and the
+                                                    accent is reserved for actions that
+                                                    change state. */
+  background: rgba(88,101,242,0.10);
+  font-size: 10px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
+  color: #98a4f5; text-decoration: none;
+  transition: background .13s, color .13s, border-color .13s;
+}
+.cs-tutorial:hover {
+  background: rgba(88,101,242,0.20);
+  border-color: rgba(88,101,242,0.6);
+  color: #c3cbff;
+}
+.cs-input {
+  height: 38px;
+  padding: 0 12px;
+  border-radius: 9px;
+  border: 1px solid var(--line2);
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 13px;
+  outline: none;
+  transition: border-color .15s ease, box-shadow .15s ease;
+  width: 100%;
+}
+.cs-input::placeholder { color: var(--dim); }
+.cs-input:hover:not(:disabled) { border-color: var(--line3); }
+.cs-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-dim);
+}
+.cs-input:disabled { opacity: .55; }
+/* The login code is short and numeric -- give it room to breathe so it's
+   obviously a different kind of field from the phone number. */
+.cs-input.code {
+  font-family: var(--mono);
+  font-size: 17px;
+  letter-spacing: 0.28em;
+  text-align: center;
+}
+
+.cs-btn {
+  height: 38px;
+  padding: 0 16px;
+  border-radius: 9px;
+  border: 1px solid transparent;
+  font-family: var(--sans);
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all .16s ease;
+  white-space: nowrap;
+}
+.cs-btn:disabled { opacity: .42; cursor: not-allowed; }
+.cs-btn.tg { background: #2AABEE; color: #04202e; }
+.cs-btn.tg:hover:not(:disabled) { background: #48bcf5; transform: translateY(-1px); }
+.cs-btn.dc { background: #5865F2; color: #fff; }
+.cs-btn.dc:hover:not(:disabled) { background: #6f7bf7; transform: translateY(-1px); }
+.cs-btn.solid { background: var(--accent); color: #04120c; }
+.cs-btn.solid:hover:not(:disabled) { filter: brightness(1.08); transform: translateY(-1px); }
+.cs-btn.ghost {
+  background: transparent;
+  border-color: var(--line2);
+  color: var(--muted);
+}
+.cs-btn.ghost:hover:not(:disabled) { color: var(--text); border-color: var(--line3); }
+
+.cs-link {
+  align-self: flex-start;
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: var(--sans);
+  font-size: 11.5px;
+  color: var(--muted);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.cs-link:hover { color: var(--text); }
+.cs-link.danger:hover { color: var(--sell); }
+
+.cs-note {
+  margin: 0;
+  display: flex;
+  gap: 6px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--dim);
+}
+.cs-note.warn { color: var(--warn); opacity: .9; }
+
+.cs-done {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 10px 12px;
+  border-radius: 9px;
+  background: rgba(79, 227, 168, 0.08);
+  border: 1px solid rgba(79, 227, 168, 0.22);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.cs-err {
+  padding: 9px 11px;
+  border-radius: 8px;
+  background: rgba(239, 68, 68, 0.09);
+  border: 1px solid rgba(239, 68, 68, 0.28);
+  color: #ff8f8f;
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+.cs-ok {
+  padding: 9px 11px;
+  border-radius: 8px;
+  background: rgba(79, 227, 168, 0.08);
+  border: 1px solid rgba(79, 227, 168, 0.22);
+  color: var(--accent);
+  font-size: 11.5px;
+}
+
+/* ── footer ─────────────────────────────────────────────────────── */
+.cs-foot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 9px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+/* "optional" tag on a credential section. GMGN is the only credential the app
+   runs without, and saying so up front stops it reading as a required step
+   someone is missing. */
+.cs-optional {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--dim);
+  background: rgba(255,255,255,0.05);
+  border: 1px solid var(--line2);
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: 7px;
+  vertical-align: middle;
+}

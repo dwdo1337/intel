@@ -1,0 +1,413 @@
+/* ==========================================================================
+   Filters sidebar — full rebuild
+   --------------------------------------------------------------------------
+   Everything here is namespaced `fx-` and self-contained, deliberately NOT
+   reusing the old .filters-* / .range-* classes. Those had three rounds of
+   patches stacked on each other and the result was unusable: first
+   fixed-width inputs that overflowed and clipped the right column, then
+   fully-flexible inputs with no floor that collapsed into ~14px slivers you
+   couldn't click, plus ~200px of vertical space per single filter row.
+
+   Structure now: everything collapses. You open the one section you need
+   instead of scrolling a wall of twelve identical min/max pairs.
+   ========================================================================== */
+
+.fx {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  min-width: 0;
+  overflow-y: auto;
+  height: 100%;
+}
+
+/* ── search ─────────────────────────────────────────────────────── */
+.fx-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  height: 34px;
+  border-radius: 9px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  color: var(--dim);
+  transition: border-color .15s ease;
+  flex-shrink: 0;
+}
+.fx-search:focus-within { border-color: var(--accent); color: var(--accent); }
+.fx-search input {
+  flex: 1 1 auto;
+  min-width: 0;
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--text);
+  font-size: 12px;
+  font-family: var(--sans);
+}
+.fx-search input::placeholder { color: var(--dim); }
+.fx-search-clear {
+  background: none; border: none; cursor: pointer;
+  color: var(--dim); font-size: 16px; line-height: 1; padding: 0 2px;
+}
+.fx-search-clear:hover { color: var(--text); }
+
+/* ── signal-type segmented control ──────────────────────────────── */
+.fx-segment {
+  display: flex;
+  padding: 3px;
+  gap: 3px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  flex-shrink: 0;
+}
+.fx-seg-btn {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 28px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  font-family: var(--sans);
+  font-size: 11.5px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: background .15s ease, color .15s ease;
+}
+.fx-seg-btn:hover { color: var(--text); }
+.fx-seg-btn.on {
+  background: var(--accent-dim);
+  color: var(--accent);
+  box-shadow: inset 0 0 0 1px rgba(79, 227, 168, 0.35);
+}
+
+/* ── collapsible section ────────────────────────────────────────── */
+.fx-sec {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.fx-sec.open { background: var(--surface2); }
+
+.fx-sec-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 36px;
+  padding: 0 11px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--muted);
+  font-family: var(--sans);
+  text-align: left;
+  transition: color .15s ease, background .15s ease;
+}
+.fx-sec-head:hover { color: var(--text); background: rgba(255, 255, 255, 0.02); }
+.fx-sec.open .fx-sec-head { color: var(--text); }
+
+.fx-sec-label {
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  flex: 0 0 auto;
+}
+.fx-sec-note {
+  font-size: 9.5px;
+  color: var(--dim);
+  font-style: italic;
+  margin-left: 2px;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fx-sec-count {
+  margin-left: auto;
+  flex-shrink: 0;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--accent-dim);
+  color: var(--accent);
+  font-family: var(--mono);
+  font-size: 9.5px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fx-sec-body {
+  padding: 4px 11px 11px;
+  border-top: 1px solid var(--line);
+  animation: fx-open .16s ease;
+}
+@keyframes fx-open {
+  from { opacity: 0; transform: translateY(-3px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* ── chains ─────────────────────────────────────────────────────── */
+.fx-chains {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-top: 8px;
+}
+/* The pill and its bell share one bordered shell, so they read as one chain
+   with two switches rather than two unrelated buttons. */
+.fx-chain-wrap {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  border-radius: 8px;
+  border: 1px solid var(--line2);
+  background: var(--bg);
+  transition: border-color .15s ease, background .15s ease, transform .15s ease;
+}
+.fx-chain-wrap:hover { transform: translateY(-1px); }
+
+.fx-chain {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  flex: 1 1 auto;
+  height: 32px;
+  padding: 0 4px 0 8px;
+  border-radius: 8px 0 0 8px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 11.5px;
+  cursor: pointer;
+  transition: border-color .15s ease, background .15s ease;
+}
+.fx-chain:hover { border-color: var(--line3); }
+.fx-chain.soon { opacity: 0.72; }
+
+/* ── per-chain alert switch ───────────────────────────────────────────
+   Separate from the pill on purpose: the pill decides what the FEED shows,
+   this decides what is allowed to INTERRUPT you. They used to be one control,
+   so turning a chain on to look at it silently re-armed its notifications. */
+.fx-bell {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 32px;
+  flex-shrink: 0;
+  padding: 0;
+  border: 0;
+  border-left: 1px solid var(--line2);
+  border-radius: 0 8px 8px 0;
+  background: transparent;
+  cursor: pointer;
+  transition: color .15s ease, background .15s ease;
+}
+/* ON is the accent; OFF is genuinely struck through by the icon itself, not
+   just dimmed -- a lower opacity reads as "disabled", not as "muted". */
+.fx-bell.on  { color: var(--accent, #4fe3a0); }
+.fx-bell.off { color: var(--dim); }
+.fx-bell.on:hover  { background: rgba(79, 227, 168, 0.12); }
+.fx-bell.off:hover { color: var(--muted); background: rgba(255, 255, 255, 0.05); }
+.fx-bell:focus-visible { outline: 2px solid var(--accent, #4fe3a0); outline-offset: -2px; }
+
+.fx-chains-hint {
+  margin-top: 8px;
+  font-size: 9.5px;
+  line-height: 1.4;
+  color: var(--dim);
+  opacity: .75;
+}
+.fx-chain-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+}
+/* Explicit sizing: an unconstrained <img> here previously expanded to fill
+   the rail with a giant blue square (the Base icon is a solid blue jpg). */
+.fx-chain-img {
+  width: 15px; height: 15px;
+  min-width: 15px;
+  flex: 0 0 15px;
+  border-radius: 4px;
+  object-fit: cover;
+  display: block;
+}
+.fx-chain-dot {
+  width: 8px; height: 8px;
+  min-width: 8px;
+  flex: 0 0 8px;
+  border-radius: 50%;
+  display: block;
+}
+.fx-soon {
+  flex: 0 0 auto;
+  font-size: 8px;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--warn);
+  background: rgba(245, 158, 11, 0.12);
+  border-radius: 3px;
+  padding: 1px 4px;
+}
+
+/* ── launchpads (only for selected chains) ──────────────────────── */
+.fx-lp {
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-left: 2px solid var(--line2);
+  background: rgba(255, 255, 255, 0.015);
+  border-radius: 0 8px 8px 0;
+}
+.fx-lp-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--muted);
+  margin-bottom: 7px;
+}
+.fx-dot { width: 6px; height: 6px; border-radius: 50%; flex: 0 0 6px; }
+.fx-lp-empty { font-size: 10.5px; color: var(--dim); font-style: italic; }
+.fx-lp-pills { display: flex; flex-wrap: wrap; gap: 5px; }
+.fx-pill {
+  padding: 4px 9px;
+  border-radius: 6px;
+  border: 1px solid var(--line2);
+  background: var(--bg);
+  color: var(--muted);
+  font-family: var(--sans);
+  font-size: 10.5px;
+  cursor: pointer;
+  transition: all .15s ease;
+}
+.fx-pill:hover:not(:disabled) { color: var(--text); border-color: var(--line3); }
+.fx-pill.on {
+  background: var(--accent-dim);
+  border-color: rgba(79, 227, 168, 0.45);
+  color: var(--accent);
+}
+.fx-pill:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ── metric rows ────────────────────────────────────────────────── */
+.fx-rows { display: flex; flex-direction: column; margin-top: 4px; }
+
+.fx-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 5px 0;
+}
+.fx-row-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  font-size: 11.5px;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fx-row-label em {
+  font-style: normal;
+  font-size: 9.5px;
+  color: var(--dim);
+}
+
+/* The inputs get a FIXED total budget and split it. Previously they were
+   either fixed-width (overflowed and clipped the panel) or fully flexible
+   with no floor (collapsed to unusable slivers). */
+.fx-row-inputs {
+  flex: 0 0 118px;
+  display: flex;
+  gap: 5px;
+  min-width: 0;
+}
+.fx-row-inputs input {
+  flex: 1 1 0;
+  width: 0;
+  min-width: 0;
+  height: 26px;
+  padding: 0 6px;
+  border-radius: 6px;
+  border: 1px solid var(--line2);
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  outline: none;
+  -moz-appearance: textfield;
+  transition: border-color .14s ease, box-shadow .14s ease, color .14s ease;
+}
+.fx-row-inputs input::-webkit-outer-spin-button,
+.fx-row-inputs input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.fx-row-inputs input::placeholder { color: var(--dim); opacity: .65; }
+.fx-row-inputs input:hover { border-color: var(--line3); }
+.fx-row-inputs input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-dim);
+}
+/* A filled input is an ACTIVE constraint -- make that visible at a glance. */
+.fx-row-inputs input.set {
+  border-color: rgba(79, 227, 168, 0.45);
+  color: var(--accent);
+}
+
+/* ── clear all ──────────────────────────────────────────────────── */
+.fx-clear {
+  height: 30px;
+  border-radius: 8px;
+  border: 1px solid var(--line2);
+  background: transparent;
+  color: var(--muted);
+  font-family: var(--sans);
+  font-size: 11px;
+  cursor: pointer;
+  transition: all .15s ease;
+  flex-shrink: 0;
+}
+.fx-clear:hover {
+  color: var(--sell);
+  border-color: rgba(239, 68, 68, 0.4);
+  background: rgba(239, 68, 68, 0.06);
+}
+
+/* A launchpad that exists but can't be detected (deploys to a shared AMM,
+   so DexScreener's dexId can't distinguish it). Marked per-pill rather than
+   per-chain, because detectability varies WITHIN a chain. */
+.fx-pill.soon { opacity: .5; }
+.fx-pill-soon {
+  margin-left: 5px;
+  font-size: 7.5px;
+  font-weight: 500;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--warn);
+  vertical-align: middle;
+}

@@ -1,0 +1,782 @@
+/* Feed card — identity / venue / metrics / attribution.
+
+   REWRITE NOTE (the "whole blocks" problem):
+   The previous card wrapped almost every element in its own bordered,
+   rounded, padded box -- 3 KPI boxes, up to 16 extra-metric boxes, a CA
+   box, a quote box. Roughly twenty nested rectangles per card, each with
+   its own 1px border. That is what made the feed read as a pile of blocks
+   instead of a token readout, and it buried the numbers that matter under
+   chrome.
+
+   Now: ONE box (the card). Inside it, information is separated by
+   alignment, weight and space -- not by drawing another rectangle around
+   it. KPIs are left-aligned so the eye can scan a single column of values
+   down the feed, instead of hunting centred numbers. */
+
+/* ── identity row ────────────────────────────────────────────────── */
+.msg-token {
+  font-size: 15.5px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.msg-av,
+.msg-av-real {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  flex-shrink: 0;
+  object-fit: cover;
+}
+.msg-av {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 500;
+  color: #0a0b10;
+}
+.msg-av-real { border: 1px solid var(--line); background: var(--surface3); }
+
+.msg-ticker {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--accent);
+  background: rgba(79, 227, 168, 0.10);
+  border: 1px solid rgba(79, 227, 168, 0.20);
+  padding: 1px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+/* DEX Paid, beside the ticker. Someone paying to present a token is a real
+   signal, so PAID gets the accent; NOT paid is common and unremarkable, so it
+   stays grey rather than reading as a warning. Never rendered when unchecked. */
+.msg-dexpaid {
+  font-family: var(--mono);
+  font-size: 8.5px;
+  font-weight: 600;
+  letter-spacing: .07em;
+  color: #4fe3a0;
+  background: rgba(79, 227, 168, 0.12);
+  border: 1px solid rgba(79, 227, 168, 0.30);
+  padding: 1px 5px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+.msg-dexpaid.no {
+  color: var(--dim);
+  background: rgba(255, 255, 255, 0.035);
+  border-color: rgba(255, 255, 255, 0.09);
+}
+
+/* ── venue chips ─────────────────────────────────────────────────── */
+.msg-venue-row { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; margin-top: 5px; }
+.venue-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 9.5px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  padding: 2px 7px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+.venue-dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
+.venue-chip.launchpad {
+  background: rgba(159, 232, 195, 0.10);
+  border-color: rgba(159, 232, 195, 0.22);
+  color: #9fe8c3;
+}
+.venue-chip.dex { background: rgba(255,255,255,0.03); border-color: var(--line); color: var(--dim); }
+.venue-chip.repeat {
+  background: rgba(245, 158, 11, 0.10);
+  border-color: rgba(245, 158, 11, 0.26);
+  color: #f59e0b;
+}
+
+/* ── KPI strip: no boxes, just a hairline above and aligned columns ─ */
+/* ── THE SHARED GUTTER ────────────────────────────────────────────────
+   Every labelled section below the metrics is `fc-key | fc-val` on one
+   grid, so the card reads down a single vertical edge. Before this each
+   block carried its own indent -- the KPI grid, the address strip's inner
+   padding, the quote's border-left, the wallet rows' box padding -- and the
+   result was six sections starting at six different x positions with no
+   alignment between them.
+
+   The gutter is also why the wallet rows lost their boxes: a bordered box
+   inside a bordered card, repeated three times, fragmented one record into
+   several. The label column does that job now without drawing anything. */
+.fc-row {
+  display: grid;
+  grid-template-columns: 84px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  padding: 7px 0;
+  border-top: 1px solid var(--line2);
+}
+.fc-key {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .085em;
+  text-transform: uppercase;
+  color: var(--dim);
+  line-height: 1.9;               /* optically centres against 12px body text */
+  white-space: nowrap;
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+}
+/* A count belongs with its label, not floating in the value column where it
+   competes with the data it is counting. */
+.fc-key-n {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.fc-val { min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+
+.msg-kpis {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0;
+  margin-top: 13px;
+  padding: 13px 0 3px;
+  border-top: 1px solid var(--line);
+}
+/* Hairline dividers make the three numbers read as one measured set rather
+   than three loose columns. */
+.kpi {
+  padding: 0 14px;
+  text-align: left;
+  min-width: 0;
+  border-left: 1px solid var(--line2);
+}
+.kpi:first-child { padding-left: 0; border-left: 0; }
+.kpi-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.085em;
+  text-transform: uppercase;
+  color: var(--dim);
+  margin-bottom: 5px;
+}
+/* Bolder and larger: these are the numbers the card exists to show, and at
+   17px/500 they carried no more weight than the wallet counts below them. */
+.kpi-value {
+  font-family: var(--mono);
+  font-size: 21px;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.kpi-value.up { color: var(--buy); }
+.kpi-value.down { color: var(--sell); }
+.kpi-sub { font-size: 10px; color: var(--dim); margin-top: 4px; line-height: 1.35; }
+.kpi-sub.up { color: var(--buy); }
+.kpi-sub.down { color: var(--sell); }
+
+/* ── contract address ─────────────────────────────────────────────
+   Flush with the card's own padding, no inset fill. The filled pill sat 9px
+   further right than everything above and below it, which is a large part of
+   what made the stack look staggered. */
+.msg-ca-row { cursor: pointer; }
+.msg-ca-row:hover { background: transparent; }
+/* COPY sits hard right so the affordance is in a predictable place on every
+   card, while the address itself stays on the shared value edge. */
+.fc-val-ca { justify-content: space-between; flex-wrap: nowrap; gap: 10px; }
+.msg-ca-text {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  letter-spacing: -0.01em;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: color .14s ease;
+}
+.msg-ca-row:hover .msg-ca-text { color: var(--accent); }
+.msg-ca-copy {
+  display: inline-flex;
+  align-items: center;
+  font-size: 8.5px;
+  font-weight: 500;
+  letter-spacing: 0.07em;
+  color: var(--dim);
+  flex-shrink: 0;
+}
+.msg-ca-row:hover .msg-ca-copy { color: var(--accent); }
+
+/* ── attribution ─────────────────────────────────────────────────── */
+.msg-attrib {
+  font-size: 11.5px;
+  color: var(--dim);
+  /* margin-top removed: spacing is the row's now, not each block's. The old
+     per-block margins stacked unevenly depending on which sections a token
+     happened to have. */
+}
+/* The "/" separators were doing no work the gap was not already doing, and
+   three of them across one line added visual noise to the least important
+   row on the card. */
+.msg-attrib .attrib-chat::before {
+  content: '';
+  display: inline-block;
+  width: 3px; height: 3px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: .35;
+  margin-right: 7px;
+  vertical-align: middle;
+}
+.attrib-src {
+  display: inline-flex;
+  align-items: center;
+  font-weight: 500;
+  font-size: 9.5px;
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+.attrib-src.tg { color: #60a5fa; background: rgba(59, 130, 246, 0.11); }
+.attrib-src.dc { color: #c084fc; background: rgba(168, 85, 247, 0.11); }
+.attrib-sep { opacity: 0.3; }
+.attrib-chat { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.attrib-author { color: var(--muted); }
+
+/* ── the message ─────────────────────────────────────────────────── */
+.msg-quote {
+  /* The border-left and its padding pushed the message 12px right of every
+     other value on the card. The label gutter identifies it now, so the
+     quote sits on the same edge as everything else. */
+  width: 100%;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--text);
+  max-height: 96px;
+  /* Scroll, don't clip. A long call was cut mid-sentence with no way to read
+     the rest -- and the end of a message is often where the reasoning is
+     ("...been holding this for days, video hit 10m views"). */
+  overflow-y: auto;
+  overscroll-behavior: contain;   /* don't scroll the feed when this bottoms out */
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* Thin, dark scrollbars so a scrollable message doesn't add visual weight to
+   every card. Applied to both the message and the reply thread. */
+.msg-quote::-webkit-scrollbar,
+.replies::-webkit-scrollbar { width: 6px; }
+.msg-quote::-webkit-scrollbar-track,
+.replies::-webkit-scrollbar-track { background: transparent; }
+.msg-quote::-webkit-scrollbar-thumb,
+.replies::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 3px;
+}
+.msg-quote:hover::-webkit-scrollbar-thumb,
+.replies:hover::-webkit-scrollbar-thumb { background: rgba(79, 227, 160, 0.35); }
+
+/* ── callers: every distinct person who called this CA ───────────── */
+.callers-row {
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+}
+/* The count moved into the label gutter as `Callers 2`, so this standalone
+   label is gone from the markup. Kept as a no-op guard in case an older
+   render path still emits it. */
+.callers-label { display: none; }
+.caller-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 10px; padding: 2px 7px; border-radius: 4px;
+  background: rgba(255,255,255,0.04); border: 1px solid var(--line2);
+  color: var(--text);
+}
+/* Who called it FIRST is the one worth knowing -- the rest followed. */
+.caller-first { border-color: rgba(79,227,160,0.35); color: #4fe3a0; }
+.caller-tag {
+  font-size: 8px; font-weight: 800; letter-spacing: .05em;
+  text-transform: uppercase; opacity: .7;
+}
+
+/* ── alpha row: who holds it (the headline signal on a card) ──────── */
+.alpha-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+  margin-top: 9px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: linear-gradient(90deg, rgba(79,227,160,0.07), rgba(255,255,255,0.02));
+  border: 1px solid rgba(79, 227, 160, 0.22);
+}
+/* A checked token with nobody notable in it is information too, but it must
+   not shout -- so it drops the accent entirely. */
+.alpha-row.alpha-empty {
+  background: rgba(255, 255, 255, 0.02);
+  border-color: var(--line2);
+}
+.alpha-label { font-size: 9px; font-weight: 800; letter-spacing: .07em; color: var(--muted); }
+.alpha-none { font-size: 10px; color: var(--muted); opacity: .6; }
+.alpha-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 8px; border-radius: 5px;
+  font-size: 9px; font-weight: 800; letter-spacing: .05em;
+  border: 1px solid transparent;
+}
+.alpha-chip b { font-size: 12px; font-family: 'JetBrains Mono', monospace; }
+.alpha-good { background: rgba(79,227,160,0.14); border-color: rgba(79,227,160,0.4); color: #4fe3a0; }
+.alpha-warn { background: rgba(251,191,36,0.12); border-color: rgba(251,191,36,0.35); color: #fbbf24; }
+.alpha-bad  { background: rgba(248,113,113,0.13); border-color: rgba(248,113,113,0.4); color: #f87171; }
+.alpha-handle {
+  font-size: 10px; color: #4fe3a0; text-decoration: none;
+  padding: 2px 6px; border-radius: 4px; background: rgba(79,227,160,0.08);
+}
+.alpha-handle:hover { text-decoration: underline; background: rgba(79,227,160,0.16); }
+.alpha-since {
+  margin-left: auto; font-size: 9px; color: var(--muted); opacity: .55;
+  text-transform: uppercase; letter-spacing: .05em;
+}
+
+/* ── notable wallets (KOL / Smart Money) ──────────────────────────── */
+.notable-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 9px;
+  padding: 7px 9px;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.028);
+  border: 1px solid var(--line2);
+}
+.notable-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px;
+  border-radius: 5px;
+  font-size: 11px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--line2);
+}
+.notable-chip b { font-size: 12px; }
+.notable-label { font-size: 9px; font-weight: 800; letter-spacing: .06em; color: var(--muted); }
+/* The wallet count is the headline of that chip, so it gets the size. */
+.notable-count { font-size: 13px; font-family: 'JetBrains Mono', monospace; color: var(--text); }
+.notable-split { font-size: 10px; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+.notable-net { font-size: 10px; font-family: 'JetBrains Mono', monospace; }
+/* Net direction, not raw count -- five KOLs dumping is not a bullish card. */
+.notable-buying  { border-color: rgba(79, 227, 160, 0.35); }
+.notable-buying  .notable-net { color: #4fe3a0; }
+.notable-selling { border-color: rgba(248, 113, 113, 0.35); }
+.notable-selling .notable-net { color: #f87171; }
+/* Wallets already positioned before the call -- the strongest read on an
+   alert, so it gets the emphasis the plain split does not. */
+.notable-prior { font-size: 10px; color: #fbbf24; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+.notable-accel { font-size: 10px; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+/* Only a genuinely fast-rising flow earns colour; everything else stays quiet
+   so the highlight keeps meaning something. */
+.notable-accel-hot { color: #fbbf24; font-weight: 700; }
+.notable-names { display: flex; gap: 6px; flex-wrap: wrap; }
+.notable-name {
+  font-size: 10px;
+  color: var(--accent, #4fe3a0);
+  text-decoration: none;
+  opacity: .85;
+}
+.notable-name:hover { text-decoration: underline; opacity: 1; }
+.notable-since {
+  margin-left: auto;
+  font-size: 9px;
+  color: var(--muted);
+  opacity: .6;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+
+/* A call with no words in it -- stated plainly instead of an empty gap. */
+.msg-quote-none {
+  color: var(--muted);
+  opacity: 0.55;
+  font-style: italic;
+}
+
+/* The contract address inside the caller's own message. Highlighted so the
+   eye lands on it instead of scanning the text for a 44-char string. */
+.msg-quote .msg-ca {
+  background: rgba(79, 227, 160, 0.14);
+  color: var(--accent, #4fe3a0);
+  border: 1px solid rgba(79, 227, 160, 0.3);
+  border-radius: 4px;
+  padding: 0 4px;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+/* ── expander ────────────────────────────────────────────────────── */
+.msg-expander {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 11px;
+  font-size: 10.5px;
+  color: var(--dim);
+  cursor: pointer;
+  user-select: none;
+  transition: color .14s ease;
+}
+.msg-expander:hover { color: var(--muted); }
+.msg-extra { overflow: hidden; transition: max-height .22s ease, opacity .18s ease; }
+
+/* ── extra metrics: a two-column definition list, not 16 boxes ───── */
+.extra-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  column-gap: 22px;
+  row-gap: 0;
+  padding-top: 10px;
+  margin-top: 10px;
+  border-top: 1px solid var(--line);
+}
+.extra-metric {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  padding: 5px 0;
+  font-size: 11.5px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+}
+.extra-label { color: var(--dim); white-space: nowrap; }
+.extra-value {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+.extra-value.unknown { color: #454c5e; font-style: italic; }
+.extra-source {
+  grid-column: 1 / -1;
+  margin-top: 8px;
+  font-size: 9px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #454c5e;
+}
+
+/* ── banner ──────────────────────────────────────────────────────── */
+.msg-banner {
+  height: 88px;
+  background-size: cover;
+  background-position: center;
+  position: relative;
+}
+/* Fade the banner into the card so it doesn't sit as a hard-edged slab. */
+.msg-banner::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(10,11,16,0.15) 0%, var(--surface) 100%);
+}
+
+/* -- card shell + actions ------------------------------------------ */
+.msg-card { padding: 0; }
+.msg-card > .fc-body,
+.msg-card .msg-head { padding: 0; }
+/* The card's own padding lives here so the banner can still run edge to
+   edge above it. */
+.msg-card > *:not(.msg-banner) { padding-left: 15px; padding-right: 15px; }
+.msg-card > .msg-head { padding-top: 14px; }
+.msg-card > .msg-actions { padding-bottom: 14px; }
+
+.msg-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 13px;
+  flex-wrap: wrap;
+}
+.msg-actions .btn-buy {
+  flex: 1 1 auto;
+  min-width: 110px;
+  height: 34px;
+  border-radius: 8px;
+  border: none;
+  background: var(--accent);
+  color: #04120c;
+  font-family: var(--sans);
+  font-weight: 500;
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: filter .15s ease, transform .15s ease;
+}
+.msg-actions .btn-buy:hover { filter: brightness(1.08); transform: translateY(-1px); }
+/* Secondary actions are links, not competing buttons -- they were all
+   rendering as equally-heavy bordered blocks next to Quick Buy. */
+.msg-actions .link {
+  display: inline-flex;
+  align-items: center;
+  height: 34px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--dim);
+  font-family: var(--sans);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  text-decoration: none;
+  cursor: pointer;
+  transition: color .15s ease, border-color .15s ease;
+}
+.msg-actions .link:hover { color: var(--text); border-color: var(--line3); }
+/* -- live refresh row ---------------------------------------------
+   Shown only after the user presses refresh on a card. Before that the
+   card displays the frozen scan snapshot and makes no claim about
+   movement -- a token that was just called hasn't moved yet. */
+/* `.msg-live` and its children are gone with the live-market-cap strip. The
+   MARKET CAP metric now carries the live value and "was $X at call", so this
+   restated the same figure in a second visual idiom at the other end of the
+   card. */
+
+/* A refresh that could not complete. Muted amber rather than red: the card's
+   existing data is still valid, it just could not be updated -- that is a
+   caveat, not a danger, and colouring it like a risk flag would be its own
+   kind of fabricated signal. */
+.msg-refresh-error {
+  margin-top: 9px; padding: 7px 10px;
+  border-radius: 8px;
+  background: rgba(224,168,79,0.07);
+  border: 1px solid rgba(224,168,79,0.22);
+  color: #e0a84f;
+  font-size: 10.5px; line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.btn-refresh {
+  flex-shrink: 0; width: 34px; height: 34px;
+  border-radius: 8px; border: 1px solid var(--line);
+  background: transparent; color: var(--dim);
+  font-size: 14px; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  transition: color .15s, border-color .15s, transform .15s;
+}
+.btn-refresh:hover { color: var(--accent); border-color: rgba(79,227,168,0.4); }
+.btn-refresh.busy { color: var(--accent); animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+/* Anonymous smart-money wallet -- monospace because it is an address, and
+   linked to its GMGN page since there is no handle to identify it by. */
+.alpha-wallet {
+  font-size: 10px;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  color: var(--muted);
+  text-decoration: none;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--line2);
+}
+.alpha-wallet:hover { color: var(--accent, #4fe3a0); border-color: rgba(79, 227, 160, 0.35); }
+
+/* ── replies to the call ─────────────────────────────────────────── */
+/* On the shared gutter like everything else. The border-left + padding was a
+   seventh distinct indent, and the count now lives in the label column. */
+.replies {
+  display: block;
+  width: 100%;
+}
+.replies-head { display: flex; align-items: center; gap: 8px; }
+.replies-head:empty { display: none; }
+.replies-label { display: none; }
+.replies-more {
+  font-size: 9px; background: none; border: none; cursor: pointer;
+  color: var(--muted); text-decoration: underline; padding: 0;
+}
+.replies-more:hover { color: var(--accent, #4fe3a0); }
+.reply {
+  display: flex; gap: 6px; align-items: baseline;
+  font-size: 11.5px; line-height: 1.45; margin-top: 2px;
+}
+.reply-author { color: var(--accent, #4fe3a0); flex-shrink: 0; font-size: 10.5px; }
+.reply-text {
+  color: var(--muted);
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+/* The thread scrolls as a whole rather than truncating each reply, so a long
+   answer stays readable. */
+.replies { max-height: 132px; overflow-y: auto; overscroll-behavior: contain; }
+.reply-topic {
+  font-size: 8px; text-transform: uppercase; letter-spacing: .05em;
+  color: var(--muted); opacity: .5; flex-shrink: 0;
+}
+
+/* Secondary text inside an alpha chip: the wallet count next to the headline
+   percentage, or "holding" next to a wallet count. Quiet on purpose -- the
+   number it qualifies is the thing being read. */
+.alpha-sub {
+  font-size: 8.5px;
+  font-weight: 600;
+  letter-spacing: .04em;
+  opacity: .65;
+  text-transform: none;
+}
+
+/* Watchlist star. Sits beside refresh in the action row; filled and accented
+   when on, so a glance down the feed shows what you are tracking. */
+.btn-watch {
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border-radius: 6px;
+  border: 1px solid var(--line2);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  transition: color .14s, border-color .14s, background .14s;
+}
+.btn-watch:hover { color: #fbbf24; border-color: rgba(251, 191, 36, 0.4); }
+.btn-watch.on {
+  color: #fbbf24;
+  border-color: rgba(251, 191, 36, 0.45);
+  background: rgba(251, 191, 36, 0.10);
+}
+/* A watched token is marked in the feed itself, not only inside its card. */
+.msg-card.watched { box-shadow: inset 3px 0 0 rgba(251, 191, 36, 0.55); }
+
+/* A checked-and-negative finding: real information, but not a warning. Kept
+   grey so it does not compete with the risk chips. */
+.alpha-dim {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: var(--line2);
+  color: var(--muted);
+}
+
+/* ── wallet rows: one population per line ─────────────────────────── */
+/* Replaces the old two-row layout where holders/traders and KOL/smart were
+   interleaved. Every row now reads label → counts → net → identities, so the
+   eye can compare the same field down the stack. */
+.wrows { display: flex; flex-direction: column; }
+.wrow { font-size: 11px; }
+/* The boxes are gone. Population is carried by a dot in the label gutter --
+   same information, no extra container. Three bordered boxes inside a
+   bordered card is what made one record look like several. */
+.wrow .fc-key::before {
+  content: '';
+  width: 5px; height: 5px; border-radius: 50%;
+  background: var(--line2);
+  flex-shrink: 0;
+  align-self: center;
+}
+.wrow-smart .fc-key::before { background: #4fe3a0; }
+.wrow-kol   .fc-key::before { background: #60a5fa; }
+.wrow-risk  .fc-key::before { background: #fbbf24; }
+.wrow-smart .fc-key { color: #4fe3a0; }
+.wrow-kol   .fc-key { color: #60a5fa; }
+
+/* The value column: count first, then identities immediately after it.
+   `.wrow-ids` used to carry `margin-left: auto`, which threw the names to the
+   far right edge and left a wide empty band in the middle of every row --
+   the single most "separated"-looking thing on the card. */
+.wrow-body { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; width: 100%; }
+.wrow-stat { color: var(--dim); font-size: 10.5px; display: inline-flex; align-items: baseline; gap: 4px; }
+/* Matches the KPI numerals so every count on the card belongs to one scale. */
+.wrow-stat b {
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.wrow-dir { margin-left: 5px; font-family: 'JetBrains Mono', monospace; font-size: 9.5px; }
+.wrow-dir .up { color: #4fe3a0; }
+.wrow-dir .down { color: #f87171; }
+.wrow-net { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; }
+.wrow-net.up { color: #4fe3a0; }
+.wrow-net.down { color: #f87171; }
+.wrow-hot { color: #fbbf24; }
+/* Positioned before the call = the strongest read on an alert. */
+.wrow-prior { font-size: 9.5px; color: #fbbf24; font-weight: 700; }
+.wrow-none { font-size: 10px; color: var(--muted); opacity: .6; }
+.wrow-when { margin-left: auto; font-size: 9px; color: var(--muted); opacity: .5; }
+
+/* No `margin-left: auto` — see the note on .wrow-body. Names sit next to the
+   count they belong to. */
+.wrow-ids { display: flex; gap: 5px; flex-wrap: wrap; }
+.wrow-handle, .wrow-wallet {
+  font-size: 9.5px; text-decoration: none; padding: 1px 6px; border-radius: 4px;
+}
+.wrow-handle { color: #60a5fa; background: rgba(96, 165, 250, 0.10); }
+.wrow-wallet { color: var(--muted); background: rgba(255, 255, 255, 0.05); font-family: 'JetBrains Mono', monospace; }
+.wrow-handle:hover { background: rgba(96, 165, 250, 0.2); }
+.wrow-wallet:hover { color: #4fe3a0; }
+/* "+9" — more holders exist than the row lists. Not a link, so it is styled
+   flat to avoid implying something is clickable. */
+.wrow-more {
+  font-family: var(--mono); font-size: 10px; color: var(--dim);
+  padding: 2px 5px; border-radius: 4px;
+  background: rgba(255,255,255,0.04);
+  align-self: center;
+}
+
+.wrow-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 7px; border-radius: 5px;
+  font-size: 8.5px; font-weight: 800; letter-spacing: .05em;
+  border: 1px solid transparent;
+}
+.wrow-chip b { font-size: 11.5px; font-family: 'JetBrains Mono', monospace; }
+.wrow-sub { font-size: 8.5px; font-weight: 600; opacity: .65; text-transform: none; }
+.wrow-chip.good { background: rgba(79,227,160,0.13); border-color: rgba(79,227,160,0.35); color: #4fe3a0; }
+.wrow-chip.warn { background: rgba(251,191,36,0.12); border-color: rgba(251,191,36,0.32); color: #fbbf24; }
+.wrow-chip.bad  { background: rgba(248,113,113,0.13); border-color: rgba(248,113,113,0.38); color: #f87171; }
+.wrow-chip.dim  { background: rgba(255,255,255,0.04); border-color: var(--line2); color: var(--muted); }
+
+/* ── caller track record ──────────────────────────────────────────────
+   Sits beside the caller's handle. Deliberately small: it is context on a
+   name, not a headline. Colour is the only ranking cue — green above 1.5x
+   median, grey around break-even, red below — and it is never shown at all
+   unless enough of that person's calls have a measured outcome. */
+.caller-rec {
+  display: inline-flex; align-items: baseline; gap: 4px;
+  font-family: var(--mono);
+  font-size: 9.5px; font-weight: 600;
+  letter-spacing: -0.01em;
+  padding: 1px 5px; border-radius: 4px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  cursor: help;
+}
+.caller-rec.good { color: #4fe3a0; background: rgba(79,227,168,0.11); }
+.caller-rec.mid  { color: var(--muted); background: rgba(255,255,255,0.05); }
+.caller-rec.bad  { color: #f87171; background: rgba(248,113,113,0.10); }
+/* How many calls the median rests on. Shown because a 2.4x from four calls
+   and one from forty are different claims. */
+.caller-rec-n {
+  font-size: 8px; opacity: .65; font-weight: 500;
+}
+.caller-rec-n::before { content: 'n'; opacity: .6; margin-right: 1px; }
