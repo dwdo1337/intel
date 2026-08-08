@@ -1,0 +1,22 @@
+{
+  "telegram": {
+    "api_id": 0,
+    "api_hash": "",
+    "phone": "",
+    "password": "",
+    "monitored_chats": []
+  },
+  "discord": {
+    "user_token": "",
+    "monitored_guilds": [],
+    "monitored_channels": []
+  },
+  "gmgn": {
+    "api_key": ""
+  },
+  "filters": {
+    "notify_chains": null,
+    "chat_rules": {},
+    "ignored_authors": []
+  }
+}

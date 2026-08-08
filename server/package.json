@@ -1,0 +1,4 @@
+{
+  "//": "The server is ESM. In dev that comes from the root package.json's \"type\": \"module\", but electron-builder's asarUnpack copies this directory to app.asar.unpacked/server/, where no parent package.json is reachable -- so Node fell back to CommonJS and every packaged launch died with 'Cannot use import statement outside a module', leaving the window with no backend to load. Declaring it here travels with the unpacked copy.",
+  "type": "module"
+}

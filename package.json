@@ -1,0 +1,96 @@
+{
+  "name": "intel-command-deck",
+  "version": "0.2.0",
+  "description": "Standalone memecoin signal command deck for Telegram, Discord and DEX data.",
+  "author": "intel.",
+  "type": "module",
+  "main": "electron/main.cjs",
+  "scripts": {
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "server": "node server/index.js",
+    "client": "cd client && npm run dev",
+    "build": "cd client && npm run build",
+    "electron:dev": "npm run build && electron electron/main.cjs",
+    "electron:pack": "npm run build && npm run build:server && electron-builder --win --x64",
+    "build:server": "node build-server.mjs"
+  },
+  "dependencies": {
+    "big-integer": "^1.6.52",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "gmgn-cli": "^1.5.6",
+    "node-fetch": "^3.3.2",
+    "socket.io": "^4.8.3",
+    "socket.io-client": "^4.8.3",
+    "telegraf": "^4.16.3",
+    "telegram": "^2.26.22",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "electron": "^31.7.7",
+    "electron-builder": "^25.1.8",
+    "esbuild": "^0.28.1"
+  },
+  "build": {
+    "appId": "com.intel.commanddeck",
+    "productName": "intel. Command Deck",
+    "npmRebuild": false,
+    "directories": {
+      "output": "dist-electron"
+    },
+    "files": [
+      "dist-server/**/*",
+      "client/dist/**/*",
+      "electron/**/*",
+      "build/**/*",
+      "package.json",
+      "!config.json",
+      "!.env",
+      "!.env.local",
+      "!data",
+      "!**/*.session",
+      "!**/*.session-journal"
+    ],
+    "asarUnpack": [
+      "dist-server/**",
+      "client/dist/**"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico",
+      "signAndEditExecutable": false,
+      "signingHashAlgorithms": [],
+      "forceCodeSigning": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "allowElevation": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "intel. Command Deck",
+      "deleteAppDataOnUninstall": false,
+      "artifactName": "intel-Command-Deck-Setup-${version}.${ext}",
+      "uninstallDisplayName": "intel. Command Deck ${version}"
+    },
+    "portable": {
+      "artifactName": "intel-Command-Deck-Portable-${version}.${ext}"
+    }
+  }
+}

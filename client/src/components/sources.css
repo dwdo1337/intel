@@ -1,0 +1,192 @@
+/* Source manager — pick which groups to watch, per-group sender rules. */
+
+.sm {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: min(720px, 94vw);
+  max-height: 82vh;
+  padding: 22px 24px 18px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  box-shadow: var(--shadow-lg);
+}
+
+.sm-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; }
+.sm-head h2 { margin: 0 0 4px; font-size: 18px; font-weight: 500; color: var(--text); }
+.sm-head p { margin: 0; font-size: 12px; color: var(--muted); max-width: 46ch; line-height: 1.5; }
+
+.sm-tabs { display: flex; gap: 3px; padding: 3px; background: var(--bg); border: 1px solid var(--line); border-radius: 9px; flex-shrink: 0; }
+.sm-tabs button {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 30px; padding: 0 14px; border: none; border-radius: 6px;
+  background: transparent; color: var(--muted);
+  font-family: var(--sans); font-size: 12px; font-weight: 500; cursor: pointer;
+  transition: background .15s, color .15s;
+}
+.sm-tabs button:hover { color: var(--text); }
+.sm-tabs button.on { background: var(--accent-dim); color: var(--accent); }
+.sm-count {
+  min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px;
+  background: var(--accent); color: #04120c;
+  font-family: var(--mono); font-size: 9.5px;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+
+.sm-search {
+  height: 34px; padding: 0 12px; border-radius: 9px;
+  border: 1px solid var(--line2); background: var(--bg); color: var(--text);
+  font-family: var(--sans); font-size: 12.5px; outline: none;
+  transition: border-color .15s;
+}
+.sm-search:focus { border-color: var(--accent); }
+.sm-search::placeholder { color: var(--dim); }
+
+.sm-body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  min-height: 180px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg);
+  padding: 6px;
+}
+
+.sm-empty { padding: 34px 18px; text-align: center; font-size: 12.5px; color: var(--dim); line-height: 1.6; }
+
+.sm-guild { margin-bottom: 4px; }
+/* The server row is the primary control now, not a caption above a list, so it
+   is a real button: full width, hit-targetable, and readable at a glance. */
+.sm-guild-name {
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  padding: 8px 9px; border: 0; border-radius: 8px;
+  background: transparent; cursor: pointer; text-align: left;
+  font-size: 12px; font-weight: 600; color: var(--text);
+  transition: background .13s;
+}
+.sm-guild-name:hover { background: rgba(255,255,255,0.04); }
+.sm-guild.open > .sm-guild-name { background: rgba(255,255,255,0.05); }
+.sm-guild-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sm-caret {
+  flex: none; width: 12px; color: var(--dim); font-size: 14px; line-height: 1;
+  transform: rotate(0deg); transition: transform .15s;
+}
+.sm-caret.open { transform: rotate(90deg); }
+/* Channel count is context, selected count is the answer to "what am I actually
+   watching" while the server is collapsed -- so it gets the accent. */
+.sm-guild-count {
+  flex: none; font-size: 10.5px; font-weight: 500; color: var(--dim);
+  font-variant-numeric: tabular-nums;
+}
+.sm-guild-sel {
+  flex: none; font-size: 10px; font-weight: 700; letter-spacing: .04em;
+  color: var(--accent); background: rgba(79,227,168,0.12);
+  border-radius: 999px; padding: 2px 7px;
+}
+/* The server row carries three controls now: watch-whole-server, expand, and
+   members. They sit on one line so the row still reads as a single thing. */
+.sm-guild-head { display: flex; align-items: center; gap: 6px; }
+.sm-guild-head .sm-guild-name { flex: 1; min-width: 0; }
+.sm-guild.watched > .sm-guild-head { background: rgba(79,227,168,0.07); border-radius: 8px; }
+
+/* Deliberately NOT `.sm-check` -- channel rows already use that class, and a
+   second rule of equal specificity would have silently restyled every channel
+   checkbox (and lost to the later one for its own). */
+.sm-guild-check {
+  flex: none; width: 18px; height: 18px; border-radius: 5px; cursor: pointer;
+  border: 1px solid var(--line); background: transparent;
+  color: #08090d; font-size: 11px; font-weight: 900; line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .13s, border-color .13s;
+}
+.sm-guild-check:hover:not(:disabled) { border-color: var(--accent); }
+.sm-guild-check.on { background: var(--accent); border-color: var(--accent); }
+.sm-guild-check:disabled { opacity: .35; cursor: not-allowed; }
+
+.sm-members {
+  flex: none; padding: 4px 8px; border-radius: 6px; cursor: pointer;
+  border: 1px solid var(--line); background: transparent;
+  font-size: 10px; font-weight: 600; color: var(--dim);
+  transition: color .13s, border-color .13s;
+}
+.sm-members:hover:not(:disabled) { color: var(--accent); border-color: rgba(79,227,168,0.4); }
+.sm-members.on { color: var(--accent); border-color: rgba(79,227,168,0.45); background: rgba(79,227,168,0.10); }
+.sm-members:disabled { opacity: .35; cursor: not-allowed; }
+
+.sm-guild-tools { padding: 2px 9px 6px; display: flex; align-items: center; gap: 10px; }
+.sm-guild-hint { flex: 1; font-size: 10.5px; color: var(--dim); }
+.sm-guild-tools button {
+  background: none; border: 0; padding: 0; cursor: pointer;
+  font-size: 10.5px; font-weight: 600; color: var(--accent);
+}
+.sm-guild-tools button:hover { text-decoration: underline; }
+
+.sm-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 3px 6px; border-radius: 7px;
+  transition: background .13s;
+}
+.sm-row:hover { background: rgba(255,255,255,0.03); }
+.sm-row.on { background: rgba(79,227,168,0.07); }
+
+.sm-row-main { display: flex; align-items: center; gap: 9px; flex: 1 1 auto; min-width: 0; padding: 6px 2px; cursor: pointer; }
+.sm-check {
+  width: 17px; height: 17px; flex-shrink: 0;
+  border-radius: 5px; border: 1px solid var(--line3);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; color: #04120c;
+  transition: background .13s, border-color .13s;
+}
+.sm-check.on { background: var(--accent); border-color: var(--accent); }
+.sm-row-name { flex: 1 1 auto; min-width: 0; font-size: 12.5px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sm-row-meta { font-size: 9.5px; color: var(--dim); text-transform: uppercase; letter-spacing: .05em; flex-shrink: 0; }
+
+.sm-rule-btn {
+  flex-shrink: 0; height: 24px; padding: 0 9px;
+  border-radius: 6px; border: 1px solid var(--line2);
+  background: transparent; color: var(--dim);
+  font-family: var(--sans); font-size: 10px; cursor: pointer;
+  transition: all .14s;
+}
+.sm-rule-btn:hover { color: var(--text); border-color: var(--line3); }
+.sm-rule-btn.on { color: var(--accent); border-color: rgba(79,227,168,0.4); background: rgba(79,227,168,0.08); }
+
+/* per-group rules editor */
+.sm-rules {
+  display: flex; flex-direction: column; gap: 6px;
+  padding: 13px 14px; border-radius: 10px;
+  background: var(--surface2); border: 1px solid var(--line2);
+}
+.sm-rules-head { display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: var(--muted); margin-bottom: 3px; }
+.sm-rules-head b { color: var(--text); font-weight: 600; }
+.sm-rules-head button { background: none; border: none; color: var(--dim); font-size: 17px; cursor: pointer; line-height: 1; }
+.sm-rules-head button:hover { color: var(--text); }
+.sm-rules label { font-size: 10px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase; color: var(--dim); margin-top: 4px; }
+.sm-rules label em { font-style: normal; text-transform: none; letter-spacing: 0; opacity: .8; }
+.sm-rules input {
+  height: 32px; padding: 0 10px; border-radius: 7px;
+  border: 1px solid var(--line2); background: var(--bg); color: var(--text);
+  font-family: var(--sans); font-size: 12px; outline: none;
+}
+.sm-rules input:focus { border-color: var(--accent); }
+.sm-hint { margin: 4px 0 0; font-size: 10.5px; color: var(--dim); }
+
+.sm-err {
+  padding: 9px 11px; border-radius: 8px;
+  background: rgba(239,68,68,0.09); border: 1px solid rgba(239,68,68,0.28);
+  color: #ff8f8f; font-size: 11.5px;
+}
+
+.sm-foot { display: flex; align-items: center; gap: 9px; padding-top: 13px; border-top: 1px solid var(--line); }
+.sm-note { flex: 1 1 auto; font-size: 11px; color: var(--dim); }
+.sm-btn {
+  height: 34px; padding: 0 16px; border-radius: 9px; border: 1px solid transparent;
+  font-family: var(--sans); font-size: 12.5px; font-weight: 500; cursor: pointer;
+  transition: all .15s;
+}
+.sm-btn.ghost { background: transparent; border-color: var(--line2); color: var(--muted); }
+.sm-btn.ghost:hover { color: var(--text); border-color: var(--line3); }
+.sm-btn.solid { background: var(--accent); color: #04120c; }
+.sm-btn.solid:hover:not(:disabled) { filter: brightness(1.08); }
+.sm-btn:disabled { opacity: .5; cursor: not-allowed; }

@@ -1,0 +1,726 @@
+/* ========================================
+   intel. Command Deck — Premium V2 UI
+   Toggle in App.jsx: const V2_PREMIUM = true
+   Revert: restore index.css.bak-ui-overhaul
+   ======================================== */
+:root{
+  --bg:#07080c;--surface:#0c0e14;--surface2:#11131c;--surface3:#181b27;--surface4:#202536;
+  --line:#1d2230;--line2:#2a3043;--line3:#353d53;
+  --text:#f0f2f7;--muted:#7d879b;--dim:#4f5a70;--accent:#4fe3a0;--accent2:#7ff8c2;--accent-dim:rgba(79,227,168,0.14);
+  --buy:#22c55e;--sell:#ef4444;--warn:#f59e0b;--info:#3b82f6;--tg:#3b82f6;--dc:#a855f7;
+  --sans:'Inter',system-ui,sans-serif;--mono:'JetBrains Mono',monospace;
+  --chain-sol:#9945FF;--chain-robinhood:#00C805;--chain-base:#0052FF;--chain-bsc:#F0B90B;--chain-eth:#627EEA;
+  --shadow-sm:0 1px 2px rgba(0,0,0,0.25);--shadow:0 6px 20px rgba(0,0,0,0.35);--shadow-lg:0 14px 40px rgba(0,0,0,0.55);
+  --radius:12px;--radius-lg:16px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+/* The app is a fixed-viewport deck, so the height chain must be CAPPED at the
+   viewport, not merely at least the viewport. With `min-height` alone, height
+   stays `auto` and every ancestor grows to fit its content -- measured at
+   71550px against a 720px window. `.dash-body`'s `overflow:hidden` then had
+   nothing to clip and the columns never became scrollers, so one wheel gesture
+   scrolled the whole document and the filters, feed and inspector all moved
+   together. `height:100%` is what makes the inner columns scroll on their own.
+   `overflow:hidden` on body stops the page itself from scrolling at all. */
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:13px}
+#root,.app{height:100%;min-height:0;display:flex;flex-direction:column;background:var(--bg)}
+.screen{display:none;flex:1;min-height:0;flex-direction:column;overflow:hidden;background:var(--bg)}
+.screen.active{display:flex}
+button,.chip,.pill,.chain-chip,.top-icon,.action-btn,.msg-expander,input[type=checkbox]{transition:all .15s ease}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:10px 18px;border-radius:10px;border:1px solid var(--line2);background:var(--surface2);color:var(--text);font-family:var(--sans);font-size:13px;font-weight:600;cursor:pointer;transition:all .15s}
+.btn:hover{background:var(--surface3);border-color:var(--line3)}
+.btn.primary{background:var(--accent);color:#050705;border-color:var(--accent);font-weight:700}
+.btn.primary:hover{background:var(--accent2)}
+.btn.dc{background:var(--dc);color:#fff;border-color:var(--dc)}
+.btn.tg{background:var(--tg);color:#fff;border-color:var(--tg)}
+.btn.btn-ghost{background:transparent}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+input,textarea{background:#07080c;border:1px solid var(--line2);color:var(--text);font-family:var(--sans);font-size:13px;outline:none;border-radius:8px;padding:0 12px}
+input:focus,textarea:focus{border-color:var(--accent)}
+
+/* Top bar */
+.topbar{height:58px;min-height:58px;background:var(--surface);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:18px;padding:0 22px;box-shadow:0 4px 20px rgba(0,0,0,0.35);position:relative;z-index:10}
+.logo{display:flex;align-items:center;gap:8px;font-size:16px;font-weight:800;letter-spacing:-0.02em}
+.logo svg{width:24px;height:24px;color:var(--accent)}
+.search{flex:1;max-width:520px;position:relative}
+.search input{width:100%;height:38px;border-radius:10px;background:#07080c;border:1px solid var(--line2);padding:0 38px;color:var(--text);font-size:13px;outline:none}
+.search input:focus{border-color:var(--accent);background:#0a0c12}
+.search::before{content:'';position:absolute;left:13px;top:50%;transform:translateY(-50%);width:14px;height:14px;background:linear-gradient(135deg,var(--muted),transparent);mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.3-4.3'/%3E%3C/svg%3E") no-repeat center / contain;-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.3-4.3'/%3E%3C/svg%3E") no-repeat center / contain}
+.top-stats{display:flex;align-items:center;gap:6px;margin-left:auto;font-size:11px;padding:4px 8px;background:var(--surface2);border:1px solid var(--line);border-radius:10px}
+.top-stat{color:var(--muted);font-weight:500;padding:3px 8px;border-right:1px solid var(--line)}
+.top-stat:last-child{border-right:none}
+.top-stat b{color:var(--text);margin-left:5px;font-size:12px;font-weight:700}
+.top-icons{display:flex;align-items:center;gap:8px;margin-left:10px}
+.top-icon{position:relative;width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;background:var(--surface2);border:1px solid var(--line2);cursor:pointer;font-size:14px;color:var(--muted)}
+.logs-badge{position:absolute;top:-5px;right:-5px;min-width:18px;height:18px;border-radius:9px;background:var(--accent);color:#050705;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;padding:0 5px;border:1px solid var(--surface)}
+.top-icon:hover{background:var(--surface3);color:var(--accent);border-color:var(--accent);transform:translateY(-1px)}
+
+/* Settings gate/modal */
+.gate-screen{flex:1;display:flex;align-items:center;justify-content:center;background:var(--bg);padding:40px;overflow:auto}
+
+@media (max-width:720px){ .settings-grid{grid-template-columns:1fr} }
+
+.connect-body{flex:1;display:flex;align-items:center;justify-content:center;gap:40px;padding:40px}
+.connect-left{display:flex;flex-direction:column;gap:20px;max-width:380px}
+.connect-title{font-size:28px;font-weight:800}
+.connect-sub{color:var(--muted);font-size:14px}
+.source-cards{display:flex;gap:16px}
+.source-card{width:170px;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:24px 20px;display:flex;flex-direction:column;align-items:center;gap:10px}
+.source-card.active{border-color:rgba(79,227,168,0.35);background:linear-gradient(180deg,var(--surface) 0%,rgba(79,227,168,0.06) 100%)}
+.source-icon{width:54px;height:54px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;color:#fff;background:var(--line2)}
+.source-card.active .source-icon{background:var(--accent);color:#000}
+.source-card.dc .source-icon{background:var(--dc)}
+.source-name{font-size:15px;font-weight:700}
+.source-status{font-size:11px;color:var(--muted)}
+.source-card input{width:100%;height:32px;border-radius:6px;background:#07080c;border:1px solid var(--line);padding:0 10px;color:var(--text);font-size:11px;margin-top:4px}
+.source-card input:focus{border-color:var(--accent)}
+.source-card .btn{width:100%;margin-top:4px}
+.connect-foot{margin-top:8px}
+
+/* Dashboard layout */
+.dash-body{flex:1;display:grid;grid-template-columns:300px minmax(0,1fr) 380px;min-height:0;overflow:hidden;background:var(--bg)}
+.dash-col{display:flex;flex-direction:column;border-right:1px solid var(--line);overflow:hidden}
+.dash-col:last-child{border-right:none}
+
+/* Each column scrolls on its own.
+   Two rules make that work, and both are easy to leave out:
+   1. `min-height:0` -- a flex/grid child defaults to `min-height:auto`, which
+      means "never shrink below my content". Without it a tall column stretches
+      the row instead of scrolling, and the wheel ends up moving the whole page,
+      so scrolling the feed dragged the filters and inspector along with it.
+   2. `overscroll-behavior:contain` -- stops the scroll CHAINING to the parent
+      once a column hits its end, which is the other half of the same symptom. */
+.dash-body > *{min-height:0}
+.feed-col,.in-col,.fx{min-height:0;overscroll-behavior:contain}
+/* These three are `flex-direction:column`, and a flex child defaults to
+   `flex-shrink:1` -- it will compress to fit its container. That never bit
+   while the height chain was uncapped, because the column simply grew and
+   there was nothing to fit into. The moment the columns became real scrollers,
+   every card squeezed down to a couple of pixels: the feed rendered as a stack
+   of thin lines and the inspector panels collapsed to their headers.
+   A scroller's children must keep their natural height and let the PARENT
+   scroll -- that is the whole point. */
+.feed-col > *,.in-col > *,.fx > *{flex-shrink:0}
+/* The inspector body is the scroller; its `.dash-col` wrapper stays fixed so
+   the "Inspector" header does not scroll away with the content. */
+.in-col{flex:1}
+.dash-col-head{height:44px;min-height:44px;display:flex;align-items:center;padding:0 16px;border-bottom:1px solid var(--line);font-size:11px;font-weight:700;text-transform:uppercase;color:var(--muted);letter-spacing:0.04em;background:var(--surface)}
+
+/* Filters sidebar */
+.filters{padding:0;display:flex;flex-direction:column;gap:0;background:var(--surface);border-right:1px solid var(--line);overflow-y:auto;overflow-x:hidden}
+.filters-row{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.filters-row:last-child{border-bottom:none}
+.filter-group{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.filter-label{font-size:10px;font-weight:700;text-transform:uppercase;color:var(--muted);letter-spacing:0.04em;margin-right:4px}
+.chip{padding:6px 12px;border-radius:8px;background:var(--surface2);border:1px solid var(--line2);font-size:12px;font-weight:600;color:var(--muted);cursor:pointer}
+.chip.active{background:var(--accent-dim);color:var(--accent);border-color:rgba(79,227,168,0.35);box-shadow:0 0 12px rgba(79,227,168,0.08)}
+.pill{padding:5px 11px;border-radius:20px;background:var(--surface2);border:1px solid var(--line2);font-size:11px;font-weight:600;color:var(--muted);cursor:pointer}
+.pill.active{background:rgba(79,227,168,0.12);border-color:rgba(79,227,168,0.35);color:var(--accent)}
+.pill:disabled{opacity:.35;cursor:not-allowed}
+.filter-group.disabled .filter-label{color:var(--dim);font-style:italic}
+.chain-launchpad-row{align-items:flex-start;flex-wrap:wrap;flex-direction:column;gap:8px}
+.chain-chip-list{display:flex;flex-wrap:wrap;gap:6px;width:100%}
+.chain-chip{display:inline-flex;align-items:center;gap:5px;padding:5px 9px;border-radius:20px;background:var(--surface2);border:1px solid var(--line2);font-size:11px;font-weight:600;color:var(--muted);cursor:pointer;white-space:nowrap}
+.chain-chip.active{background:rgba(79,227,168,0.10);border-color:rgba(79,227,168,0.3);color:var(--text);box-shadow:0 0 10px rgba(79,227,168,0.06)}
+.chain-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;display:inline-block}
+.chain-pending{font-size:9px;font-weight:700;text-transform:uppercase;color:var(--warn);background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.28);border-radius:4px;padding:1px 5px;margin-left:2px}
+.launchpad-sub-row{align-items:flex-start;flex-wrap:wrap;flex-direction:column;gap:6px;background:rgba(255,255,255,0.015)}
+.launchpad-sub-row .filter-label{display:flex;align-items:center;gap:6px}
+.launchpad-sub-row .pill-row{display:flex;flex-wrap:wrap;gap:6px}
+.lp-none{font-size:11px;color:var(--dim);font-style:italic}
+.chain-select{height:30px;border-radius:6px;background:#07080c;border:1px solid var(--line);color:var(--text);font-size:12px;padding:0 8px;outline:none}
+.chain-select:focus{border-color:var(--accent)}
+.action-btn{position:relative;width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;background:var(--surface2);border:1px solid var(--line2);color:var(--muted);cursor:pointer}
+.action-btn.active,.action-btn:hover{color:var(--accent);border-color:var(--accent)}
+.badge-dot{position:absolute;top:-4px;right:-4px;min-width:16px;height:16px;border-radius:8px;background:var(--accent);color:#050705;font-size:10px;font-weight:800;padding:0 4px;display:flex;align-items:center;justify-content:center}
+.search-row{padding:0 14px 12px}
+.search-input{width:100%;height:34px;border-radius:6px;background:#07080c;border:1px solid var(--line);color:var(--text);font-size:13px;padding:0 12px;outline:none}
+.search-input:focus{border-color:var(--accent)}
+.metrics-row{align-items:flex-start}
+
+/* Feed column */
+.feed-col{flex:1;overflow:auto;padding:20px;display:flex;flex-direction:column;gap:14px}
+.feed-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:2px;position:sticky;top:0;background:var(--bg);padding:6px 0;z-index:2}
+.feed-title{font-size:13px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:var(--muted)}
+.feed-title span{color:var(--dim);font-weight:500;margin-left:6px}
+.feed-chips{display:flex;gap:8px;flex-wrap:wrap}
+
+/* Message cards */
+.msg-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:0;display:flex;flex-direction:column;gap:0;transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease;cursor:pointer;box-shadow:var(--shadow-sm);overflow:hidden}
+.msg-card:hover{border-color:var(--line2);transform:translateY(-2px);box-shadow:var(--shadow)}
+.msg-card.followup{border-color:rgba(79,227,168,0.25);background:linear-gradient(180deg,var(--surface) 0%,rgba(79,227,168,0.04) 100%)}
+.msg-card.selected{border-color:var(--accent);box-shadow:0 0 0 1px rgba(79,227,168,0.35),var(--shadow)}
+.msg-card.has-banner .msg-banner{height:110px;background-size:cover;background-position:center;margin:0;opacity:1;border-radius:0}
+.msg-body{padding:16px;display:flex;flex-direction:column;gap:12px}
+.msg-head{display:flex;align-items:flex-start;gap:12px}
+.msg-meta-head{flex:1;display:flex;flex-direction:column;gap:5px;min-width:0}
+.msg-line1{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.msg-sym{color:var(--muted);font-weight:600;font-size:13px}
+.msg-src{font-size:11px;color:var(--dim)}
+.msg-badges{display:flex;gap:6px;flex-wrap:wrap}
+.badge{font-size:10px;font-weight:800;padding:3px 8px;border-radius:5px;text-transform:uppercase}
+.badge.followup{background:rgba(79,227,168,0.15);color:var(--accent);border:1px solid rgba(79,227,168,0.3)}
+.badge.launch{background:var(--surface3);color:var(--text);border:1px solid var(--line2)}
+.badge.clean{background:rgba(34,197,94,0.1);color:var(--buy);border:1px solid rgba(34,197,94,0.25)}
+.badge.signal{background:rgba(245,158,11,0.12);color:var(--warn);border:1px solid rgba(245,158,11,0.3)}
+
+/* Message quote box */
+.msg-message{background:rgba(79,227,168,0.04);border:1px solid rgba(79,227,168,0.16);border-left:3px solid var(--accent);border-radius:8px;padding:12px 14px;font-size:13px;line-height:1.55;color:#dfe9e3}
+.msg-message .msg-text{color:#dfe9e3;white-space:pre-line}
+.msg-message .ca{display:inline-flex;align-items:center;gap:4px;padding:1px 6px;border-radius:4px;background:rgba(79,227,168,0.08);border:1px solid rgba(79,227,168,0.22);color:var(--accent);font-family:var(--mono);font-size:11px;font-weight:600;cursor:pointer;margin-left:4px}
+.msg-source-row{display:flex;align-items:center;gap:8px;margin-top:8px;font-size:11px;color:var(--muted)}
+.msg-source-row svg{color:var(--accent)}
+.msg-author{color:var(--accent2);font-weight:700}
+.msg-launchpad{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;padding:3px 7px;border-radius:5px;background:rgba(159,232,195,0.10);color:var(--accent2);border:1px solid rgba(159,232,195,0.24);box-shadow:0 0 10px rgba(159,232,195,0.06);margin-left:auto}
+.msg-time{font-size:11px;color:var(--dim);white-space:nowrap;margin-left:auto;align-self:flex-start;padding-top:4px}
+.msg-chain{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;padding:3px 7px;border-radius:6px;background:rgba(79,227,168,0.12);color:var(--accent2);border:1px solid rgba(79,227,168,0.22);box-shadow:0 0 12px rgba(79,227,168,0.06)}
+
+/* KPI strip */
+
+
+
+.expand-panel{overflow:hidden;transition:max-height .25s ease}
+.expand-inner{padding-top:12px;border-top:1px solid var(--line);margin-top:4px;display:flex;flex-direction:column;gap:12px}
+
+/* Inspector */
+.in-col{padding:16px;display:flex;flex-direction:column;gap:14px;overflow:auto;background:var(--surface)}
+.in-card{background:var(--surface2);border:1px solid var(--line);border-radius:var(--radius);padding:16px;transition:border-color .15s;overflow:hidden}
+.in-card:hover{border-color:var(--line2)}
+.in-card-title{font-size:11px;font-weight:700;text-transform:uppercase;color:var(--muted);margin-bottom:12px;letter-spacing:0.05em;display:flex;align-items:center;gap:8px}
+
+/* ── wallet intelligence (KOL / smart money / dev history) ────────── */
+/* Loaded on click, not on selection -- see WalletIntel in Inspector.jsx. */
+.in-load-btn{margin-left:auto;padding:3px 10px;border-radius:5px;border:1px solid rgba(79,227,160,0.35);background:rgba(79,227,160,0.10);color:var(--accent);font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;cursor:pointer;transition:.12s}
+.in-load-btn:hover{background:rgba(79,227,160,0.18)}
+.in-note{font-size:11px;color:var(--muted);opacity:.75;line-height:1.5;margin-top:6px}
+.in-kol-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.in-kol{font-size:10px;padding:2px 7px;border-radius:4px;background:rgba(79,227,160,0.10);border:1px solid rgba(79,227,160,0.28);color:var(--accent);text-decoration:none}
+.in-kol:hover{background:rgba(79,227,160,0.18)}
+.in-price{font-size:32px;font-weight:800;margin-bottom:6px;letter-spacing:-0.03em}
+.in-price.up{color:var(--buy)}.in-price.down{color:var(--sell)}
+.in-subline{display:flex;gap:16px;font-size:12px;color:var(--muted);margin-bottom:12px;flex-wrap:wrap}
+.in-subline b{color:var(--text)}
+.in-ca{display:flex;align-items:center;justify-content:space-between;padding:9px 11px;border-radius:8px;background:var(--surface3);border:1px solid var(--line);font-family:var(--mono);font-size:11px;color:var(--accent);cursor:pointer;transition:border-color .15s,background .15s}
+.in-ca:hover{background:var(--surface4);border-color:var(--accent)}
+.in-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.in-stat{display:flex;flex-direction:column;gap:3px;padding:9px 10px;background:var(--surface3);border-radius:8px;transition:background .15s}
+.in-stat:hover{background:var(--surface4)}
+.in-stat .label{font-size:10px;color:var(--muted);text-transform:uppercase}
+.in-stat .val{font-size:13px;font-weight:700;color:var(--text)}
+.in-bar{height:6px;background:var(--line);border-radius:3px;overflow:hidden;margin-top:8px}
+.in-bar-fill{height:100%;background:var(--accent)}
+.in-list{display:flex;flex-direction:column;gap:8px}
+.in-item{display:flex;align-items:center;gap:10px;padding:9px 10px;background:var(--surface3);border-radius:8px;font-size:12px;transition:background .15s}
+.in-item:hover{background:var(--surface4)}
+.in-item.dim{opacity:.7}
+.in-item-avatar{width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0;background:var(--surface4);color:var(--muted)}
+.in-item-body{flex:1;display:flex;flex-direction:column;gap:2px;min-width:0}
+.in-item-title{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.in-item-title a{color:var(--accent);text-decoration:none}
+.in-item-title a:hover{text-decoration:underline}
+.in-item-sub{font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.in-item-val{font-weight:700;margin-left:auto;white-space:nowrap}
+.in-placeholder{border-style:dashed;opacity:.9}
+
+.in-banner{height:120px;background-size:cover;background-position:center;border-radius:12px 12px 0 0;margin:-16px -16px 16px;position:relative}
+.in-banner-overlay{position:absolute;inset:0;background:linear-gradient(180deg,transparent 0%,var(--surface2) 100%)}
+.in-banner-info{position:absolute;bottom:12px;left:16px;right:16px;display:flex;align-items:flex-end;gap:12px}
+.in-banner-logo{width:54px;height:54px;border-radius:14px;border:2px solid rgba(255,255,255,0.15);box-shadow:0 4px 16px rgba(0,0,0,0.4);object-fit:cover;background:var(--surface)}
+.in-banner-name{font-size:20px;font-weight:800}
+.in-banner-symbol{font-size:13px;color:var(--muted);font-weight:600}
+
+/* Chart frame placeholder */
+.chart-frame{width:100%;height:260px;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--surface3)}
+
+/* Toast stack */
+.toast-stack{position:fixed;bottom:20px;right:20px;width:340px;display:flex;flex-direction:column;gap:12px;z-index:1000}
+.toast{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px;box-shadow:var(--shadow-lg);transition:.15s;overflow:hidden}
+.toast:hover{border-color:var(--line2)}
+.toast-head{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.toast-head svg{width:16px;height:16px;color:var(--accent)}
+.toast-app{font-size:10px;font-weight:800;text-transform:uppercase;color:var(--accent);letter-spacing:.05em}
+.toast-close{margin-left:auto;background:transparent;border:none;color:var(--muted);font-size:18px;line-height:1;cursor:pointer;padding:0 2px}
+.toast-close:hover{color:var(--text)}
+.toast-main{display:flex;gap:12px;align-items:flex-start;margin-bottom:10px}
+.toast-media{width:48px;height:48px;border-radius:10px;overflow:hidden;flex-shrink:0;background:var(--surface2);display:flex;align-items:center;justify-content:center}
+.toast-media img{width:100%;height:100%;object-fit:cover}
+.toast-media-fallback{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;color:var(--accent);background:linear-gradient(135deg,var(--accent),#000)}
+.toast-info{min-width:0;flex:1}
+.toast-title-row{display:flex;align-items:center;gap:8px;margin-bottom:4px;min-width:0}
+.toast-name{font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.toast-symbol{font-size:12px;color:var(--muted);font-weight:700}
+.toast-badges{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px}
+.toast-badge{font-size:10px;font-weight:700;padding:3px 7px;border-radius:5px;border:1px solid transparent;text-transform:uppercase;letter-spacing:.03em}
+.toast-badge.lp{background:rgba(120,130,150,.15);color:var(--dim);border-color:var(--line2)}
+.toast-sender{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.toast-metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px;padding-top:10px;border-top:1px solid var(--line)}
+.toast-metric{text-align:center}
+.toast-m-label{display:block;font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px}
+.toast-m-value{display:block;font-size:12px;font-weight:800;color:var(--text)}
+.toast-ca-row{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--surface2);border:1px solid var(--line);border-radius:8px;padding:6px 8px;margin-bottom:10px}
+.toast-ca-text{font-family:var(--mono);font-size:11px;color:var(--dim);letter-spacing:.02em}
+.toast-actions{display:flex;gap:8px}
+.toast-btn{flex:1;text-align:center;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;padding:8px 10px;border-radius:8px;border:1px solid transparent;cursor:pointer;text-decoration:none;transition:.12s}
+.toast-btn.primary{background:var(--accent);color:#000;border-color:var(--accent)}
+.toast-btn.primary:hover{background:var(--accent2)}
+.toast-btn.ghost{background:transparent;color:var(--accent);border-color:rgba(79,227,168,.35)}
+.toast-btn.ghost:hover{background:rgba(79,227,168,.08)}
+
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--line2);border-radius:4px}
+::-webkit-scrollbar-thumb:hover{background:#3d4560}
+*{scrollbar-width:thin;scrollbar-color:var(--line2) transparent}
+
+.live-pulse{width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 0 rgba(79,227,168,0.6);animation:livePulse 2s ease-out infinite;margin-right:2px}
+@keyframes livePulse{0%{box-shadow:0 0 0 0 rgba(79,227,168,0.55)}70%{box-shadow:0 0 0 7px rgba(79,227,168,0)}100%{box-shadow:0 0 0 0 rgba(79,227,168,0)}}
+
+@keyframes cardIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+.msg-card{animation:cardIn .28s ease both}
+
+.feed-empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;color:var(--dim);text-align:center;padding:60px 20px}
+.feed-empty-pulse{width:14px;height:14px;border-radius:50%;background:var(--line2);box-shadow:0 0 0 0 rgba(107,117,136,0.5);animation:livePulse 2.4s ease-out infinite}
+.feed-empty-title{font-size:13px;font-weight:700;letter-spacing:0.08em;color:var(--muted)}
+.feed-empty-sub{font-size:12px;color:var(--dim);max-width:340px;line-height:1.5}
+
+@keyframes panelIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
+.panel-in{animation:panelIn .18s ease both}
+
+@keyframes spin{to{transform:rotate(360deg)}}
+.boot-center{flex:1;display:flex;align-items:center;justify-content:center}
+.boot-box{text-align:center}
+.panel-in{animation:panelIn .18s ease both}
+
+.logs-drawer{position:fixed;bottom:0;left:0;right:0;height:260px;z-index:50;background:var(--surface);border-top:1px solid var(--line);box-shadow:0 -8px 40px rgba(0,0,0,0.45);display:flex;flex-direction:column}
+.logs-panel{flex:1;display:flex;flex-direction:column;min-height:0}
+.logs-head{height:44px;min-height:44px;display:flex;align-items:center;justify-content:space-between;padding:0 18px;border-bottom:1px solid var(--line);background:rgba(255,255,255,0.012)}
+.logs-title{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:0.04em;color:var(--text)}
+.logs-tabs{display:flex;align-items:center;gap:6px}
+.logs-tabs button{font-size:11px;font-weight:700;padding:5px 10px;border-radius:6px;border:1px solid var(--line2);background:var(--surface2);color:var(--muted);cursor:pointer}
+.logs-tabs button:hover{color:var(--text)}
+.logs-tabs button.active{background:rgba(79,227,168,0.12);border-color:rgba(79,227,168,0.35);color:var(--accent)}
+.logs-count{display:inline-block;margin-left:5px;padding:1px 5px;border-radius:4px;background:var(--surface3);font-size:10px;color:var(--muted)}
+.logs-body{flex:1;overflow:auto;padding:10px 14px;font-family:var(--mono);font-size:11px;line-height:1.55;color:var(--dim)}
+.logs-row{display:flex;align-items:baseline;gap:12px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.03)}
+.logs-time{min-width:58px;color:var(--dim);flex-shrink:0}
+.logs-cat{min-width:80px;text-transform:uppercase;font-size:9px;font-weight:800;letter-spacing:0.04em;flex-shrink:0}
+.logs-msg{color:var(--text);min-width:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.logs-data{color:var(--dim);max-width:260px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex-shrink:0}
+.logs-empty{color:var(--dim);padding:20px;text-align:center}
+
+.boot-spinner{width:48px;height:48px;border:3px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 24px}
+
+@media (max-width:1300px){
+  .dash-body{grid-template-columns:260px minmax(0,1fr) 340px}
+}
+@media (max-width:1200px){
+  .dash-body{grid-template-columns:1fr}
+  .dash-col{border-right:none}
+  .dash-col:not(:first-child){display:none}
+  .connect-body{flex-direction:column}
+}
+
+/* Premium V2 surfaces */
+.v2-premium{background:radial-gradient(circle at 20% -10%,rgba(79,227,168,0.05),transparent 30%),radial-gradient(circle at 80% 120%,rgba(153,69,255,0.04),transparent 35%),var(--bg)}
+
+.showcase{margin-bottom:22px;animation:cardIn .45s ease both}
+.showcase-head{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:14px}
+.showcase-title{display:flex;align-items:center;gap:10px;font-size:14px;font-weight:800;letter-spacing:-0.01em}
+.showcase-sub{margin-left:8px;font-size:11px;color:var(--muted);font-weight:500}
+.showcase-actions{display:flex;gap:8px}
+.showcase-loading{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:40px;color:var(--muted)}
+.showcase-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+@media (max-width:1400px){.showcase-grid{grid-template-columns:1fr}}
+.showcase-card{position:relative;background:linear-gradient(180deg,var(--surface) 0%,rgba(12,14,20,0.9) 100%);border:1px solid var(--line);border-radius:var(--radius-lg);overflow:hidden;box-shadow:var(--shadow),0 1px 0 rgba(255,255,255,0.02) inset;transition:transform .22s ease,box-shadow .22s ease,border-color .22s;animation:cardIn .38s ease both}
+.showcase-card:hover{transform:translateY(-3px);box-shadow:var(--shadow-lg),0 0 0 1px rgba(79,227,168,0.12);border-color:var(--line2)}
+.showcase-card-banner{position:relative;height:120px;background-size:cover;background-position:center;display:flex;flex-direction:column;justify-content:space-between;padding:14px 16px}
+.showcase-card-banner-overlay{position:absolute;inset:0;background:linear-gradient(180deg,rgba(7,8,12,0.4) 0%,rgba(7,8,12,0.85) 100%)}
+.showcase-card-top{position:relative;z-index:1;display:flex;align-items:flex-start;justify-content:space-between}
+.showcase-chain{display:inline-flex;align-items:center;gap:6px;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:0.05em;padding:4px 10px;border-radius:20px;background:rgba(7,8,12,0.55);border:1px solid var(--chain-color);color:var(--chain-color);backdrop-filter:blur(6px)}
+.showcase-logo{width:46px;height:46px;border-radius:12px;border:2px solid rgba(255,255,255,0.12);box-shadow:0 4px 16px rgba(0,0,0,0.35);object-fit:cover;background:var(--surface)}
+.showcase-logo-fallback{width:46px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;color:var(--text);background:linear-gradient(135deg,var(--accent),#000)}
+.showcase-card-banner-text{position:relative;z-index:1}
+.showcase-name{font-size:18px;font-weight:800;letter-spacing:-0.02em;text-shadow:0 2px 10px rgba(0,0,0,0.5)}
+.showcase-symbol{font-size:12px;font-weight:600;color:var(--muted);text-shadow:0 1px 6px rgba(0,0,0,0.4)}
+.showcase-body{padding:16px;display:flex;flex-direction:column;gap:12px}
+.showcase-price-row{display:flex;align-items:center;gap:12px}
+.showcase-price{font-size:22px;font-weight:800;letter-spacing:-0.03em;display:flex;align-items:center;gap:10px}
+.showcase-change{font-size:12px;font-weight:700;padding:4px 8px;border-radius:6px}
+.showcase-change.up{background:rgba(34,197,94,0.14);color:var(--buy);border:1px solid rgba(34,197,94,0.28)}
+.showcase-change.down{background:rgba(239,68,68,0.14);color:var(--sell);border:1px solid rgba(239,68,68,0.28)}
+.showcase-metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+@media (max-width:640px){.showcase-metrics{grid-template-columns:repeat(2,1fr)}}
+.showcase-metric{background:rgba(255,255,255,0.02);border:1px solid var(--line);border-radius:9px;padding:9px;display:flex;flex-direction:column;gap:2px;transition:border-color .15s,background .15s}
+.showcase-metric:hover{background:rgba(255,255,255,0.04);border-color:var(--line2)}
+.showcase-metric-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--muted)}
+.showcase-metric-value{font-size:13px;font-weight:700;color:var(--text)}
+.showcase-metric-value.up{color:var(--buy)}
+.showcase-metric-value.down{color:var(--sell)}
+.showcase-metric-sub{font-size:10px;color:var(--dim)}
+.showcase-ca{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 10px;border-radius:8px;background:var(--surface2);border:1px solid var(--line);font-family:var(--mono);font-size:11px;color:var(--dim);cursor:pointer;transition:border-color .15s,background .15s}
+.showcase-ca:hover{background:var(--surface3);border-color:var(--accent);color:var(--accent)}
+.showcase-ca-text{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.showcase-ca-copy{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--muted)}
+.showcase-ca:hover .showcase-ca-copy{color:var(--accent)}
+.showcase-links{display:flex;gap:8px;flex-wrap:wrap}
+.showcase-link{flex:1;min-width:90px;text-align:center;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.03em;padding:8px 10px;border-radius:8px;border:1px solid var(--line2);background:transparent;color:var(--muted);text-decoration:none;transition:.12s}
+.showcase-link:hover{color:var(--accent);border-color:var(--accent);background:rgba(79,227,168,0.06)}
+.showcase-link.primary{background:var(--accent);color:#050705;border-color:var(--accent)}
+.showcase-link.primary:hover{background:var(--accent2)}
+
+/* Feed real-image polish */
+.msg-card.has-banner .msg-banner{height:110px;border-radius:12px 12px 0 0;margin:0;opacity:1}
+
+/* History panel polish */
+.notification-panel{position:fixed;top:0;right:0;bottom:0;width:380px;z-index:100;background:var(--surface);border-left:1px solid var(--line);box-shadow:-12px 0 50px rgba(0,0,0,0.55);display:flex;flex-direction:column;animation:slideIn .22s ease both}
+@keyframes slideIn{from{transform:translateX(40px);opacity:0}to{transform:translateX(0);opacity:1}}
+.notification-panel-head{height:56px;min-height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 18px;border-bottom:1px solid var(--line);background:var(--surface)}
+.notification-panel-title{font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:0.04em}
+.notification-panel-close{background:transparent;border:none;color:var(--muted);font-size:24px;cursor:pointer}
+.notification-panel-close:hover{color:var(--text)}
+.notification-panel-list{flex:1;overflow:auto;padding:14px;display:flex;flex-direction:column;gap:10px}
+.notification-item{background:var(--surface2);border:1px solid var(--line);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:8px;cursor:pointer;transition:border-color .15s,transform .15s}
+.notification-item:hover{border-color:var(--accent);transform:translateY(-1px)}
+.notification-item-top{display:flex;align-items:center;gap:10px}
+.notification-item-chain{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;padding:3px 8px;border-radius:5px;background:rgba(79,227,168,0.12);color:var(--accent);border:1px solid rgba(79,227,168,0.25)}
+.notification-item-name{font-size:14px;font-weight:700;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.notification-item-ca{font-family:var(--mono);font-size:11px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.notification-item-meta{display:flex;gap:12px;font-size:12px;color:var(--muted)}
+.notification-item-meta b{color:var(--text);margin-left:3px}
+.notification-empty{padding:30px;text-align:center;color:var(--dim);font-size:13px}
+
+/* ==========================================================================
+   UI corrections — 2026-07-31
+   ========================================================================== */
+
+/* Chain logo in the CHAINS & LAUNCHPADS rail.
+   `.chain-logo` was referenced by Filters.jsx (<img className="chain-logo">)
+   but had NO css rule anywhere in the project, so the image rendered at its
+   natural size. The Base icon (rsz_base.jpg) is a large solid blue square,
+   which is the giant blue box that swallowed the chain rail and pushed the
+   "Base" label off the panel edge. Constrain it explicitly and never let it
+   flex-grow. */
+.chain-logo {
+  width: 18px;
+  height: 18px;
+  min-width: 18px;
+  min-height: 18px;
+  max-width: 18px;
+  max-height: 18px;
+  flex: 0 0 18px;
+  border-radius: 5px;
+  object-fit: cover;
+  display: block;
+}
+
+/* Fallback dot used when a chain has no logo asset, or the image 404s. */
+.chain-dot {
+  width: 9px;
+  height: 9px;
+  min-width: 9px;
+  flex: 0 0 9px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+/* Inspector contract-address row.
+   The address rendered untruncated and collided with the COPY button, so it
+   read as "...zofpumpC0PY". Let the address take the free space and ellipsis,
+   and pin COPY so it can never be overlapped or squeezed out. */
+.in-ca {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.in-ca > span:first-child {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+}
+.in-ca > span:last-child {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  color: var(--accent, #4fe3a0);
+}
+
+/* Guard against the same class of bug elsewhere: any stray <img> inside the
+   left rail is almost certainly an icon, never a hero image. */
+.filters-col img:not([class*="banner"]) {
+  max-width: 100%;
+  height: auto;
+}
+
+/* ==========================================================================
+   Polish pass — hierarchy, separation, motion
+   --------------------------------------------------------------------------
+   Problem being fixed: every heading in the app used the same recipe
+   (11-13px / weight 700 / uppercase / muted grey), so nothing had visual
+   rank -- a panel title, a section title and a field label all shouted
+   equally. Separation was entirely hard 1px lines, which reads as a
+   wireframe of boxes rather than layered surfaces. And almost nothing
+   responded to the cursor, so the interface felt frozen.
+
+   Approach: establish three real tiers of heading, replace hard rules with
+   soft fades where a divider is only a hint, and add restrained motion
+   (120-220ms) so state changes ease instead of snapping.
+   ========================================================================== */
+
+/* ── tier 1: column headers ──────────────────────────────────────────────
+   The top-level "COMMAND DECK", "INSPECTOR" bars. These sit above
+   everything, so they get a subtle gradient and a soft edge rather than a
+   flat fill and a hard line. */
+.dash-col-head {
+  background: linear-gradient(180deg, var(--surface3) 0%, var(--surface) 100%);
+  border-bottom: 1px solid var(--line);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.02), var(--shadow-sm);
+  letter-spacing: 0.10em;
+  font-size: 10.5px;
+  color: var(--muted);
+  position: relative;
+  z-index: 2;
+}
+/* A thin accent seam on the left of each column header ties the three
+   columns together as one surface instead of three unrelated panes. */
+.dash-col-head::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 25%; bottom: 25%;
+  width: 2px;
+  background: linear-gradient(180deg, transparent, var(--accent), transparent);
+  opacity: 0.5;
+}
+
+/* ── tier 2: card / section titles ───────────────────────────────────────
+   Inside a panel. Slightly larger and brighter than a field label, with a
+   hairline that fades out instead of cutting straight across -- the
+   divider should suggest separation, not slice the panel in half. */
+.in-card-title {
+  font-size: 10.5px;
+  letter-spacing: 0.09em;
+  color: var(--muted);
+  padding-bottom: 9px;
+  margin-bottom: 13px;
+  border-bottom: 1px solid transparent;
+  border-image: linear-gradient(90deg, var(--line2) 0%, var(--line) 45%, transparent 100%) 1;
+  position: relative;
+}
+/* Small accent tick before a section title -- gives the eye an anchor and
+   makes scanning a long Inspector column much faster. */
+.in-card-title::before {
+  content: '';
+  width: 3px;
+  height: 11px;
+  border-radius: 2px;
+  background: var(--accent);
+  opacity: 0.55;
+  flex-shrink: 0;
+}
+
+/* ── tier 3: field labels ────────────────────────────────────────────────
+   The quietest tier. These were competing with section titles; now they
+   sit clearly below them. */
+.in-item-label,
+.in-card:hover {
+  border-color: var(--line2);
+  box-shadow: var(--shadow);
+  transform: translateY(-1px);
+}
+
+/* ── feed cards ─────────────────────────────────────────────────────────
+   Same principle, plus a clearer selected state. Selection was previously
+   only a border-colour change, which was easy to miss. */
+.msg-card {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.02) 0%, transparent 18%),
+    var(--surface2);
+  box-shadow: var(--shadow-sm);
+  transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease;
+}
+.msg-card:hover {
+  box-shadow: var(--shadow);
+  transform: translateY(-1px);
+}
+.msg-card.selected {
+  box-shadow: 0 0 0 1px var(--accent-dim), 0 8px 26px rgba(0, 0, 0, 0.45);
+}
+/* A follow-up is the app's most valuable signal -- it should be visibly
+   distinct from a first sighting, not just carry a small chip. */
+.msg-card.followup {
+  background:
+    linear-gradient(180deg, rgba(245, 158, 11, 0.055) 0%, transparent 30%),
+    var(--surface2);
+}
+
+/* ── KPI blocks: real grouping ──────────────────────────────────────────
+   Three numbers floating in a row read as unrelated. Giving them a shared
+   inset surface groups them as one readout. */
+
+/* ── numbers ────────────────────────────────────────────────────────────
+   Tabular figures stop digits jittering as live values update, which is
+   most of what makes a trading readout feel stable rather than twitchy. */
+
+/* ── chips, pills, buttons: motion ──────────────────────────────────────
+   Nothing eased before, so every state change snapped. */
+.chip,
+.venue-chip,
+.filter-chip,
+.tb-tab,
+.btn-buy,
+.link,
+.showcase-link {
+  transition: background .16s ease, border-color .16s ease,
+              color .16s ease, transform .16s ease, box-shadow .16s ease;
+}
+.chip:hover,
+.filter-chip:hover { transform: translateY(-1px); }
+.chip.active {
+  box-shadow: 0 0 0 1px var(--accent-dim), 0 2px 10px rgba(79, 227, 168, 0.10);
+}
+.btn-buy:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(79, 227, 168, 0.28);
+}
+.btn-buy:active { transform: translateY(0); }
+
+/* ── the live pulse ─────────────────────────────────────────────────────
+   A connection dot that just sits there says nothing. A slow pulse says
+   "this is live" at a glance. */
+@keyframes intel-pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(79, 227, 168, 0.45); }
+  60%      { opacity: .75; box-shadow: 0 0 0 5px rgba(79, 227, 168, 0); }
+}
+.status-dot.live,
+.led.on,
+.feed-empty-pulse {
+  animation: intel-pulse 2.6s ease-in-out infinite;
+}
+
+/* ── scrollbars ─────────────────────────────────────────────────────────
+   Default chrome scrollbars break the dark surface badly. */
+* { scrollbar-width: thin; scrollbar-color: var(--line3) transparent; }
+*::-webkit-scrollbar { width: 9px; height: 9px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb {
+  background: var(--line2);
+  border-radius: 6px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-thumb:hover { background: var(--line3); background-clip: content-box; }
+
+/* ── empty state ────────────────────────────────────────────────────────
+   Now the first thing a new user sees, since the fake showcase is gone.
+   It should feel like the app is watching, not like something failed. */
+.feed-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 64px 28px;
+  text-align: center;
+}
+.feed-empty-pulse {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+.feed-empty-title {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  color: var(--muted);
+}
+.feed-empty-sub {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--dim);
+  max-width: 340px;
+}
+
+/* ── breathing room ─────────────────────────────────────────────────────
+   The layout was cramped edge-to-edge; a little air makes the density feel
+   deliberate rather than accidental. */
+.feed-col { padding: 14px; gap: 11px; }
+.inspector-col { padding: 14px; gap: 12px; }
+.filters-col { padding: 14px; gap: 16px; }
+
+/* Respect users who don't want motion. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+  }
+}
+
+/* ==========================================================================
+   Filters — metric ranges
+   --------------------------------------------------------------------------
+   Was: twelve identical min/max pairs in one flat grid, each with the label
+   stacked above two FIXED 78px inputs. Two inputs plus a separator needed
+   ~170px in a column that couldn't supply it, so the right-hand column was
+   clipped off the panel edge ("LIQUIDITY USD" / "TOTAL TXS 24H" cut in half
+   in the screenshot). Nothing was grouped, so finding one filter meant
+   reading all twelve labels.
+
+   Now: three labelled groups (Market / Flow / Holders & risk), label on the
+   left, and inputs that FLEX to share the available width instead of
+   demanding a fixed one.
+   ========================================================================== */
+
+
+
+/* The hint carries a real caveat (most holder/risk fields are Solana-only),
+   so it earns its place rather than being decoration. */
+
+
+/* One filter row: label left, inputs right, hairline between rows. */
+
+
+/* The actual fix for the clipping: flexible, not fixed. */
+/* Number spinners waste horizontal room we don't have. */
+/* An input holding a value is an ACTIVE filter -- it should be obvious at a
+   glance which constraints are currently narrowing the feed. */
+
+/* Single-value fields (rug-risk max) keep the input aligned with the pairs
+   above rather than stretching across the whole row. */
+
+/* Chain rail: let long labels shrink instead of pushing "SOON" off-panel. */
+.chain-chip { min-width: 0; }
+.chain-chip-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.chain-chip-list { min-width: 0; }
+
+/* Holders & dev readout -- replaces the old placeholder lists. */
+.in-kv { display: flex; flex-direction: column; margin-top: 4px; }
+.in-kv-row {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+  padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.035);
+}
+.in-kv-row:last-child { border-bottom: none; }
+.in-kv-label { font-size: 11.5px; color: var(--dim); }
+.in-kv-value {
+  font-family: var(--mono); font-size: 12px; color: var(--text);
+  font-variant-numeric: tabular-nums; text-align: right;
+}
+.in-kv-value.mono { font-size: 11px; }
+.in-kv-value.warn { color: var(--warn); }
+/* Missing data must look missing -- not like an empty slot. */
+.in-kv-value.none { color: #454c5e; font-style: italic; font-family: var(--sans); font-size: 11px; }
+.in-src {
+  margin-top: 9px; font-size: 9px; letter-spacing: .05em;
+  text-transform: uppercase; color: #454c5e;
+}

@@ -1,0 +1,23 @@
+# dependencies
+node_modules
+client/node_modules
+
+# build output
+client/dist
+dist-electron/
+dist-server/
+
+# SECRETS AND LOCAL STATE — never commit these.
+# config.json holds the Telegram api_hash + login session and the Discord
+# user token in plaintext. A leaked session is a working login.
+config.json
+.env
+.env.local
+*.session
+*.session-journal
+
+# local signal store
+data/
+
+# logs
+*.log

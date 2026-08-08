@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Intel. Signal Toast</title>
+<style>
+:root{
+  --bg:#08090d;--surface:rgba(16,19,27,0.92);--line:rgba(255,255,255,0.09);
+  --text:#f0f2f7;--muted:#6b7588;--accent:#4fe3a0;--accent2:#9fe8c3;
+  --buy:#22c55e;--sell:#ef4444;--info:#3b82f6;--dc:#a855f7;--tg:#3b82f6;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;background:transparent;font-family:'Inter',system-ui,sans-serif}
+#toast{
+  width:420px;position:relative;border-radius:10px;overflow:hidden;
+  background:var(--surface);border:1px solid var(--line);
+  box-shadow:0 18px 60px rgba(0,0,0,0.7),0 0 0 1px rgba(79,227,168,0.08) inset,0 0 45px rgba(79,227,168,0.06);
+  backdrop-filter:blur(22px);
+  animation:in .45s cubic-bezier(.2,.9,.25,1);
+}
+@keyframes in{from{opacity:0;transform:translateX(60px)}to{opacity:1;transform:none}}
+#toast.closing{animation:out .25s ease forwards}
+@keyframes out{to{opacity:0;transform:translateX(40px)}}
+.glow{
+  position:absolute;top:-50px;left:50%;transform:translateX(-50%);width:220px;height:110px;
+  background:radial-gradient(ellipse,rgba(79,227,168,0.18) 0%,transparent 70%);pointer-events:none;z-index:0;
+}
+.accent-line{position:absolute;left:0;top:36px;bottom:36px;width:3px;background:linear-gradient(180deg,var(--accent) 0%,rgba(79,227,168,0) 100%);z-index:2;}
+.inner{position:relative;z-index:1;padding:16px 16px 16px 18px;display:flex;flex-direction:column;gap:13px}
+.topbar{min-height:30px;display:flex;align-items:center;gap:10px}
+.topbar .brand{flex:1 1 auto;min-width:0}
+.brand{display:flex;align-items:center;gap:7px;font-size:10px;font-weight:800;letter-spacing:0.07em;color:var(--accent);text-transform:uppercase}
+.brand svg{width:15px;height:15px;color:var(--accent)}
+.live{display:flex;align-items:center;gap:5px;font-size:10px;font-weight:800;color:#0a0b10;background:var(--accent);padding:3px 8px;border-radius:20px}
+.live-dot{width:5px;height:5px;border-radius:50%;background:#0a0b10;animation:blink 1.2s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+.main{display:flex;gap:13px;align-items:flex-start}
+.banner{position:absolute;top:0;left:0;right:0;height:66px;background-size:cover;background-position:center;opacity:0;transition:opacity .25s ease;pointer-events:none;border-radius:14px 14px 0 0}
+.banner.on{opacity:.5}
+.banner::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(8,9,13,0.25) 0%,#08090d 100%)}
+.called strong{color:#e8eef7;font-weight:600}
+.called .src-tag{background:rgba(59,130,246,0.16);color:#7fb2ff;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:600}
+.token-img{
+  width:54px;height:54px;border-radius:8px;overflow:hidden;flex-shrink:0;
+  background:linear-gradient(135deg,#1a2030,#0d1118);border:1px solid var(--line);position:relative;
+}
+.token-img img{width:100%;height:100%;object-fit:cover}
+.token-img .fallback{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;color:var(--accent)}
+.token-img .chain{position:absolute;bottom:-3px;right:-3px;width:18px;height:18px;border-radius:50%;background:var(--accent);border:3px solid #08090d}
+.info{flex:1;min-width:0;display:flex;flex-direction:column;gap:5px}
+.title{display:flex;align-items:baseline;gap:8px}
+.name{font-size:16px;font-weight:800;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.symbol{font-size:11px;font-weight:700;color:var(--muted)}
+.badges{display:flex;gap:6px;flex-wrap:wrap}
+.badge{font-size:9px;font-weight:800;padding:3px 6px;border-radius:4px;text-transform:uppercase;letter-spacing:0.04em;border:1px solid transparent}
+.badge.chain{background:rgba(79,227,168,0.10);color:var(--accent);border-color:rgba(79,227,168,0.22)}
+.badge.lp{background:rgba(255,255,255,0.05);color:#9fa6b5;border-color:rgba(255,255,255,0.10)}
+.badge.src-tg{background:rgba(59,130,246,0.12);color:#60a5fa;border-color:rgba(59,130,246,0.25)}
+.badge.src-dc{background:rgba(168,85,247,0.12);color:#c084fc;border-color:rgba(168,85,247,0.25)}
+.sender{font-size:12px;color:#8b95ab;margin-top:6px;line-height:1.5;font-weight:450}
+.callerrec{font-size:11.5px;margin-top:3px;line-height:1.4;font-weight:650;
+  font-variant-numeric:tabular-nums}
+.callerrec .cr-dim{color:#8b95ab;font-weight:450}
+.sender b{color:var(--text)}
+.metrics{
+  display:flex;gap:0;border:1px solid var(--line);border-radius:8px;overflow:hidden;
+}
+.metric{flex:1;padding:11px 4px;text-align:center;border-right:1px solid rgba(255,255,255,0.06)}
+.metric:last-child{border-right:none}
+.metric-label{font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:1px}
+.metric-value{font-size:12px;font-weight:800;color:var(--text);font-family:'JetBrains Mono',monospace}
+.metric-value.up{color:var(--buy)}
+.metric-value.down{color:var(--sell)}
+/* Second row sits directly under the first and reads as one block with it. */
+.metrics-2{margin-top:6px}
+.footer{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:11px;color:var(--muted)}
+/* Sized to the approved mockup rather than the cramped version that shipped:
+   11px/700 in a 6x10 pill. This is a yes/no you read at a glance. */
+.status-pill{display:flex;align-items:center;gap:6px;padding:6px 10px;border-radius:20px;background:rgba(34,197,94,0.10);border:1px solid rgba(34,197,94,0.25);font-size:11px;font-weight:700;color:var(--buy)}
+.status-pill.no{background:rgba(239,68,68,0.10);border-color:rgba(239,68,68,0.22);color:var(--sell)}
+.status-pill.unknown{background:rgba(255,255,255,0.05);border-color:var(--line);color:var(--muted)}
+.status-dot{width:6px;height:6px;border-radius:50%;background:currentColor;box-shadow:0 0 8px currentColor}
+.counts{display:flex;gap:14px;font-size:11px;color:var(--muted);align-items:center}
+/* Non-zero KOL / smart-money presence is the point of the row, so it gets the
+   accent; a genuine zero stays muted rather than being hidden. */
+.counts .hot b,.counts .hot{color:var(--buy)}
+.wallets{display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+.wallets .wl{font-size:10px;padding:2px 6px;border-radius:4px;line-height:1.5;white-space:nowrap}
+.wallets .wl-k{color:#60a5fa;background:rgba(96,165,250,0.11)}
+.wallets .wl-s{color:#4fe3a0;background:rgba(79,227,168,0.11)}
+.wallets .wl-w{color:var(--muted);background:rgba(255,255,255,0.05);font-family:'JetBrains Mono',monospace}
+.wallets .wl-more{color:var(--dim);font-size:9.5px;padding:2px 4px}
+.counts b{color:var(--text);margin-right:3px}
+.recall{display:flex;align-items:center;gap:8px;padding:8px 11px;border-radius:8px;background:rgba(245,158,11,0.09);border:1px solid rgba(245,158,11,0.26)}
+/* Violet to match the watchlist pill -- same event, same colour. */
+.newmention{padding:9px 11px;border-radius:8px;background:rgba(168,130,255,0.10);border:1px solid rgba(168,130,255,0.30)}
+.nm-head{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.nm-who{font-size:12.5px;font-weight:800;color:#c4a8ff}
+.nm-where{font-size:10.5px;font-weight:600;color:var(--muted)}
+.nm-text{margin-top:5px;font-size:12px;line-height:1.5;color:var(--text);
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.recall-icon{color:#f59e0b;font-size:13px;flex-shrink:0}
+.recall-text{font-size:11.5px;color:#e3b463;font-weight:500;line-height:1.45}
+.recall-text b{color:#ffd699;font-weight:600}
+.live.recall-mode{background:rgba(245,158,11,0.14);border-color:rgba(245,158,11,0.4);color:#f5b342}
+.live.recall-mode .live-dot{background:#f59e0b}
+/* Watchlist re-alert: visually distinct from both a new signal (mint) and a
+   repeat call (amber), because it is a third thing. */
+.live.watch-mode{background:rgba(168,130,255,0.16);border-color:rgba(168,130,255,0.42);color:#c4a8ff}
+.live.watch-mode .live-dot{background:#a882ff}
+.msg-row{padding:9px 11px;border-radius:8px;background:rgba(255,255,255,0.028);border-left:2px solid rgba(79,227,168,0.5)}
+/* Scroll rather than clip. A toast is only on screen for 14s, so cutting the
+   message mid-sentence with no way to read the rest loses the reasoning
+   entirely -- and the reasoning is often the whole point of the call. */
+.msg-text{font-size:12px;line-height:1.5;color:#c2cad9;max-height:68px;overflow-y:auto;overscroll-behavior:contain;font-weight:450;white-space:pre-wrap;word-break:break-word;padding-right:4px}
+.msg-text::-webkit-scrollbar{width:5px}
+.msg-text::-webkit-scrollbar-track{background:transparent}
+.msg-text::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.16);border-radius:3px}
+.msg-text:hover::-webkit-scrollbar-thumb{background:rgba(79,227,168,0.45)}
+.msg-text .ca-hl{background:rgba(79,227,168,0.16);color:#4fe3a0;padding:1px 4px;border-radius:3px;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600}
+.msg-text .msg-none{opacity:.5;font-style:italic}
+.ca-row{display:flex;align-items:center;gap:10px;padding:7px 9px;border-radius:7px;background:rgba(255,255,255,0.04);border:1px solid var(--line)}
+.ca{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.copy-btn{height:26px;padding:0 11px;border-radius:6px;border:1px solid rgba(79,227,168,0.35);background:rgba(79,227,168,0.10);color:var(--accent);font-size:10px;font-weight:800;text-transform:uppercase;cursor:pointer;transition:.12s}
+.copy-btn:hover{background:rgba(79,227,168,0.16)}
+.actions{display:flex;gap:8px}
+.btn{flex:1;height:34px;border-radius:6px;border:1px solid transparent;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.04em;display:flex;align-items:center;justify-content:center;cursor:pointer;text-decoration:none;transition:.12s}
+.btn.primary{background:var(--accent);color:#050705;border-color:var(--accent)}
+.btn.primary:hover{background:var(--accent2)}
+.btn.ghost{background:rgba(255,255,255,0.04);color:var(--text);border-color:var(--line)}
+.btn.ghost:hover{border-color:rgba(79,227,168,0.35);color:var(--accent)}
+.btn.disabled{opacity:.4;cursor:not-allowed;pointer-events:none}
+.close{width:26px;height:26px;flex-shrink:0;border-radius:7px;border:1px solid rgba(255,255,255,0.10);background:rgba(255,255,255,0.05);color:#9aa4ba;font-size:15px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background .14s,color .14s,border-color .14s;padding:0}
+.close:hover{background:rgba(239,68,68,0.16);border-color:rgba(239,68,68,0.45);color:#ff9c9c}
+</style>
+</head>
+<body>
+<div id="toast">
+  <div class="glow"></div>
+  <div class="accent-line"></div>
+  <div class="inner" onclick="focusApp()">
+    <div class="topbar">
+      <div class="brand">
+        <svg viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="24" stroke-linecap="round">
+          <path d="M70 100 Q128 40 186 100"/><path d="M92 120 Q128 82 164 120"/><rect x="114" y="128" width="28" height="80" rx="14" fill="currentColor" stroke="none"/>
+        </svg>
+        intel. Command Deck
+      </div>
+      <div class="live" id="livePill"><span class="live-dot"></span><span id="liveText">NEW SIGNAL</span></div>
+      <button class="close" onclick="event.stopPropagation(); closeToast()" title="Dismiss">&times;</button>
+    </div>
+    <div class="main">
+      <div class="banner" id="banner"></div>
+      <div class="token-img" id="tokenImg">
+        <div class="fallback" id="tokenFallback">I</div>
+      </div>
+      <div class="info">
+        <div class="title"><span class="name" id="tokenName">Token Name</span><span class="symbol" id="tokenSymbol">$SYM</span></div>
+        <div class="badges" id="badges">
+          <span class="badge chain" id="chainBadge">Chain</span>
+          <span class="badge lp" id="lpBadge">DEX</span>
+          <span class="badge src-tg" id="srcBadge">Telegram</span>
+        </div>
+        <div class="sender">Called by <b id="author">@author</b> · <span id="chatName">chat</span> · <span id="time">now</span></div>
+        <!-- The caller's own track record, sitting with their name because
+             that is the claim it qualifies. Hidden until it arrives, and
+             hidden for good when they have too few scored calls to judge. -->
+        <div class="callerrec" id="callerRec" style="display:none"></div>
+      </div>
+    </div>
+    <div class="metrics" id="metrics">
+      <div class="metric"><div class="metric-label">Vol</div><div class="metric-value" id="vol">—</div></div>
+      <div class="metric"><div class="metric-label">MC</div><div class="metric-value" id="mc">—</div></div>
+      <div class="metric"><div class="metric-label">Liq</div><div class="metric-value" id="liq">—</div></div>
+      <div class="metric"><div class="metric-label">24h</div><div class="metric-value up" id="change">—</div></div>
+    </div>
+    <!-- Second metrics row: the token's own condition. These were previously
+         crammed into the footer beside the wallet counts, which put four
+         unrelated measurements on one line and made the whole block read as
+         clutter. Structure follows meaning: row 1 = market, row 2 = holders and
+         risk, footer = who is in it. Hidden entirely until one of them lands. -->
+    <div class="metrics metrics-2" id="metrics2" style="display:none">
+      <div class="metric"><div class="metric-label">Holders</div><div class="metric-value" id="holders">—</div></div>
+      <div class="metric"><div class="metric-label">Top 10</div><div class="metric-value" id="top10">—</div></div>
+      <div class="metric"><div class="metric-label">Risk</div><div class="metric-value" id="risk">—</div></div>
+    </div>
+    <div class="footer">
+      <div class="status-pill" id="dexPaid"><span class="status-dot"></span>DEX Paid · Yes</div>
+      <!-- KOL and smart-money COUNTS. Real since the holder lookup landed, and
+           reliably shown since the IPC bridge was fixed -- they arrive a second
+           or two after the alert opens. -->
+      <div class="counts" id="holderCounts"></div>
+    </div>
+    <!-- Who is actually in it. A count alone ("KOL 3") is not something you can
+         act on; a name is. Same reasoning as the feed card, which lists them. -->
+    <div class="wallets" id="walletNames" style="display:none"></div>
+    <!-- What just happened, on a watchlist re-alert: who called it, in which
+         room, on which platform, and what they said. Without this the toast
+         showed the ORIGINAL call and you had no idea why it fired again. -->
+    <div class="newmention" id="newMention" style="display:none">
+      <div class="nm-head">
+        <span class="nm-who" id="nmWho"></span>
+        <span class="nm-where" id="nmWhere"></span>
+      </div>
+      <div class="nm-text" id="nmText"></div>
+    </div>
+    <div class="recall" id="recallRow" style="display:none">
+      <span class="recall-icon">&#8635;</span>
+      <span class="recall-text" id="recallText"></span>
+    </div>
+    <div class="msg-row" id="msgRow" style="display:none">
+      <div class="msg-text" id="msgText"></div>
+    </div>
+    <div class="ca-row">
+      <div class="ca" id="ca">0x...</div>
+      <button class="copy-btn" id="copyBtn" onclick="event.stopPropagation(); copyCA()">Copy CA</button>
+    </div>
+    <div class="actions">
+      <a class="btn primary" id="buyBtn" href="#" rel="noopener" onclick="openUrl(event, this)">Quick buy</a>
+      <a class="btn ghost" id="dexBtn" href="#" rel="noopener" onclick="openUrl(event, this)">DexScreener</a>
+    </div>
+  </div>
+</div>
+<script>
+// The stub keeps the toast from throwing when the bridge is absent -- but it
+// must never be QUIET about it again. A stub that silently swallows every
+// message is indistinguishable from a working bridge with nothing to say, and
+// that is exactly how a dead IPC channel went unnoticed: the toast still
+// opened, still looked right, and simply never updated.
+const electron = window.electronAPI || (() => {
+  console.error('[toast] window.electronAPI missing -- IPC bridge is dead. ' +
+    'The toast will show its opening snapshot and ignore every update. ' +
+    'Check that contextIsolation is TRUE in toast.cjs (contextBridge needs it).');
+  return { onToastData:()=>{}, onToastAction:()=>{}, sendToastAction:()=>{} };
+})();
+
+function fmtUSD(n){
+  if (n == null || isNaN(n)) return '—';
+  if (n >= 1e9) return '$' + (n/1e9).toFixed(2) + 'B';
+  if (n >= 1e6) return '$' + (n/1e6).toFixed(2) + 'M';
+  if (n >= 1e3) return '$' + (n/1e3).toFixed(2) + 'K';
+  return '$' + Number(n).toFixed(2);
+}
+// Plain counts (holders), not money. `50+` is preserved as-is: the holder
+// lookup pages at 50, so a full page is a floor rather than a measurement.
+function fmtNum(n){
+  if (n == null) return '—';
+  if (typeof n === 'string') return n;
+  if (n >= 1e6) return (n/1e6).toFixed(1) + 'M';
+  if (n >= 1e4) return (n/1e3).toFixed(1) + 'K';
+  return String(n);
+}
+function fmtPct(n){
+  if (n == null || isNaN(n)) return '—';
+  const v = Number(n);
+  return (v > 0 ? '+' : '') + v.toFixed(2) + '%';
+}
+function shortCA(ca, keep=6){
+  if (!ca || ca.length < keep*2+2) return ca || '';
+  return ca.slice(0, keep+2) + '…' + ca.slice(-keep);
+}
+function chainColor(chain=''){
+  const c = (chain||'').toLowerCase();
+  if (c.includes('sol')) return '#9945FF';
+  if (c.includes('base')) return '#0052FF';
+  if (c.includes('eth')) return '#627EEA';
+  if (c.includes('bsc')) return '#F3BA2F';
+  if (c.includes('robin')) return '#00C805';
+  return '#4fe3a0';
+}
+function chainName(chain=''){
+  const c = (chain||'').toLowerCase();
+  if (c.includes('sol')) return 'Solana';
+  if (c.includes('base')) return 'Base';
+  if (c.includes('eth')) return 'Ethereum';
+  if (c.includes('bsc')) return 'BSC';
+  if (c.includes('robin')) return 'Robinhood';
+  return chain || 'Unknown';
+}
+function dexLink(chain, ca){
+  const c = (chain||'').toLowerCase();
+  if (c.includes('sol')) return `https://dexscreener.com/solana/${ca}`;
+  if (c.includes('base')) return `https://dexscreener.com/base/${ca}`;
+  if (c.includes('eth')) return `https://dexscreener.com/ethereum/${ca}`;
+  if (c.includes('bsc')) return `https://dexscreener.com/bsc/${ca}`;
+  return `https://dexscreener.com/search?q=${ca}`;
+}
+
+function render(data){
+  // ACTIONS FIRST, DISPLAY SECOND.
+  // These were wired at the very END of render, so the single null-element
+  // crash above left both buttons dead while the toast still looked fine.
+  // The buttons are the only part of a toast that DOES anything, so they are
+  // armed before any cosmetic field can throw, and the rest is wrapped so a
+  // future missing element degrades the look instead of breaking the function.
+  wireActions(data);
+  try {
+    renderDisplay(data);
+  } catch (err) {
+    console.error('[toast] display render failed (actions still work):', err);
+  }
+}
+
+function wireActions(data){
+  const buyBtn = document.getElementById('buyBtn');
+  const dexBtn = document.getElementById('dexBtn');
+  const pair = data.pair_url || dexLink(data.chain, data.ca);
+  // Quick buy goes to GMGN with the referral code -- NOT DexScreener, which
+  // is a chart, not a buy venue. When GMGN has no page for the chain the
+  // button falls back to the pair rather than opening a blank page.
+  const buyUrl = gmgnLink(data.chain, data.ca);
+  setBtn(dexBtn, pair, 'DexScreener');
+  setBtn(buyBtn, buyUrl || pair, buyUrl ? 'Quick buy' : 'Open pair');
+
+  const caEl = document.getElementById('ca');
+  if (caEl) { caEl.textContent = shortCA(data.ca); caEl.dataset.full = data.ca || ''; }
+}
+
+function renderDisplay(data){
+  document.getElementById('tokenName').textContent = data.token_name || 'Unknown Token';
+  document.getElementById('tokenSymbol').textContent = data.token_symbol ? '$' + data.token_symbol : '';
+  const chainBadge = document.getElementById('chainBadge');
+  chainBadge.textContent = chainName(data.chain);
+  chainBadge.style.background = chainColor(data.chain) + '18';
+  chainBadge.style.color = chainColor(data.chain);
+  chainBadge.style.borderColor = chainColor(data.chain) + '35';
+  document.getElementById('lpBadge').textContent = data.dex || data.launchpad || 'DEX';
+  const srcBadge = document.getElementById('srcBadge');
+  srcBadge.textContent = data.source || 'Signal';
+  srcBadge.className = 'badge ' + ((data.source||'').toLowerCase() === 'discord' ? 'src-dc' : 'src-tg');
+  document.getElementById('author').textContent = data.author ? '@' + data.author : '@collector';
+  document.getElementById('chatName').textContent = data.chat_name || 'alpha chat';
+
+  const crEl = document.getElementById('callerRec');
+  const cr = data.caller_record;
+  if (crEl && cr && cr.medianMult != null) {
+    // Median, not mean -- one 40x would otherwise make every caller look good.
+    // Coloured off 1x: below it, their median call lost money.
+    const m = Number(cr.medianMult);
+    const col = m >= 2 ? '#4fe3a0' : m >= 1 ? '#e5e7eb' : '#ef4444';
+    const win = cr.winRate == null ? '' :
+      ' · ' + Math.round(cr.winRate * 100) + '% win';
+    // "of N scored" is not decoration: it is what stops a 3-call record from
+    // reading like a 60-call one.
+    crEl.innerHTML = '<span style="color:' + col + '">' + m.toFixed(2) + 'x median</span>' +
+                     '<span class="cr-dim">' + win + ' · ' + cr.scored + ' scored</span>';
+    crEl.style.display = 'block';
+  } else if (crEl) {
+    crEl.style.display = 'none';
+  }
+  document.getElementById('time').textContent = data.time || 'now';
+  document.getElementById('vol').textContent = fmtUSD(data.volume_24h_usd);
+  document.getElementById('mc').textContent = fmtUSD(data.mcap_usd);
+  document.getElementById('liq').textContent = fmtUSD(data.liquidity_usd);
+  const changeEl = document.getElementById('change');
+  const ch = data.price_change_24h;
+  changeEl.textContent = fmtPct(ch);
+  changeEl.className = 'metric-value ' + ((ch == null || ch >= 0) ? 'up' : 'down');
+
+  const paidEl = document.getElementById('dexPaid');
+  // THREE states, not two. `dex_paid` used to default to false and was almost
+  // never actually checked, so every toast asserted "DEX Paid · No" -- on
+  // tokens that had paid. null now means "not checked yet" and says so; the
+  // real answer arrives moments later via the live toast update.
+  if (data.dex_paid === true){
+    paidEl.className = 'status-pill';
+    paidEl.innerHTML = '<span class="status-dot"></span>DEX Paid · Yes';
+  } else if (data.dex_paid === false){
+    paidEl.className = 'status-pill no';
+    paidEl.innerHTML = '<span class="status-dot"></span>DEX Paid · No';
+  } else {
+    paidEl.className = 'status-pill unknown';
+    paidEl.innerHTML = '<span class="status-dot"></span>DEX Paid · checking…';
+  }
+  // KOL / smart-money counts. These were once removed from the markup because
+  // nothing populated them -- but the code writing to them was left behind, so
+  // render() threw on a null element HALFWAY THROUGH and everything after it
+  // (the CA row, the message, and both action buttons) was never wired. That
+  // is why Quick buy did nothing. They are real now, so they are rendered
+  // again, and through a null-safe helper so a missing element can never take
+  // the whole toast down again.
+
+
+  document.getElementById('copyBtn').textContent = 'Copy CA';
+
+  const imgBox = document.getElementById('tokenImg');
+  const fallback = document.getElementById('tokenFallback');
+  const existing = imgBox.querySelector('img');
+  // Only rebuild when the URL actually changed. render() runs on EVERY
+  // toast-data message, and enrichment emits up to a dozen ca_updates inside
+  // the toast's 14-second life. Unconditionally removing and recreating the
+  // element restarted the image download each time, so on anything but a
+  // fast-cached URL the load never got to finish before the next update
+  // cancelled it -- the toast sat on the letter fallback while the identical
+  // image loaded fine on the feed card. Same reason the banner is guarded.
+  if (existing && existing.dataset.src === (data.image_url || '')) {
+    // already showing the right art -- leave it alone
+  } else if (data.image_url){
+    if (existing) existing.remove();
+    const img = document.createElement('img');
+    img.dataset.src = data.image_url;
+    img.onerror = () => { img.remove(); fallback.style.display='flex'; fallback.textContent=(data.token_symbol||'?').slice(0,1); };
+    img.onload = () => { fallback.style.display='none'; };
+    img.src = data.image_url;
+    imgBox.appendChild(img);
+  } else {
+    if (existing) existing.remove();
+    fallback.style.display='flex';
+    fallback.textContent = (data.token_symbol || '?').slice(0,1).toUpperCase();
+  }
+
+  const bannerEl = document.getElementById('banner');
+  if (bannerEl && data.header_url && bannerEl.dataset.src !== data.header_url){
+    // Preload so we only reveal a banner that actually resolved -- a broken
+    // URL should leave the toast clean rather than showing a torn image.
+    // Guarded on the URL for the same reason as the token image above: without
+    // it every ca_update started another probe for art already on screen.
+    bannerEl.dataset.src = data.header_url;
+    const probe = new Image();
+    probe.onload = () => {
+      bannerEl.style.backgroundImage = 'url(' + data.header_url + ')';
+      bannerEl.classList.add('on');
+    };
+    probe.src = data.header_url;
+  }
+
+  // ---- the mention that triggered a watchlist re-alert -----------------
+  const nm = document.getElementById('newMention');
+  const trg = data.trigger;
+  if (nm && trg && trg.author) {
+    const esc = t => String(t == null ? '' : t).replace(/[&<>"]/g, c =>
+      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    const platform = trg.source === 'discord' ? 'Discord'
+      : trg.source === 'telegram' ? 'Telegram' : (trg.source || '');
+    document.getElementById('nmWho').textContent = '@' + (trg.author || 'someone');
+    // Room count is the spread signal: the same CA reaching a third room is a
+    // different event from the same person posting twice.
+    const rooms = trg.room_count > 1 ? ' · ' + trg.room_count + ' rooms' : '';
+    document.getElementById('nmWhere').textContent =
+      (platform ? platform + ' · ' : '') + (trg.chat_name || 'unknown') + rooms;
+    const t = (trg.text || '').trim();
+    const tx = document.getElementById('nmText');
+    // A message that is only the contract address adds nothing next to the CA
+    // row directly below it.
+    const onlyCA = t && data.ca && t.replace(data.ca, '').replace(/[\s`*_]/g, '').length === 0;
+    if (t && !onlyCA) { tx.innerHTML = esc(t.slice(0, 180)); tx.style.display = ''; }
+    else { tx.style.display = 'none'; }
+    nm.style.display = '';
+  } else if (nm) {
+    nm.style.display = 'none';
+  }
+
+  const count = Number(data.mention_count || 1);
+  const pillEl = document.getElementById('livePill');
+  const pillTextEl = document.getElementById('liveText');
+  // Why this alert fired. A starred token that gets called again, or that you
+  // re-scanned, must never be mistaken for a fresh discovery -- the label is
+  // the only thing distinguishing them, and acting on a re-alert as if it were
+  // a new call is a real way to lose money.
+  if (String(data.alert_kind || '').startsWith('watchlist')) {
+    if (pillEl) pillEl.classList.add('watch-mode');
+    if (pillTextEl) {
+      pillTextEl.textContent =
+        data.alert_kind === 'watchlist-refresh' ? '\u2605 WATCHLIST \u00b7 RESCANNED'
+        : data.alert_kind === 'watchlist-wallet' ? '\u2605 WATCHLIST \u00b7 SMART MONEY IN'
+        : '\u2605 WATCHLIST \u00b7 CALLED ' + count + '\u00d7';
+    }
+  } else if (count > 1) {
+    const pill = pillEl;
+    const pillText = pillTextEl;
+    if (pill) pill.classList.add('recall-mode');
+    if (pillText) pillText.textContent = 'CALLED ' + count + '\u00d7';
+
+    const recallRow = document.getElementById('recallRow');
+    const recallText = document.getElementById('recallText');
+    if (recallRow && recallText && data.first_chat_name) {
+      const who = data.first_author ? '@' + data.first_author : 'someone';
+      recallText.innerHTML = 'First called by <b>' + who + '</b> in <b>' +
+        String(data.first_chat_name).replace(/[<>]/g, '') + '</b>';
+      recallRow.style.display = 'flex';
+    }
+  }
+
+  // Fill the slot the KOL/Smart-Wallet stubs used to occupy with data we
+  // genuinely have: holder count and top-10 concentration.
+  // ---- row 2: the token's own condition -------------------------------
+  const m2 = document.getElementById('metrics2');
+  if (m2) {
+    const setCell = (id, text, colour) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.textContent = text;
+      el.style.color = colour || '';
+    };
+    const hasHolders = data.holder_count != null;
+    const hasTop10   = data.top10_holder_pct != null;
+    const hasRisk    = data.rug_risk_pct != null;
+    setCell('holders', hasHolders ? fmtNum(data.holder_count) : '—');
+    setCell('top10', hasTop10 ? Number(data.top10_holder_pct).toFixed(0) + '%' : '—',
+      hasTop10 && data.top10_holder_pct > 80 ? '#f59e0b' : null);
+    // Null-guarded before comparing: `null <= 40` is true in JS, which is what
+    // once painted unknown risk green on the feed card.
+    setCell('risk', hasRisk ? Number(data.rug_risk_pct).toFixed(0) + '%' : '—',
+      !hasRisk ? null
+        : data.rug_risk_pct >= 70 ? '#ef4444'
+        : data.rug_risk_pct >= 40 ? '#f59e0b' : '#4fe3a0');
+    // Show the row only once something real is in it, so an alert never opens
+    // with three em-dashes under it.
+    m2.style.display = (hasHolders || hasTop10 || hasRisk) ? '' : 'none';
+  }
+
+  // ---- footer: who is in it -------------------------------------------
+  const hc = document.getElementById('holderCounts');
+  if (hc) {
+    const bits = [];
+    // Only KOL and smart money live here now -- "who is already in this", which
+    // is the question an alert exists to answer. Holders / Top 10 / Risk moved
+    // up to their own metrics row; having all five on one line is what made
+    // this block unreadable.
+    //
+    // Unlike the metrics row, these render at ZERO too. "KOLs 0" is a real
+    // answer once the lookup has returned, and silently hiding it made a
+    // checked-and-empty token look identical to one still being checked. Null
+    // (not yet known) still renders nothing.
+    if (data.kol_count != null) {
+      bits.push('<span' + (data.kol_count > 0 ? ' class="hot"' : '') + '><b>KOLs</b>' + data.kol_count + '</span>');
+    }
+    if (data.smart_wallet_count != null) {
+      bits.push('<span' + (data.smart_wallet_count > 0 ? ' class="hot"' : '') + '><b>Smart Wallets</b>' + data.smart_wallet_count + '</span>');
+    }
+    hc.innerHTML = bits.join('');
+  }
+
+  // The identities behind those counts. KOL handles first (an @ is the most
+  // recognisable), then smart-money wallets. Hidden entirely when the holder
+  // lookup has not landed yet, so the toast never shows an empty label.
+  const wn = document.getElementById('walletNames');
+  if (wn) {
+    const esc = t => String(t).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+    const out = [];
+    for (const k of (data.kol_holders || []).slice(0, 4)) {
+      if (k && k.handle) out.push('<span class="wl wl-k">@' + esc(k.handle) + '</span>');
+      else if (k && k.wallet) out.push('<span class="wl wl-w">' + esc(k.wallet.slice(0,4)) + '…' + esc(k.wallet.slice(-4)) + '</span>');
+    }
+    for (const w of (data.smart_holders || []).slice(0, 3)) {
+      if (!w || !w.wallet) continue;
+      out.push(w.handle
+        ? '<span class="wl wl-s">@' + esc(w.handle) + '</span>'
+        : '<span class="wl wl-w">' + esc(w.wallet.slice(0,4)) + '…' + esc(w.wallet.slice(-4)) + '</span>');
+    }
+    const total = (data.kol_count || 0) + (data.smart_wallet_count || 0);
+    if (total > out.length) out.push('<span class="wl-more">+' + (total - out.length) + '</span>');
+    wn.innerHTML = out.join('');
+    wn.style.display = out.length ? 'flex' : 'none';
+  }
+
+  const msgRow = document.getElementById('msgRow');
+  const msgText = document.getElementById('msgText');
+  if (msgRow && msgText) {
+    // 240 chars cut a typical call mid-sentence, which made the new scrolling
+    // pointless -- there was nothing left to scroll to. The cap now exists only
+    // to stop a pathological wall of text, not to trim normal messages.
+    const raw = String(data.message_text || '').trim().slice(0, 1500);
+    const ca = data.ca || '';
+    const esc = s => s.replace(/[&<>"']/g, ch => (
+      { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[ch]
+    ));
+    // Most real calls are nothing but the bare CA, which used to render as an
+    // empty box (or, with no text at all, no box). Say which case it is
+    // instead of showing a blank -- the row is always present now, so the
+    // toast never changes height depending on what someone typed.
+    const withoutCa = ca ? raw.split(ca).join('').trim() : raw;
+    if (!raw) {
+      msgText.innerHTML = '<span class="msg-none">No message text with this call</span>';
+    } else if (!withoutCa) {
+      msgText.innerHTML = '<span class="msg-none">Contract address only — no message text</span>';
+    } else {
+      // Highlight the contract address inside the original message so the eye
+      // lands on it immediately instead of scanning a wall of text.
+      // Case-insensitive: EVM addresses are often pasted checksummed.
+      let html = '';
+      const hay = raw.toLowerCase(), needle = ca.toLowerCase();
+      let i = 0;
+      if (ca) {
+        for (;;) {
+          const at = hay.indexOf(needle, i);
+          if (at === -1) { html += esc(raw.slice(i)); break; }
+          html += esc(raw.slice(i, at));
+          html += '<span class="ca-hl">' + esc(ca.slice(0, 6) + '…' + ca.slice(-4)) + '</span>';
+          i = at + ca.length;
+        }
+      } else {
+        html = esc(raw);
+      }
+      msgText.innerHTML = html;
+    }
+    msgRow.style.display = 'block';
+  }
+
+  const chainDot = imgBox.querySelector('.chain');
+  if (chainDot) chainDot.style.background = chainColor(data.chain);
+
+}
+
+/** Arm a toast button, or visibly disable it when there is nowhere to go.
+ *  Previously a missing URL left href="undefined", which looks identical to a
+ *  working button and does nothing when clicked. */
+function setBtn(el, url, label) {
+  if (!el) return;
+  el.textContent = label;
+  if (url && /^https?:\/\//i.test(url)) {
+    el.dataset.url = url;
+    el.href = url;
+    el.classList.remove('disabled');
+    el.title = url;
+  } else {
+    delete el.dataset.url;
+    el.removeAttribute('href');
+    el.classList.add('disabled');
+    el.title = 'No link available for this chain';
+  }
+}
+
+/**
+ * Open a toast link.
+ *
+ * Two things were breaking these buttons:
+ *  1. They sit inside <div class="inner" onclick="focusApp()">, so every click
+ *     ALSO fired focus-app. The main window jumped to the front, which both
+ *     stole focus from the opening browser and made it look like the button
+ *     had done nothing. stopPropagation fixes that.
+ *  2. They relied on <a target="_blank"> reaching the app-level
+ *     setWindowOpenHandler. Routing the URL through the main process instead
+ *     is explicit and cannot be silently swallowed by the renderer.
+ */
+function openUrl(ev, el) {
+  ev.preventDefault();
+  ev.stopPropagation();
+  const url = el && el.dataset ? el.dataset.url : null;
+  if (!url) return;                       // disabled button: do nothing, quietly
+  electron.sendToastAction({ action: 'open-url', url });
+}
+
+// Mirror of client/src/lib/gmgn.js. This renderer is standalone (no bundler),
+// so it cannot import that module -- keep the two in sync; that file is the
+// reference for the URL shape and the referral code.
+const GMGN_REF = 'ABa59MyI';
+function gmgnChainSlug(chain){
+  const c = (chain || '').toLowerCase();
+  if (c.includes('sol')) return 'sol';
+  if (c.includes('base')) return 'base';
+  if (c.includes('bsc') || c.includes('bnb')) return 'bsc';
+  if (c.includes('robin') || c === 'rh') return 'robinhood';
+  if (c.includes('stable')) return 'stable';
+  if (c.includes('arc')) return 'arc';
+  if (c.includes('eth')) return 'eth';
+  if (c.includes('tron')) return 'tron';
+  // NOT 'sol'. Defaulting to Solana sent every Robinhood token to
+  // gmgn.ai/sol/token/<evm address>, which is a blank page.
+  return null;
+}
+function gmgnLink(chain, ca){
+  const slug = gmgnChainSlug(chain);
+  if (!slug) return null;
+  return 'https://gmgn.ai/' + slug + '/token/' + GMGN_REF + '_' + ca;
+}
+
+function copyCA(){
+  const full = document.getElementById('ca').dataset.full;
+  if (full){
+    if (navigator.clipboard){
+      navigator.clipboard.writeText(full).then(() => {
+        const btn = document.getElementById('copyBtn');
+        btn.textContent = 'Copied';
+        setTimeout(() => btn.textContent = 'Copy CA', 1500);
+      });
+    }
+    electron.sendToastAction({ action: 'copy', ca: full });
+  }
+}
+
+function closeToast(){
+  const t = document.getElementById('toast');
+  t.classList.add('closing');
+  setTimeout(() => electron.sendToastAction({ action: 'close' }), 260);
+}
+function focusApp(){
+  electron.sendToastAction({ action: 'focus-app' });
+}
+
+/**
+ * Tell the main process how tall this toast actually is.
+ *
+ * The window used to be a fixed 430px with the content clipped, so a token with
+ * several KOL handles (they wrap to a second line, and only arrive a second
+ * AFTER the alert opens) pushed Quick buy and DexScreener off the bottom.
+ *
+ * Measured after a frame so late-loading art and wrapped rows are included,
+ * and deduped in the main process, so the extra `render()` calls that
+ * enrichment triggers do not turn into a resize storm.
+ */
+function reportHeight() {
+  requestAnimationFrame(() => {
+    const el = document.getElementById('toast');
+    if (!el) return;
+    const h = Math.ceil(el.getBoundingClientRect().height);
+    if (h > 0) electron.sendToastAction({ action: 'measure', height: h });
+  });
+}
+
+if (electron.onToastData) electron.onToastData(d => { render(d); reportHeight(); });
+if (electron.onToastAction){
+  electron.onToastAction((action) => {
+    if (action.action === 'close-animate'){
+      document.getElementById('toast').classList.add('closing');
+    }
+  });
+}
+
+// Allow testing via URL hash when opened manually
+if (location.hash.length > 1){
+  try { render(JSON.parse(decodeURIComponent(location.hash.slice(1)))); reportHeight(); }
+  catch(_){}
+}
+// Wrapped rows change height when a late image or a long handle list reflows,
+// which a one-shot measurement after render() would miss.
+if (window.ResizeObserver){
+  const el = document.getElementById('toast');
+  if (el) new ResizeObserver(() => reportHeight()).observe(el);
+}
+
+// Auto-close after 14s unless hovered
+document.getElementById('toast').addEventListener('mouseenter', () => window._hovered = true);
+document.getElementById('toast').addEventListener('mouseleave', () => window._hovered = false);
+setTimeout(() => { if (!window._hovered) closeToast(); }, 14000);
+</script>
+</body>
+</html>
