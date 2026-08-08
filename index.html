@@ -1,450 +1,917 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>intel. — Memecoin Command Deck</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
-<link rel="icon" href="assets/logo-brand.svg" type="image/svg+xml">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>intel. — the desk watches the rooms</title>
 <meta name="description" content="A local Windows desk that reads your Telegram and Discord rooms, filters the bots, and pushes real calls to your desktop. No account, no server, no telemetry.">
+<meta property="og:title" content="intel. — the desk watches the rooms">
+<meta property="og:description" content="You're in twenty rooms and you can read one. intel. reads them for you and pushes what survives to your desktop. Local only. Free.">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#07080c">
+<link rel="icon" href="assets/logo-brand.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;800&display=swap" rel="stylesheet">
 <style>
+/* ═══ tokens — copied verbatim from app/client/src/index.css ═══════════ */
 :root{
-  --bg:#0a0b10;--surface:#0f1117;--surface2:#141721;--surface3:#1c2030;--line:#252a3a;--line2:#30384d;
-  --text:#f0f2f7;--muted:#6b7588;--dim:#4a5366;--accent:#4fe3a0;--accent2:#6effb8;--accent-dim:rgba(79,227,168,.12);
-  --buy:#22c55e;--sell:#ef4444;--warn:#f59e0b;--info:#3b82f6;--tg:#3b82f6;--dc:#a855f7;
-  --sans:'Inter',system-ui,sans-serif;--mono:'JetBrains Mono',monospace;
+ --bg:#07080c;--surface:#0c0e14;--surface2:#11131c;--line:#1d2230;--line2:#2a3043;
+ --text:#f0f2f7;--muted:#7d879b;--dim:#4f5a70;
+ --accent:#4fe3a0;--accent2:#7ff8c2;--accent-dim:rgba(79,227,168,.14);
+ --buy:#22c55e;--sell:#ef4444;--warn:#f59e0b;
+ --tg:#3b82f6;--dc:#a855f7;
+ --sol:#9945FF;--rh:#00C805;--base:#0052FF;--bsc:#F0B90B;--eth:#627EEA;
+ --sans:'Inter',system-ui,-apple-system,sans-serif;
+ --mono:'JetBrains Mono',ui-monospace,'SF Mono',monospace;
+ --max:1180px;
 }
 *{box-sizing:border-box;margin:0;padding:0}
-html{scroll-behavior:smooth}
-body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:1.55;min-height:100vh}
-body::before{content:'';position:fixed;inset:0;z-index:-1;
-  background:radial-gradient(circle at 20% 10%,rgba(79,227,168,.08),transparent 35%),
-    radial-gradient(circle at 80% 90%,rgba(159,232,195,.06),transparent 40%),
-    linear-gradient(rgba(255,255,255,.02) 1px,transparent 1px),
-    linear-gradient(90deg,rgba(255,255,255,.02) 1px,transparent 1px);
-  background-size:100% 100%,100% 100%,40px 40px,40px 40px}
-.container{width:min(1180px,92%);margin:0 auto}
-a{color:var(--accent);text-decoration:none}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);line-height:1.6;
+ overflow-x:hidden;-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}
+code,.mono{font-family:var(--mono)}
+.container{max-width:var(--max);margin:0 auto;padding:0 24px}
+section{position:relative}
 
-/* Nav */
-nav{position:sticky;top:0;z-index:100;background:rgba(10,11,16,.82);backdrop-filter:blur(18px);border-bottom:1px solid var(--line)}
-nav .container{display:flex;align-items:center;justify-content:space-between;height:68px}
-.logo{display:flex;align-items:center;gap:12px;font-weight:800;letter-spacing:-.02em;font-size:20px;color:var(--text)}
-.logo img{width:30px;height:30px}
-.nav-links{display:flex;gap:30px;font-size:14px;font-weight:600}
-.nav-links a{color:var(--muted);transition:.15s}
+/* the grid + glow field that sits under everything */
+.field{position:fixed;inset:0;z-index:0;pointer-events:none;
+ background:
+  linear-gradient(rgba(255,255,255,.012) 1px,transparent 1px),
+  linear-gradient(90deg,rgba(255,255,255,.012) 1px,transparent 1px);
+ background-size:52px 52px,52px 52px;
+ mask-image:radial-gradient(ellipse 80% 60% at 50% 0%,#000 40%,transparent 100%)}
+.glow{position:fixed;z-index:0;pointer-events:none;border-radius:50%;filter:blur(120px);opacity:.5}
+.glow.a{width:640px;height:640px;top:-260px;left:-180px;background:rgba(79,227,168,.13)}
+.glow.b{width:520px;height:520px;top:340px;right:-220px;background:rgba(59,130,246,.09)}
+main,nav,footer,.ca-strip{position:relative;z-index:1}
+
+/* ═══ CA strip ═════════════════════════════════════════════════════════ */
+.ca-strip{display:flex;align-items:center;justify-content:center;gap:12px;
+ padding:9px 20px;background:var(--surface);border-bottom:1px solid var(--line);
+ font-family:var(--mono);font-size:12px;flex-wrap:wrap}
+.ca-strip .k{color:var(--accent);font-weight:600;letter-spacing:.12em}
+.ca-strip code{color:var(--muted)}
+.ca-strip .soon{color:var(--warn);border:1px solid rgba(245,158,11,.3);
+ background:rgba(245,158,11,.1);border-radius:999px;padding:2px 10px;font-size:10.5px;
+ letter-spacing:.08em;text-transform:uppercase;font-weight:600}
+.ca-strip.bottom{border-bottom:0;border-top:1px solid var(--line)}
+
+/* ═══ nav ══════════════════════════════════════════════════════════════ */
+nav{position:sticky;top:0;z-index:50;backdrop-filter:blur(14px);
+ background:rgba(7,8,12,.82);border-bottom:1px solid var(--line)}
+nav .container{display:flex;align-items:center;gap:20px;height:64px}
+.logo{display:flex;align-items:center;gap:10px;font-size:19px;font-weight:800;letter-spacing:-.03em}
+.logo img{width:24px;height:24px;display:block}
+.nav-links{display:none;gap:26px;margin-left:14px;font-size:14px;color:var(--muted)}
+.nav-links a{transition:color .15s}
 .nav-links a:hover{color:var(--text)}
-.cta{height:40px;padding:0 20px;border-radius:8px;background:var(--accent);color:#050705;font-size:13px;font-weight:800;border:none;cursor:pointer;transition:.15s;box-shadow:0 0 18px rgba(79,227,168,.25)}
-.cta:hover{background:var(--accent2);box-shadow:0 0 28px rgba(79,227,168,.4)}
+.nav-right{margin-left:auto;display:flex;align-items:center;gap:10px}
+@media(min-width:900px){.nav-links{display:flex}}
 
-/* Hero */
-.hero{padding:90px 0 60px;text-align:center;position:relative;overflow:hidden}
-.badge{display:inline-flex;align-items:center;gap:8px;padding:8px 16px;border-radius:999px;border:1px solid var(--line);background:rgba(79,227,168,.08);color:var(--accent);font-size:12px;font-weight:700;margin-bottom:24px}
-.badge span{width:8px;height:8px;border-radius:50%;background:var(--accent);animation:pulse 1.6s infinite}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
-h1{font-size:clamp(40px,5.5vw,68px);font-weight:800;line-height:1.05;letter-spacing:-.03em;margin-bottom:22px}
-h1 .hl{background:linear-gradient(90deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-.hero p.lead{font-size:18px;color:var(--muted);max-width:700px;margin:0 auto 36px}
-.hero-actions{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-bottom:50px}
-.hero .demo-link{display:flex;align-items:center;gap:8px;height:46px;padding:0 22px;border-radius:8px;border:1px solid rgba(255,255,255,.12);color:var(--text);font-weight:700;transition:.15s}
-.hero .demo-link:hover{border-color:var(--accent);color:var(--accent)}
+/* buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:9px;
+ height:44px;padding:0 22px;border-radius:10px;font-size:14.5px;font-weight:700;
+ letter-spacing:-.01em;border:1px solid var(--line2);color:var(--text);
+ background:var(--surface2);transition:.16s;white-space:nowrap;cursor:pointer;font-family:inherit}
+.btn:hover{border-color:var(--line2);background:#161926;transform:translateY(-1px)}
+.btn.primary{background:linear-gradient(180deg,var(--accent2),var(--accent));
+ color:#04140d;border-color:transparent;box-shadow:0 8px 30px rgba(79,227,168,.24)}
+.btn.primary:hover{box-shadow:0 12px 40px rgba(79,227,168,.36);transform:translateY(-2px)}
+.btn.lg{height:54px;padding:0 30px;font-size:16px;border-radius:12px}
+.btn.locked{opacity:.55;cursor:not-allowed;pointer-events:none}
+.btn .sm{font-weight:500;font-size:12px;opacity:.8;font-family:var(--mono)}
 
-/* Real app demo */
-.demo-window{border:1px solid var(--line);border-radius:16px;background:var(--bg);overflow:hidden;box-shadow:0 30px 100px rgba(0,0,0,.55)}
-.demo-bar{height:56px;background:var(--surface);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:20px;padding:0 22px}
-.demo-bar .logo{font-size:16px}
-.demo-bar .logo img{width:22px;height:22px;filter:brightness(1.2)}
-.demo-search{flex:1;max-width:420px;position:relative}
-.demo-search input{width:100%;height:36px;border-radius:8px;background:#0a0c12;border:1px solid var(--line);padding:0 12px 0 34px;color:var(--text);font-size:13px;outline:none}
-.demo-search::before{content:'⌘';position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--dim);font-size:14px}
-.demo-stats{display:flex;align-items:center;gap:20px;margin-left:auto;font-size:12px;color:var(--muted)}
-.demo-stats b{color:var(--text);margin-left:4px;font-size:13px;font-weight:700}
-.demo-pulse{width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 10px var(--accent)}
-.demo-icons{display:flex;gap:8px;margin-left:12px}
-.demo-icon{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;background:var(--surface2);border:1px solid var(--line);color:var(--muted)}
-.demo-body{display:grid;grid-template-columns:minmax(240px,18%) 1fr minmax(300px,26%);min-height:540px}
-.demo-filters{background:var(--bg);border-right:1px solid var(--line);padding:16px;overflow:auto}
-.demo-filters h4{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-bottom:12px;font-family:var(--mono)}
-.chip-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px}
-.chip{padding:6px 12px;border-radius:999px;border:1px solid var(--line);background:var(--surface2);color:var(--muted);font-size:12px;font-weight:600;cursor:pointer}
-.chip.active{background:var(--accent);color:#050705;border-color:var(--accent)}
-.chain-row{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border-radius:8px;background:var(--surface2);border:1px solid var(--line);margin-bottom:6px;font-size:12px;cursor:pointer}
-.chain-row:hover{border-color:rgba(79,227,168,.25)}
-.chain-dot{width:8px;height:8px;border-radius:50%;background:var(--accent)}
-.soon{font-size:10px;color:var(--muted);background:var(--surface3);padding:2px 6px;border-radius:4px}
-.demo-feed{background:var(--bg);padding:16px;border-right:1px solid var(--line);overflow:auto}
-.feed-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
-.feed-title{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:700}
-.demo-card{padding:14px;border-radius:12px;border:1px solid var(--line);background:var(--surface);margin-bottom:10px;cursor:pointer;transition:.12s;border-left:3px solid var(--tg)}
-.demo-card:hover{border-color:rgba(79,227,168,.3)}
-.msg-head{display:flex;align-items:center;gap:12px;margin-bottom:10px}
-.msg-av{width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,var(--tg),#000);display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;font-family:var(--mono)}
-.msg-meta{flex:1}
-.msg-line1{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.msg-token{font-size:15px;font-weight:800}
-.msg-sym{font-size:12px;color:var(--muted)}
-.msg-chain{font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;background:rgba(153,69,255,.15);color:#b488ff;border:1px solid rgba(153,69,255,.3)}
-.msg-badges{display:flex;gap:5px;margin-top:5px;flex-wrap:wrap}
-.badge{font-size:10px;font-weight:700;padding:3px 7px;border-radius:4px}
-.badge.clean{background:rgba(34,197,94,.12);color:var(--buy)}
-.badge.followup{background:rgba(79,227,168,.12);color:var(--accent)}
-.badge.signal{background:rgba(59,130,246,.12);color:var(--info)}
-.msg-time{margin-left:auto;font-size:11px;color:var(--muted);white-space:nowrap}
-.msg-text{font-size:12px;color:var(--text);margin-bottom:10px;line-height:1.5}
-.ca{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:11px;color:var(--accent);background:rgba(79,227,168,.08);padding:4px 8px;border-radius:6px;border:1px solid rgba(79,227,168,.2);margin-bottom:8px}
-.msg-source{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--muted);margin-bottom:12px;flex-wrap:wrap}
-.msg-source b{color:var(--text)}
-.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px}
-.kpi{padding:8px;border-radius:6px;background:rgba(255,255,255,.03)}
-.kpi-label{font-size:9px;text-transform:uppercase;color:var(--muted);letter-spacing:.04em}
-.kpi-value{font-size:13px;font-weight:800;font-family:var(--mono);color:var(--text)}
-.msg-actions{display:flex;gap:10px;flex-wrap:wrap}
-.btn-buy{height:30px;padding:0 14px;border-radius:6px;background:var(--accent);color:#050705;border:none;font-size:11px;font-weight:800;cursor:pointer;display:flex;align-items:center}
-.link{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:3px}
-.link:hover{color:var(--accent)}
-.demo-inspector{background:var(--bg);padding:16px;overflow:auto}
-.in-card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:12px}
-.in-title{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--accent);margin-bottom:12px;font-family:var(--mono)}
-.in-row{display:flex;justify-content:space-between;font-size:12px;margin:8px 0;padding-bottom:6px;border-bottom:1px solid var(--line)}
-.in-row b{color:var(--text);font-family:var(--mono);font-weight:600}
-.in-price{font-size:22px;font-weight:800;color:var(--accent);margin:6px 0}
-.in-ca{display:flex;justify-content:space-between;align-items:center;font-family:var(--mono);font-size:11px;color:var(--accent);background:rgba(255,255,255,.03);padding:8px;border-radius:6px}
-.in-list{display:flex;flex-direction:column;gap:8px}
-.in-item{display:flex;gap:10px;align-items:flex-start;font-size:12px;color:var(--muted)}
-.in-item b{color:var(--text);display:block}
+/* ═══ shared type ══════════════════════════════════════════════════════ */
+.eyebrow{display:inline-flex;align-items:center;gap:9px;font-family:var(--mono);
+ font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);
+ border:1px solid rgba(79,227,168,.25);background:var(--accent-dim);
+ border-radius:999px;padding:6px 14px;margin-bottom:26px}
+.eyebrow i{width:6px;height:6px;border-radius:50%;background:var(--accent);
+ box-shadow:0 0 10px var(--accent);display:block;animation:pulse 2.4s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.45;transform:scale(.8)}}
+h1{font-size:clamp(38px,6.4vw,74px);line-height:1.03;letter-spacing:-.04em;font-weight:800}
+h2{font-size:clamp(28px,4.2vw,46px);line-height:1.08;letter-spacing:-.035em;font-weight:800}
+h3{font-size:clamp(21px,2.6vw,27px);line-height:1.15;letter-spacing:-.025em;font-weight:800}
+.hl{background:linear-gradient(96deg,var(--accent2),var(--accent));
+ -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.dimline{color:var(--dim)}
+.lead{font-size:clamp(16px,2vw,19px);color:var(--muted);max-width:660px;line-height:1.6}
+.sec-head{max-width:760px;margin-bottom:52px}
+.sec-head .lead{margin-top:18px}
+section.pad{padding:clamp(72px,10vw,130px) 0}
+.rule{height:1px;background:linear-gradient(90deg,transparent,var(--line),transparent)}
 
-/* Toast preview */
-.toast-section{padding:80px 0;background:linear-gradient(180deg,var(--bg),#0d0e14)}
-.toast-section h2{text-align:center;font-size:34px;margin-bottom:50px}
-.toast-grid{display:grid;grid-template-columns:1fr 1fr;gap:50px;align-items:center}
-.toast-preview{justify-self:center}
-.toast-card{width:380px;border:1px solid var(--line);border-radius:14px;background:var(--surface);backdrop-filter:blur(24px);padding:18px;box-shadow:0 20px 70px rgba(0,0,0,.6)}
-.toast-brand{display:flex;align-items:center;gap:10px;color:var(--accent);font-size:11px;font-weight:800;text-transform:uppercase;margin-bottom:12px;font-family:var(--mono)}
-.toast-main{display:flex;gap:14px;margin-bottom:14px}
-.timg{width:52px;height:52px;border-radius:10px;background:linear-gradient(135deg,#1f2535,#0e1219);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;color:var(--accent);font-family:var(--mono)}
-.toast-info h5{font-size:17px;margin-bottom:3px}
-.toast-info span{font-size:12px;color:var(--muted)}
-.toast-metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:14px 0;padding:12px;border-radius:10px;border:1px solid var(--line);background:rgba(255,255,255,.03)}
-.tm{text-align:center}
-.tm label{font-size:9px;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:2px}
-.tm val{font-size:13px;font-weight:800;display:block;font-family:var(--mono)}
-.toast-ca{display:flex;align-items:center;gap:10px;padding:10px;border-radius:8px;background:rgba(255,255,255,.04);border:1px solid var(--line);margin-top:12px}
-.toast-ca code{flex:1;font-family:var(--mono);font-size:11px;color:var(--accent)}
-.toast-ca button{height:28px;padding:0 14px;border-radius:6px;border:1px solid rgba(79,227,168,.35);background:rgba(79,227,168,.12);color:var(--accent);font-size:11px;font-weight:800;cursor:pointer}
+/* reveal on scroll */
+.rv{opacity:0;transform:translateY(26px);transition:opacity .7s cubic-bezier(.2,.7,.3,1),transform .7s cubic-bezier(.2,.7,.3,1)}
+.rv.in{opacity:1;transform:none}
 
-/* Sections */
-section{padding:80px 0}
-section h2{font-size:34px;margin-bottom:16px;letter-spacing:-.02em}
-section .sub{color:var(--muted);font-size:17px;max-width:700px;margin-bottom:42px}
-.grid-3{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:22px}
-.feature-card{padding:24px;border-radius:14px;border:1px solid var(--line);background:var(--surface2);transition:.15s}
-.feature-card:hover{border-color:rgba(79,227,168,.25);transform:translateY(-2px)}
-.feature-card h4{font-size:16px;margin-bottom:10px}
-.feature-card p{font-size:14px;color:var(--muted);line-height:1.5}
-ul.feature-list{list-style:none;display:grid;gap:16px}
-ul.feature-list li{display:flex;gap:12px;align-items:flex-start;font-size:15px;color:var(--muted)}
-ul.feature-list li::before{content:'✓';color:var(--accent);font-weight:800;flex-shrink:0}
+/* ═══ hero ═════════════════════════════════════════════════════════════ */
+.hero{padding:clamp(58px,8vw,104px) 0 0;text-align:center}
+.hero h1{margin:0 auto;max-width:15ch}
+.hero .lead{margin:26px auto 0;text-align:center}
+.hero-actions{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:36px}
+.trust{display:flex;gap:10px 26px;justify-content:center;flex-wrap:wrap;margin-top:26px;
+ font-family:var(--mono);font-size:12px;color:var(--dim)}
+.trust b{color:var(--muted);font-weight:500}
+.trust i{color:var(--accent);font-style:normal}
 
-/* Download */
-.download{background:var(--surface);border-top:1px solid var(--line);border-bottom:1px solid var(--line);text-align:center}
+/* the deck, in 3D */
+.stage{margin-top:clamp(46px,7vw,84px);perspective:2200px;perspective-origin:50% 0%}
+.deck{position:relative;transform-style:preserve-3d;
+ transform:rotateX(16deg) rotateZ(-.6deg) scale(.98);
+ transition:transform 1.1s cubic-bezier(.2,.7,.3,1);will-change:transform}
+.stage.in .deck{transform:rotateX(5deg) rotateZ(0) scale(1)}
+.deck-frame{border:1px solid var(--line2);border-radius:14px;overflow:hidden;
+ background:var(--surface);box-shadow:0 60px 140px rgba(0,0,0,.75),0 0 0 1px rgba(255,255,255,.03)}
+.deck-bar{height:38px;display:flex;align-items:center;gap:8px;padding:0 16px;
+ background:var(--surface2);border-bottom:1px solid var(--line)}
+.deck-bar .d{width:9px;height:9px;border-radius:50%;background:var(--line2)}
+.deck-bar .t{margin-left:10px;font-family:var(--mono);font-size:11px;color:var(--dim)}
+.deck-frame img{width:100%;height:auto;display:block}
+.deck::after{content:'';position:absolute;left:8%;right:8%;bottom:-46px;height:80px;
+ background:radial-gradient(ellipse at center,rgba(79,227,168,.22),transparent 70%);
+ filter:blur(24px);z-index:-1}
+.deck-cap{margin-top:34px;font-family:var(--mono);font-size:12px;color:var(--dim);
+ text-align:center}
+/* the toast, floating in front of the deck */
+.float-toast{position:absolute;right:-2%;bottom:6%;width:min(320px,34%);
+ transform:translateZ(90px);display:none}
+@media(min-width:1000px){.float-toast{display:block}}
 
-/* Footer */
-footer{padding:44px 0;font-size:13px;color:var(--muted);border-top:1px solid var(--line)}
-footer .container{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}
+/* ═══ the marquee of rooms ═════════════════════════════════════════════ */
+.marquee{overflow:hidden;border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+ background:var(--surface);padding:15px 0;
+ mask-image:linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent)}
+.marquee .track{display:flex;gap:38px;width:max-content;animation:slide 42s linear infinite}
+@keyframes slide{to{transform:translateX(-50%)}}
+.marquee .it{display:flex;align-items:center;gap:9px;font-size:13.5px;color:var(--muted);
+ white-space:nowrap}
+.marquee .it i{width:7px;height:7px;border-radius:50%;display:block;flex:none}
+.marquee .it b{font-family:var(--mono);font-size:11px;color:var(--dim);font-weight:500}
 
-/* Mobile */
-@media (max-width:980px){
-  .demo-body{grid-template-columns:1fr}
-  .demo-filters,.demo-inspector{display:none}
-  .toast-grid{grid-template-columns:1fr}
-  .toast-card{width:100%;max-width:380px;margin:0 auto}
+/* ═══ problem ══════════════════════════════════════════════════════════ */
+.problem{text-align:center}
+.problem h2{max-width:18ch;margin:0 auto}
+.prob-grid{display:grid;gap:16px;grid-template-columns:1fr;margin-top:58px}
+@media(min-width:820px){.prob-grid{grid-template-columns:repeat(3,1fr)}}
+.prob{border:1px solid var(--line);border-radius:14px;background:var(--surface);
+ padding:30px 26px;text-align:left;position:relative;overflow:hidden}
+.prob .n{font-family:var(--mono);font-size:52px;font-weight:600;color:var(--line2);
+ line-height:1;letter-spacing:-.03em}
+.prob h4{font-size:18px;font-weight:700;letter-spacing:-.02em;margin:16px 0 10px}
+.prob p{font-size:14.5px;color:var(--muted);line-height:1.62}
+
+/* ═══ the live toast demo ══════════════════════════════════════════════ */
+.split{display:grid;gap:clamp(38px,5vw,70px);grid-template-columns:1fr;align-items:center}
+@media(min-width:980px){.split{grid-template-columns:1fr 1fr}
+ .split.rev>:first-child{order:2}}
+.beats{list-style:none;margin-top:34px}
+.beats li{display:flex;gap:15px;padding:15px 0;border-bottom:1px solid var(--line);
+ font-size:15.5px;color:var(--muted);align-items:flex-start}
+.beats li:last-child{border-bottom:0}
+.beats li b{color:var(--text);font-weight:600}
+.beats .tick{flex:none;width:20px;height:20px;border-radius:50%;margin-top:2px;
+ border:1px solid rgba(79,227,168,.35);background:var(--accent-dim);color:var(--accent);
+ display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800}
+
+/* the toast component — layout and tokens taken from the app's real toast */
+.toast{border:1px solid var(--line2);border-radius:13px;background:var(--surface);
+ overflow:hidden;box-shadow:0 34px 90px rgba(0,0,0,.7);font-size:13px;
+ border-left:2px solid var(--accent)}
+.toast-hd{display:flex;align-items:center;gap:9px;padding:11px 13px;
+ background:var(--surface2);border-bottom:1px solid var(--line)}
+.toast-hd .lb{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+ color:var(--accent);font-weight:600}
+.toast-hd .new{margin-left:auto;font-family:var(--mono);font-size:9.5px;letter-spacing:.09em;
+ text-transform:uppercase;font-weight:800;color:#04140d;background:var(--accent);
+ border-radius:999px;padding:3px 9px}
+.toast-bd{padding:15px 15px 16px}
+.toast-tok{display:flex;align-items:center;gap:12px}
+.toast-tok .av{width:44px;height:44px;border-radius:10px;flex:none;position:relative;
+ background:var(--surface2);border:1px solid var(--line);overflow:hidden}
+.toast-tok .av span{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+ font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:.06em}
+.toast-tok .av b{position:absolute;inset:0;background:linear-gradient(135deg,#2a1a3d,#7a3fb0);
+ display:flex;align-items:center;justify-content:center;font-size:19px;
+ opacity:0;transition:opacity .5s}
+.toast-tok.f2 .av b{opacity:1}
+.toast-tok h5{font-size:16px;font-weight:800;letter-spacing:-.02em}
+.toast-tok h5 span{color:var(--muted);font-weight:500;font-size:13px;margin-left:5px;font-family:var(--mono)}
+.toast-tok .who{font-size:12px;color:var(--muted);margin-top:2px}
+.toast-tok .who b{color:var(--tg);font-weight:600}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}
+.chip{font-family:var(--mono);font-size:9.5px;font-weight:600;letter-spacing:.06em;
+ text-transform:uppercase;padding:4px 8px;border-radius:5px;border:1px solid var(--line2);
+ color:var(--muted);transition:.45s}
+.chip.sol{color:#c4a0ff;border-color:rgba(153,69,255,.35);background:rgba(153,69,255,.12)}
+.chip.pend{color:var(--dim)}
+.chip.done{color:var(--accent);border-color:rgba(79,227,168,.35);background:var(--accent-dim)}
+.tmetrics{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;margin-top:14px;
+ background:var(--line);border:1px solid var(--line);border-radius:9px;overflow:hidden}
+.tmetrics div{background:var(--surface2);padding:10px 11px}
+.tmetrics label{display:block;font-family:var(--mono);font-size:9px;letter-spacing:.08em;
+ text-transform:uppercase;color:var(--dim);margin-bottom:4px}
+.tmetrics val{display:block;font-family:var(--mono);font-size:15px;font-weight:600;letter-spacing:-.02em}
+.tmetrics val.up{color:var(--accent)}
+.tmsg{margin-top:12px;padding:9px 12px;border-left:2px solid var(--line2);
+ background:var(--surface2);border-radius:0 7px 7px 0;font-size:12.5px;color:var(--muted)}
+.trow{display:flex;align-items:center;gap:9px;margin-top:12px;font-family:var(--mono);font-size:11px}
+.trow code{color:var(--dim);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.trow .cp{border:1px solid var(--line2);border-radius:6px;padding:5px 10px;color:var(--muted);
+ font-size:10px;letter-spacing:.05em;text-transform:uppercase;font-weight:600}
+.tkol{margin-top:12px;display:flex;align-items:center;gap:8px;font-size:12px;color:var(--dim);
+ opacity:0;transition:opacity .5s}
+.tkol.on{opacity:1}
+.tkol i{width:6px;height:6px;border-radius:50%;background:var(--accent);display:block;
+ box-shadow:0 0 8px var(--accent)}
+.tkol b{color:var(--accent);font-family:var(--mono);font-weight:600}
+.tbtns{display:flex;gap:8px;margin-top:14px}
+.tbtn{flex:1;text-align:center;border-radius:8px;padding:10px;font-size:12px;font-weight:700;
+ background:linear-gradient(180deg,var(--accent2),var(--accent));color:#04140d}
+.tbtn.alt{flex:none;padding:10px 14px;background:var(--surface2);color:var(--muted);
+ border:1px solid var(--line2);font-weight:600}
+.demo-ctl{display:flex;align-items:center;gap:12px;margin-top:20px;justify-content:center;
+ font-family:var(--mono);font-size:11px;color:var(--dim)}
+.demo-ctl button{background:var(--surface2);border:1px solid var(--line2);color:var(--muted);
+ border-radius:7px;padding:7px 14px;font-family:inherit;font-size:11px;cursor:pointer;
+ letter-spacing:.06em;text-transform:uppercase;font-weight:600;transition:.15s}
+.demo-ctl button:hover{border-color:var(--accent);color:var(--accent)}
+.elapsed{color:var(--accent)}
+
+/* ═══ spread rows ══════════════════════════════════════════════════════ */
+.spread{border:1px solid var(--line);border-radius:14px;background:var(--surface);
+ padding:8px 22px 18px;box-shadow:0 30px 80px rgba(0,0,0,.5)}
+.spread .hd{font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;
+ color:var(--muted);padding:16px 0 6px;display:flex;align-items:center;gap:10px}
+.spread .hd u{text-decoration:none;color:var(--accent);font-weight:600}
+.srow{display:flex;align-items:center;gap:11px;padding:14px 0;border-bottom:1px solid var(--line);
+ opacity:0;transform:translateX(-12px);transition:.55s cubic-bezier(.2,.7,.3,1)}
+.srow.on{opacity:1;transform:none}
+.srow:last-child{border-bottom:0}
+.srow .tag{flex:none;font-family:var(--mono);font-size:10px;font-weight:800;letter-spacing:.06em;
+ padding:4px 7px;border-radius:5px}
+.srow .tg{color:#7fb3ff;background:rgba(59,130,246,.14)}
+.srow .dc{color:#c8a2ff;background:rgba(168,85,247,.14)}
+.srow .nm{font-weight:700;font-size:15px}
+.srow .who{color:var(--muted);font-family:var(--mono);font-size:12px}
+.srow .first{margin-left:auto;font-family:var(--mono);font-size:9.5px;font-weight:800;
+ letter-spacing:.06em;color:var(--accent);background:var(--accent-dim);padding:4px 8px;border-radius:5px;flex:none}
+
+/* ═══ stats ════════════════════════════════════════════════════════════ */
+.stats{display:grid;gap:1px;grid-template-columns:repeat(2,1fr);background:var(--line);
+ border:1px solid var(--line);border-radius:14px;overflow:hidden}
+@media(min-width:860px){.stats{grid-template-columns:repeat(4,1fr)}}
+.stat{background:var(--surface);padding:32px 24px}
+.stat b{display:block;font-family:var(--mono);font-size:clamp(30px,4vw,42px);font-weight:600;
+ color:var(--accent);letter-spacing:-.035em;line-height:1}
+.stat span{display:block;font-size:13.5px;color:var(--muted);margin-top:12px;line-height:1.5}
+
+/* ═══ features ═════════════════════════════════════════════════════════ */
+.grid3{display:grid;gap:16px;grid-template-columns:1fr}
+@media(min-width:720px){.grid3{grid-template-columns:repeat(2,1fr)}}
+@media(min-width:1020px){.grid3{grid-template-columns:repeat(3,1fr)}}
+.fcard{border:1px solid var(--line);border-radius:14px;background:var(--surface);
+ padding:28px 26px;transition:.2s;position:relative;overflow:hidden}
+.fcard:hover{border-color:var(--line2);transform:translateY(-3px);
+ box-shadow:0 20px 50px rgba(0,0,0,.4)}
+.fcard::after{content:'';position:absolute;top:0;left:0;right:0;height:1px;
+ background:linear-gradient(90deg,transparent,rgba(79,227,168,.5),transparent);
+ opacity:0;transition:.25s}
+.fcard:hover::after{opacity:1}
+.fico{width:38px;height:38px;border-radius:10px;background:var(--accent-dim);
+ border:1px solid rgba(79,227,168,.25);display:flex;align-items:center;justify-content:center;
+ margin-bottom:18px;font-size:17px}
+.fcard h4{font-size:17px;font-weight:700;letter-spacing:-.02em;margin-bottom:9px}
+.fcard p{font-size:14.5px;color:var(--muted);line-height:1.62}
+.fcard p code{font-family:var(--mono);font-size:13px;color:var(--text);
+ background:var(--surface2);border:1px solid var(--line);border-radius:4px;padding:1px 5px}
+
+/* ═══ honesty ══════════════════════════════════════════════════════════ */
+.honest{border:1px solid rgba(245,158,11,.22);border-radius:16px;
+ background:linear-gradient(180deg,rgba(245,158,11,.05),transparent);padding:clamp(30px,4vw,52px)}
+.honest .eyebrow{color:var(--warn);border-color:rgba(245,158,11,.3);background:rgba(245,158,11,.09)}
+.honest .eyebrow i{background:var(--warn);box-shadow:0 0 10px var(--warn)}
+.hlist{display:grid;gap:14px;grid-template-columns:1fr;margin-top:34px}
+@media(min-width:820px){.hlist{grid-template-columns:repeat(2,1fr)}}
+.hlist div{display:flex;gap:13px;font-size:15px;color:var(--muted);line-height:1.6}
+.hlist .x{flex:none;color:var(--sell);font-weight:800;font-size:13px;margin-top:3px}
+.hlist b{color:var(--text);font-weight:600}
+
+/* ═══ comparison ═══════════════════════════════════════════════════════ */
+.cmp{width:100%;border-collapse:collapse;border:1px solid var(--line);
+ border-radius:14px;overflow:hidden;background:var(--surface)}
+.cmp th,.cmp td{padding:16px 20px;text-align:left;border-bottom:1px solid var(--line);font-size:15px}
+.cmp thead th{font-family:var(--mono);font-size:10.5px;letter-spacing:.11em;text-transform:uppercase;
+ color:var(--dim);font-weight:500;background:var(--surface2)}
+.cmp tbody td:first-child{color:var(--muted)}
+.cmp td.you{color:var(--sell);font-weight:600;font-family:var(--mono);font-size:14px}
+.cmp td.us{color:var(--accent);font-weight:700;font-family:var(--mono);font-size:14px}
+.cmp tr:last-child td{border-bottom:0}
+.cmp-wrap{overflow-x:auto}
+
+/* ═══ download ═════════════════════════════════════════════════════════ */
+.dl{text-align:center}
+.dl-grid{display:grid;gap:16px;grid-template-columns:1fr;margin-top:44px;text-align:left}
+@media(min-width:780px){.dl-grid{grid-template-columns:1fr 1fr}}
+.dl-card{border:1px solid var(--line);border-radius:16px;background:var(--surface);
+ padding:30px 28px;position:relative;transition:.2s}
+.dl-card.primary{border-color:rgba(79,227,168,.3);
+ background:linear-gradient(180deg,rgba(79,227,168,.05),var(--surface))}
+.dl-tag{display:inline-block;font-family:var(--mono);font-size:9.5px;letter-spacing:.11em;
+ text-transform:uppercase;font-weight:700;padding:4px 10px;border-radius:999px;
+ background:var(--accent-dim);color:var(--accent);border:1px solid rgba(79,227,168,.28);margin-bottom:16px}
+.dl-tag.alt{background:var(--surface2);color:var(--muted);border-color:var(--line2)}
+.dl-card h4{font-size:22px;font-weight:800;letter-spacing:-.025em}
+.dl-file{display:block;font-family:var(--mono);font-size:12px;color:var(--dim);margin:7px 0 14px}
+.dl-card p{font-size:14px;color:var(--muted);line-height:1.6}
+.dl-lock{display:inline-flex;align-items:center;gap:10px;margin-top:34px;
+ font-family:var(--mono);font-size:12px;color:var(--warn);
+ border:1px solid rgba(245,158,11,.28);background:rgba(245,158,11,.08);
+ border-radius:999px;padding:10px 20px;letter-spacing:.04em}
+.dl-lock i{width:7px;height:7px;border-radius:50%;background:var(--warn);display:block;
+ animation:pulse 2.4s ease-in-out infinite}
+.fine{font-size:13px;color:var(--dim);margin-top:26px;max-width:640px;
+ margin-left:auto;margin-right:auto;line-height:1.7}
+.fine b{color:var(--muted)}
+.fine a{color:var(--accent);border-bottom:1px solid rgba(79,227,168,.3)}
+
+/* ═══ faq ══════════════════════════════════════════════════════════════ */
+.faq{display:grid;gap:12px;grid-template-columns:1fr;max-width:860px;margin:0 auto}
+details{border:1px solid var(--line);border-radius:12px;background:var(--surface);overflow:hidden}
+details[open]{border-color:var(--line2)}
+summary{padding:19px 24px;cursor:pointer;font-size:16px;font-weight:600;letter-spacing:-.015em;
+ list-style:none;display:flex;align-items:center;gap:14px;transition:.15s}
+summary::-webkit-details-marker{display:none}
+summary::after{content:'+';margin-left:auto;font-family:var(--mono);font-size:18px;
+ color:var(--dim);font-weight:400;transition:.2s}
+details[open] summary::after{transform:rotate(45deg);color:var(--accent)}
+summary:hover{color:var(--accent)}
+details p{padding:0 24px 22px;font-size:14.5px;color:var(--muted);line-height:1.68}
+details p code{font-family:var(--mono);font-size:13px;color:var(--text);
+ background:var(--surface2);border:1px solid var(--line);border-radius:4px;padding:1px 5px}
+
+/* ═══ final cta ════════════════════════════════════════════════════════ */
+.final{text-align:center;padding:clamp(80px,11vw,150px) 0}
+.final h2{max-width:16ch;margin:0 auto}
+.socials{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:38px}
+.social{display:inline-flex;align-items:center;gap:9px;height:42px;padding:0 20px;
+ border-radius:10px;border:1px solid var(--line);background:var(--surface2);
+ font-size:13.5px;font-weight:600;color:var(--muted);transition:.16s}
+.social:hover{border-color:var(--accent);color:var(--accent);transform:translateY(-2px)}
+
+/* ═══ footer ═══════════════════════════════════════════════════════════ */
+footer{border-top:1px solid var(--line);padding:36px 0;background:var(--surface)}
+footer .container{display:flex;flex-wrap:wrap;gap:14px;justify-content:space-between;
+ font-size:12.5px;color:var(--dim);font-family:var(--mono)}
+
+@media(prefers-reduced-motion:reduce){
+ *{animation:none!important;transition:none!important}
+ .rv{opacity:1;transform:none}
+ .deck{transform:rotateX(4deg)}
+ .srow{opacity:1;transform:none}
 }
-@media (max-width:640px){
-  .nav-links{display:none}
-  h1{font-size:34px}
-  .kpis{grid-template-columns:repeat(2,1fr)}
-  section h2{font-size:28px}
-}
-
-/* ── download cards ─────────────────────────────────────────────── */
-.dl-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin:28px auto 18px;max-width:760px;text-align:left}
-.dl-card{display:flex;flex-direction:column;gap:6px;padding:20px;border-radius:14px;border:1px solid var(--line);background:var(--surface2);transition:.15s;color:var(--text)}
-.dl-card:hover{border-color:var(--line2);transform:translateY(-2px)}
-.dl-card.primary{border-color:rgba(79,227,168,.45);background:linear-gradient(180deg,rgba(79,227,168,.07),var(--surface2))}
-.dl-card.primary:hover{border-color:var(--accent);box-shadow:0 0 30px rgba(79,227,168,.14)}
-.dl-tag{align-self:flex-start;font-size:9.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;padding:3px 8px;border-radius:999px;background:var(--accent-dim);color:var(--accent);border:1px solid rgba(79,227,168,.3)}
-.dl-tag.alt{background:rgba(255,255,255,.05);color:var(--muted);border-color:var(--line)}
-.dl-title{font-size:19px;font-weight:800;margin-top:4px}
-.dl-file{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11px;color:var(--dim)}
-.dl-note{font-size:12.5px;line-height:1.6;color:var(--muted);margin-top:4px}
-.dl-fine{font-size:12px;color:var(--dim);line-height:1.7;max-width:640px;margin:0 auto 22px}
-.dl-fine b{color:var(--muted)}
-
-/* CA strip — deliberately small. It is a detail, not the pitch. */
-.ca-strip{display:flex;align-items:center;justify-content:center;gap:10px;
- padding:7px 12px;font-family:var(--mono);font-size:11px;color:var(--dim);
- background:var(--surface);border-bottom:1px solid var(--line)}
-.ca-strip .k{color:var(--muted);letter-spacing:.08em;text-transform:uppercase;font-size:9.5px}
-.ca-strip code{color:var(--muted);user-select:all}
-.ca-strip.bottom{border-bottom:none;border-top:1px solid var(--line)}
-/* download cards, disabled state */
-.dl-card.locked{opacity:.55;cursor:not-allowed;pointer-events:none;filter:saturate(.4)}
-.dl-lock{display:inline-flex;align-items:center;gap:6px;margin-top:22px;
- padding:9px 16px;border-radius:999px;border:1px solid var(--line2);
- background:var(--surface);color:var(--muted);font-size:12px;font-weight:700}
-.dl-lock .dot{width:7px;height:7px;border-radius:50%;background:var(--warn);
- box-shadow:0 0 10px var(--warn)}
-.socials{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:26px}
-.social{display:inline-flex;align-items:center;gap:8px;padding:9px 16px;border-radius:8px;
- border:1px solid var(--line);background:var(--surface2);color:var(--text);
- font-size:13px;font-weight:600;transition:.15s}
-.social:hover{border-color:var(--accent);color:var(--accent)}
-.nav-links a.locked{color:var(--dim);cursor:not-allowed}
 </style>
 </head>
 <body>
-<div class="ca-strip"><span class="k">CA</span><code>not launched yet — no contract exists</code></div>
+<div class="field"></div><div class="glow a"></div><div class="glow b"></div>
+
+<div class="ca-strip">
+  <span class="k">CA</span><code>coming soon</code>
+  <span class="soon">at launch</span>
+</div>
+
 <nav>
   <div class="container">
-    <a href="#" class="logo">
-      <img src="assets/logo-brand.svg" alt="intel.">
-      intel.
-    </a>
+    <a href="#top" class="logo"><img src="assets/logo-brand.svg" alt="">intel.</a>
     <div class="nav-links">
-      <a href="#demo">Demo</a>
+      <a href="#how">How it works</a>
+      <a href="#alert">The alert</a>
       <a href="#features">Features</a>
-      <a href="#toast">Toasts</a>
-      <a href="#download" class="locked">Download &middot; soon</a>
+      <a href="#faq">FAQ</a>
     </div>
-    <a href="https://github.com/dwdo1337/intel" class="cta">View on GitHub</a>
+    <div class="nav-right">
+      <a href="https://github.com/dwdo1337/intel" class="btn">GitHub</a>
+      <a href="#download" class="btn primary">Get it</a>
+    </div>
   </div>
 </nav>
 
+<main id="top">
+
+<!-- ═══ HERO ═══════════════════════════════════════════════════════════ -->
 <section class="hero">
   <div class="container">
-    <div class="badge"><span></span>Live desktop signals for memecoins</div>
-    <h1>Your chats are bleeding alpha.<br><span class="hl">Catch it in one deck.</span></h1>
-    <p class="lead">intel. connects to your own Telegram and Discord sessions, detects contract addresses, links repeat mentions into follow-ups, and enriches each token with price, liquidity and safety data. No paid APIs required to start.</p>
-    <div class="hero-actions">
-      <a class="cta" style="height:48px;padding:0 26px;font-size:15px;display:flex;align-items:center" href="https://github.com/dwdo1337/intel/releases">Download for Windows</a>
-      <a class="demo-link" href="#demo">View live demo →</a>
+    <div class="eyebrow rv"><i></i>Telegram + Discord · runs on your machine</div>
+    <h1 class="rv">Stop watching the chats.<br><span class="hl">The calls come to you.</span></h1>
+    <p class="lead rv">You're in twenty rooms and you can read one. intel. reads them for you —
+      scanner bots dropped, the same person posting five times counted once — and pushes what
+      survives to your desktop, enriched. Then you go do something else.</p>
+    <div class="hero-actions rv">
+      <a href="#download" class="btn primary lg">Download for Windows <span class="sm">soon</span></a>
+      <a href="#how" class="btn lg">See how it works</a>
+    </div>
+    <div class="trust rv">
+      <span><b>Free</b> &amp; <i>MIT</i> open source</span>
+      <span><b>No account</b>, no server, no telemetry</span>
+      <span><b>18</b> servers · <i>1,295</i> channels · <b>6</b> chains</span>
     </div>
 
-    <!-- Real app screenshots from the .exe build -->
-    <style>
-      .demo-shots{display:grid;gap:20px;grid-template-columns:1fr}
-      .demo-shot{border:1px solid var(--line);border-radius:16px;background:var(--surface);overflow:hidden;box-shadow:0 30px 100px rgba(0,0,0,.55)}
-      .demo-shot img{width:100%;height:auto;display:block}
-      .demo-shot-bar{height:44px;background:var(--surface);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;padding:0 18px;font-size:12px;color:var(--muted)}
-      .demo-shot-bar b{color:var(--text);font-weight:700}
-      .demo-caption{padding:14px 18px;font-size:13px;color:var(--muted);border-top:1px solid var(--line)}
-      .demo-caption b{color:var(--text)}
-      @media(min-width:980px){.demo-shots{grid-template-columns:1fr 1fr}}
-    </style>
-    <div class="demo-shots" id="demo">
-      <div class="demo-shot">
-        <div class="demo-shot-bar"><span style="color:var(--accent)">●</span> <b>The deck</b> — unretouched capture of the Windows build</div>
-        <img src="screenshots/deck.png" alt="intel. Command Deck — filters, live feed, inspector" loading="lazy">
-        <div class="demo-caption">
-          Filters left, feed centre, inspector right. Market data from DexScreener; the call spread
-          across <b>three rooms</b>, with who called it first. Chat names and callers are demo data.
+    <div class="stage rv" id="stage">
+      <div class="deck">
+        <div class="deck-frame">
+          <div class="deck-bar"><span class="d"></span><span class="d"></span><span class="d"></span>
+            <span class="t">intel. — Command Deck</span></div>
+          <img src="screenshots/deck.png" alt="intel. Command Deck — filters, live feed and inspector" width="1400" height="900">
         </div>
-      </div>
-      &nbsp;
-      <div class="demo-shot">
-        <div class="demo-shot-bar"><span style="color:var(--accent)">●</span> <b>The notification</b> — what you actually see all day</div>
-        <img src="screenshots/toast.png" alt="intel. desktop notification, fully enriched" loading="lazy">
-        <div class="demo-caption">
-          It opens with market data and fills itself in — DEX-paid, artwork, the caller's own line.
-          Copy CA and DexScreener work from the toast. <b>Quick buy opens a link</b>; it holds no keys.
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<section id="features">
-  <div class="container">
-    <h2>From chat noise to one readable card.</h2>
-    <p class="sub">No paid APIs required to start. Connect your own Telegram / Discord sessions, pick the chats you care about, and let the deck surface the signals worth watching.</p>
-    <div class="grid-3">
-      <div class="feature-card"><h4>Cross-chat mention linking</h4><p>The same contract address across multiple groups becomes one event, with every room and caller listed in order. Repeat calls are follow-ups, not noise.</p></div>
-      <div class="feature-card"><h4>Free data stack</h4><p>DexScreener for price and liquidity. Optional GMGN key for holder intelligence. No subscriptions to start.</p></div>
-      <div class="feature-card"><h4>Desktop alerts that fill in</h4><p>Borderless alerts with Copy CA, DexScreener and Quick buy. They open with market data and complete themselves as safety and holder data lands.</p></div>
-      <div class="feature-card"><h4>Follow-up tracking</h4><p>Every repeat call is tagged and compared to the first entry mcap. See who keeps talking and how the price moved.</p></div>
-      <div class="feature-card"><h4>Terminal UI</h4><p>Maximum signal per pixel. Monospace numbers, mint accents, zero clutter. Built for speed readers.</p></div>
-      <div class="feature-card"><h4>Privacy first</h4><p>Your sessions and config live in a local JSON file on your machine. No cloud account, no database.</p></div>
-    </div>
-  </div>
-</section>
-
-<section class="toast-section" id="toast">
-  <div class="container">
-    <h2>Windows toasts that actually help.</h2>
-    <div class="toast-grid">
-      <div>
-        <ul class="feature-list">
-          <li>App logo + live signal badge</li>
-          <li>CA with one-click copy</li>
-          <li>Vol · MC · Liq · 24h at a glance</li>
-          <li>Source, chat name and caller</li>
-          <li>Quick buy + DexScreener buttons</li>
-          <li>Click toast to open the app</li>
-        </ul>
-      </div>
-      <div class="toast-preview">
-        <div class="toast-card">
-          <div class="toast-brand">intel. Command Deck · NEW SIGNAL</div>
-          <div class="toast-main">
-            <div class="timg" style="background:url('https://cdn.dexscreener.com/cms/images/c5cq-MtFnXZtey7Z?width=56&height=56&quality=95&format=auto') center/cover;overflow:hidden"></div>
-            <div class="toast-info">
-              <h5>Market Cat <span style="color:var(--muted);font-weight:500">$MarketCat</span></h5>
-              <span>Called by <b>@alpha_dao</b> · Alpha DAO · now</span>
+        <div class="float-toast">
+          <div class="toast">
+            <div class="toast-hd"><span class="lb">intel. command deck</span><span class="new">new signal</span></div>
+            <div class="toast-bd">
+              <div class="toast-tok f2">
+                <div class="av"><b>★</b></div>
+                <div>
+                  <h5>STARMIND <span>$STARMIND</span></h5>
+                  <div class="who">Called by <b>@whale_watcher</b> · Alpha Signals</div>
+                </div>
+              </div>
+              <div class="tmetrics">
+                <div><label>MC</label><val>$60.2K</val></div>
+                <div><label>Liq</label><val>$25.6K</val></div>
+                <div><label>24h</label><val class="up">+0.25%</val></div>
+              </div>
             </div>
           </div>
-          <div class="toast-metrics">
-            <div class="tm"><label>Vol</label><val>$2.43M</val></div>
-            <div class="tm"><label>MC</label><val>$261.47K</val></div>
-            <div class="tm"><label>Liq</label><val>$41.93K</val></div>
-            <div class="tm"><label>24h</label><val style="color:var(--accent)">+768%</val></div>
+        </div>
+      </div>
+      <p class="deck-cap">Unretouched capture of the Windows build. Chat names and callers are demo data.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ MARQUEE ════════════════════════════════════════════════════════ -->
+<div class="marquee rv" style="margin-top:clamp(60px,8vw,110px)">
+  <div class="track" id="track"></div>
+</div>
+
+<!-- ═══ PROBLEM ════════════════════════════════════════════════════════ -->
+<section class="pad problem">
+  <div class="container">
+    <h2 class="rv">The call you missed was on screen.<br><span class="dimline">In a window you weren't looking at.</span></h2>
+    <div class="prob-grid">
+      <div class="prob rv">
+        <div class="n">01</div>
+        <h4>You're outnumbered, not slow</h4>
+        <p>Twenty rooms, one set of eyes. Whichever nineteen you aren't reading is where it lands.</p>
+      </div>
+      <div class="prob rv">
+        <div class="n">02</div>
+        <h4>"Called 7×" is usually a lie</h4>
+        <p>One person and six scanner bots reposting them. The number tells you nothing about conviction.</p>
+      </div>
+      <div class="prob rv">
+        <div class="n">03</div>
+        <h4>Sitting in chats is the trap</h4>
+        <p>It's the least valuable thing you do all day. It's also the thing you can't stop doing.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="rule"></div>
+
+<!-- ═══ HOW IT WORKS / THE ALERT ═══════════════════════════════════════ -->
+<section class="pad" id="how">
+  <div class="container">
+    <div class="split">
+      <div>
+        <div class="eyebrow rv"><i></i>the notification is the product</div>
+        <h2 class="rv">It fills itself in<br>while you're reading it.</h2>
+        <p class="lead rv" style="margin-top:20px">Market data the instant it fires. Then DEX-paid
+          resolves, artwork loads, holders arrive, and the known wallets still holding get named.
+          Measured at <b style="color:var(--accent);font-family:var(--mono)">50–460&nbsp;ms</b> behind the alert.</p>
+        <ul class="beats rv">
+          <li><span class="tick">1</span><div><b>Reads your rooms.</b> Signs into your own Telegram and Discord sessions and watches every channel you pick.</div></li>
+          <li><span class="tick">2</span><div><b>Drops the noise.</b> Scanner bots out. One human, one call — checked before the mention is recorded.</div></li>
+          <li><span class="tick">3</span><div><b>Enriches what survives.</b> DexScreener, RugCheck and GMGN. Market cap frozen at the moment of the call.</div></li>
+          <li><span class="tick">4</span><div><b>Puts it on your desktop.</b> And then leaves you alone.</div></li>
+        </ul>
+      </div>
+      <div class="rv" id="alert">
+        <div class="toast" id="liveToast">
+          <div class="toast-hd"><span class="lb">intel. command deck</span><span class="new">new signal</span></div>
+          <div class="toast-bd">
+            <div class="toast-tok" id="tTok">
+              <div class="av"><span>loading</span><b>◈</b></div>
+              <div>
+                <h5>RUBY <span>$ruby</span></h5>
+                <div class="who">Called by <b>@degenmike</b> · Alpha Signals · now</div>
+              </div>
+            </div>
+            <div class="chips">
+              <span class="chip sol">Solana</span>
+              <span class="chip">Pump.Fun</span>
+              <span class="chip pend" id="cDex">DEX Paid · checking…</span>
+            </div>
+            <div class="tmetrics">
+              <div><label>Market cap</label><val>$44.4K</val></div>
+              <div><label>Liquidity</label><val>$15.7K</val></div>
+              <div><label>Holders</label><val id="mHold" style="color:var(--dim)">—</val></div>
+            </div>
+            <div class="tmsg">early on this one, chart looks clean</div>
+            <div class="trow"><code>5WMzts…MKpump</code><span class="cp">Copy CA</span></div>
+            <div class="tkol" id="tKol"><i></i>Smart money <b>1 holding</b></div>
+            <div class="tbtns">
+              <span class="tbtn">Quick buy</span>
+              <span class="tbtn alt">DexScreener</span>
+            </div>
           </div>
-          <div class="toast-ca"><code>G8Mo…LBpump</code><button>Copy CA</button></div>
+        </div>
+        <div class="demo-ctl">
+          <button id="replay">Replay</button>
+          <span>enrichment landed <span class="elapsed" id="elapsed">+0 ms</span></span>
         </div>
       </div>
     </div>
   </div>
 </section>
 
-<section id="download" class="download">
+<div class="rule"></div>
+
+<!-- ═══ SPREAD ═════════════════════════════════════════════════════════ -->
+<section class="pad">
   <div class="container">
-    <h2>Download the Windows command deck.</h2>
-    <!-- Two builds, and the difference is stated plainly. The old copy said
-         "no installer" and told people to hand-edit config.json — neither is
-         true any more: there is a proper wizard, and credentials are entered in
-         the app's Settings screen. -->
-    <p class="sub">Two ways to run it. Connect Telegram and Discord in the app’s
-      Settings screen — nothing to hand-edit, nothing leaves your machine.</p>
-
-    <div class="dl-grid">
-      <div class="dl-card primary locked">
-        <span class="dl-tag">Recommended</span>
-        <span class="dl-title">Installer</span>
-        <span class="dl-file">intel-Command-Deck-Setup.exe</span>
-        <span class="dl-note">Standard wizard. Desktop and Start-menu shortcuts.
-          Installs per user — no admin rights, no UAC prompt. Uninstalling keeps
-          your credentials and history.</span>
+    <div class="split rev">
+      <div class="rv">
+        <div class="spread" id="spread">
+          <div class="hd">Called in <u id="rcount">1</u> rooms</div>
+          <div class="srow" data-i="0"><span class="tag tg">TG</span><span class="nm">Alpha Signals</span>
+            <span class="who">@degenmike @sol_sniper</span><span class="first">First</span></div>
+          <div class="srow" data-i="1"><span class="tag tg">TG</span><span class="nm">Moonshot Lounge</span>
+            <span class="who">@kryptokate</span></div>
+          <div class="srow" data-i="2"><span class="tag dc">DC</span><span class="nm">Trench Club / #calls</span>
+            <span class="who">@0xharvest</span></div>
+        </div>
       </div>
-      <div class="dl-card locked">
-        <span class="dl-tag alt">No install</span>
-        <span class="dl-title">Portable</span>
-        <span class="dl-file">intel-Command-Deck-Portable.exe</span>
-        <span class="dl-note">Single file, runs anywhere, leaves nothing behind.
-          Unpacks on each launch, so it starts a little slower. Good for a USB stick.</span>
+      <div>
+        <div class="eyebrow rv"><i></i>cross-source</div>
+        <h2 class="rv">Watch a call spread<br>across both platforms.</h2>
+        <p class="lead rv" style="margin-top:20px">It hit one Telegram group. Then a second. Then a
+          Discord server you also watch. Every room, who called it there, in order — and who was
+          first. Two people calling it in one server is one room with two names, not two identical rows.</p>
+        <p class="lead rv" style="margin-top:16px;font-size:16px">That second room is the signal.
+          You saw all three without opening any of them.</p>
       </div>
-    </div>
-
-    <!-- Said up front rather than discovered as a scare after downloading. -->
-    <p class="dl-fine">
-      Windows 10/11, 64-bit · first launch takes about 15 seconds ·
-      the build is unsigned, so SmartScreen will warn once — <b>More info → Run anyway</b>,
-      or <a href="https://github.com/dwdo1337/intel">build it yourself from source</a>.
-    </p>
-
-    <div class="dl-lock"><span class="dot"></span>Downloads open at launch</div>
-
-    <div class="socials">
-      <a class="social" href="https://github.com/dwdo1337/intel">GitHub</a>
-      <a class="social" href="https://x.com/">X</a>
-      <a class="social" href="https://t.me/">Telegram</a>
-    </div>
-
-    <div class="hero-actions" style="margin-bottom:0;margin-top:26px">
-      <a class="demo-link" href="https://github.com/dwdo1337/intel">View on GitHub →</a>
     </div>
   </div>
 </section>
+
+<!-- ═══ STATS ══════════════════════════════════════════════════════════ -->
+<section class="pad" style="padding-top:0">
+  <div class="container">
+    <div class="stats rv">
+      <div class="stat"><b data-count="1295">0</b><span>channels across 18 Discord servers, from one account</span></div>
+      <div class="stat"><b data-count="205" data-suffix="/500">0</b><span>tokens called by more than one person — the rest were one guy and an echo</span></div>
+      <div class="stat"><b data-count="500" data-prefix="" data-suffix="/500">0</b><span>tokens had DEX-paid status resolved. It's keyless — most scanners just don't check</span></div>
+      <div class="stat"><b data-count="14" data-suffix="s">0</b><span>cold start. Installer or portable, no admin rights</span></div>
+    </div>
+  </div>
+</section>
+
+<div class="rule"></div>
+
+<!-- ═══ FEATURES ═══════════════════════════════════════════════════════ -->
+<section class="pad" id="features">
+  <div class="container">
+    <div class="sec-head">
+      <div class="eyebrow rv"><i></i>what it actually does</div>
+      <h2 class="rv">From chat noise<br>to one readable card.</h2>
+      <p class="lead rv">Every mechanism below is something you can check in the running app.
+        Nothing here is a category name standing in for a feature.</p>
+    </div>
+    <div class="grid3">
+      <div class="fcard rv"><div class="fico">◈</div>
+        <h4>Every room, one screen</h4>
+        <p>Telegram groups and Discord servers — whole servers or single channels — collapsed into one
+          feed you didn't have to read.</p></div>
+      <div class="fcard rv"><div class="fico">✂</div>
+        <h4>One human, one call</h4>
+        <p>Scanner bots dropped outright. The same person posting five times counts once.
+          "Called 3×" means three people, and the card names them.</p></div>
+      <div class="fcard rv"><div class="fico">◔</div>
+        <h4>The entry is frozen</h4>
+        <p>Market cap captured at the moment of the call, so the multiplier measures the call —
+          not the chart drifting since.</p></div>
+      <div class="fcard rv"><div class="fico">◎</div>
+        <h4>Who's still in it</h4>
+        <p>KOL and smart-money wallets holding a <b style="color:var(--text)">live position</b>.
+          Not everyone who ever traded it and already sold.</p></div>
+      <div class="fcard rv"><div class="fico">⚑</div>
+        <h4>It admits what it doesn't know</h4>
+        <p>No safety provider on that chain? It says so. A missing score never renders as a
+          passing one — you get <code>unknown</code>, not a green tick.</p></div>
+      <div class="fcard rv"><div class="fico">◑</div>
+        <h4>Your callers, scored</h4>
+        <p>Median multiple and win rate per caller, computed only over calls with a real measured
+          outcome — and it tells you the coverage rather than padding it.</p></div>
+      <div class="fcard rv"><div class="fico">☾</div>
+        <h4>You decide what interrupts</h4>
+        <p>The chain pill filters the feed. The bell controls the desktop. Mute Solana and still
+          browse it — two jobs, two switches.</p></div>
+      <div class="fcard rv"><div class="fico">★</div>
+        <h4>Watchlist re-alerts</h4>
+        <p>Star a token and it keeps talking to you: called again, re-scanned, smart money buying.
+          Labelled, so a re-alert never looks like a fresh call.</p></div>
+      <div class="fcard rv"><div class="fico">⌂</div>
+        <h4>Local by design</h4>
+        <p>Sessions and history sit in <code>%APPDATA%</code>. No account, no server, no analytics,
+          no auto-update. There is no backend to leak.</p></div>
+    </div>
+  </div>
+</section>
+
+<div class="rule"></div>
+
+<!-- ═══ HONESTY ════════════════════════════════════════════════════════ -->
+<section class="pad">
+  <div class="container">
+    <div class="honest rv">
+      <div class="eyebrow"><i></i>the part no scanner will tell you</div>
+      <h2>It says <span class="hl">unknown</span> a lot.<br>That's the point.</h2>
+      <p class="lead" style="margin-top:20px">Every competitor overstates. Here is what this one
+        will not do, stated before you download it rather than discovered afterwards.</p>
+      <div class="hlist">
+        <div><span class="x">✕</span><div>It does <b>not</b> tell you a call is good. Nothing can. It tells you who called it, where, when, and what it doesn't know.</div></div>
+        <div><span class="x">✕</span><div>It does <b>not</b> touch your wallet. No keys, no signing, no trading. <b>Quick buy opens a link</b> in your browser.</div></div>
+        <div><span class="x">✕</span><div>It reads <b>Telegram and Discord only</b>. No X, no Farcaster, nothing else — and it matches contract addresses, never tickers.</div></div>
+        <div><span class="x">✕</span><div>A Discord user token is <b>against their terms</b>. That's stated in the app before you paste one. Telegram uses an official API session.</div></div>
+        <div><span class="x">✕</span><div>Without a GMGN key you lose EVM safety, EVM holder counts and smart-money data. <b>The UI says which is missing.</b></div></div>
+        <div><span class="x">✕</span><div>The build is <b>unsigned</b>, so SmartScreen warns once. A certificate costs money this doesn't have.</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ COMPARISON ═════════════════════════════════════════════════════ -->
+<section class="pad" style="padding-top:0">
+  <div class="container">
+    <div class="sec-head rv" style="margin-bottom:34px">
+      <h2>You, versus the desk.</h2>
+    </div>
+    <div class="cmp-wrap rv">
+      <table class="cmp">
+        <thead><tr><th></th><th>Sitting in the chats</th><th>intel.</th></tr></thead>
+        <tbody>
+          <tr><td>Rooms readable at once</td><td class="you">1</td><td class="us">all of them</td></tr>
+          <tr><td>Scanner bots filtered</td><td class="you">by eye</td><td class="us">automatically</td></tr>
+          <tr><td>Entry price recorded</td><td class="you">from memory</td><td class="us">frozen at the call</td></tr>
+          <tr><td>Cross-platform spread</td><td class="you">invisible</td><td class="us">every room, in order</td></tr>
+          <tr><td>Needs you at the screen</td><td class="you">yes</td><td class="us">no</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<div class="rule"></div>
+
+<!-- ═══ DOWNLOAD ═══════════════════════════════════════════════════════ -->
+<section class="pad dl" id="download">
+  <div class="container">
+    <div class="eyebrow rv" style="margin-left:auto;margin-right:auto"><i></i>windows 10/11 · 64-bit</div>
+    <h2 class="rv">Two ways to run it.</h2>
+    <p class="lead rv" style="margin:18px auto 0">Connect Telegram and Discord in the app's Settings
+      screen — nothing to hand-edit, and nothing leaves your machine.</p>
+
+    <div class="dl-grid">
+      <div class="dl-card primary rv">
+        <span class="dl-tag">Recommended</span>
+        <h4>Installer</h4>
+        <span class="dl-file">intel-Command-Deck-Setup.exe</span>
+        <p>Standard wizard, desktop and Start-menu shortcuts. Installs per user — no admin rights,
+          no UAC prompt. Uninstalling keeps your credentials and history.</p>
+      </div>
+      <div class="dl-card rv">
+        <span class="dl-tag alt">No install</span>
+        <h4>Portable</h4>
+        <span class="dl-file">intel-Command-Deck-Portable.exe</span>
+        <p>Single file, runs anywhere, leaves nothing behind. Unpacks on each launch, so it starts a
+          little slower. Good for a USB stick.</p>
+      </div>
+    </div>
+
+    <div class="dl-lock rv"><i></i>Downloads open at launch</div>
+
+    <p class="fine rv">First launch takes about 14 seconds. The build is unsigned, so SmartScreen
+      will warn once — <b>More info → Run anyway</b>, or
+      <a href="https://github.com/dwdo1337/intel">build it yourself from source</a>. It's MIT licensed.</p>
+  </div>
+</section>
+
+<!-- ═══ FAQ ════════════════════════════════════════════════════════════ -->
+<section class="pad" id="faq" style="padding-top:0">
+  <div class="container">
+    <div class="sec-head rv" style="margin:0 auto 40px;text-align:center">
+      <h2>Straight answers.</h2>
+    </div>
+    <div class="faq rv">
+      <details><summary>Does it touch my wallet?</summary>
+        <p>No, and it cannot. There is no wallet integration, no keys, no signing, and no trading.
+          Quick buy opens a link in your browser. That's the entire extent of it.</p></details>
+      <details><summary>Isn't a Discord user token against their terms?</summary>
+        <p>Yes. A user token logs in as your account, and Discord's terms prohibit it. That's stated
+          in the app before you paste one, and in the README. It's your decision, and the token never
+          leaves your machine. Telegram uses an official API session and has no such issue.</p></details>
+      <details><summary>What if I don't have a GMGN key?</summary>
+        <p>It still runs. DexScreener market data on every chain and RugCheck safety on Solana are
+          keyless. You lose EVM safety checks, EVM holder counts, some artwork, and KOL/smart-money
+          data — and the UI tells you which is missing rather than rendering a blank as a pass.</p></details>
+      <details><summary>Does it tell me what to buy?</summary>
+        <p>No, and nothing can. It surfaces information: who called it, where, when, what the market
+          data says, and what it doesn't know. The decision is entirely yours.</p></details>
+      <details><summary>Where does my data go?</summary>
+        <p>Nowhere. No account, no server, no analytics, no auto-update. Sessions and history sit in
+          <code>%APPDATA%</code>. Outbound traffic goes only to the data providers and to Telegram and
+          Discord themselves.</p></details>
+      <details><summary>Why does Windows warn me about the download?</summary>
+        <p>The binary isn't code-signed — a certificate is a few hundred a year. Click
+          <b>More info → Run anyway</b>, or build it from source. The repo is public and MIT-licensed.</p></details>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ FINAL CTA ══════════════════════════════════════════════════════ -->
+<section class="final">
+  <div class="container">
+    <h2 class="rv">Close the chats.<br><span class="hl">Go hunt.</span></h2>
+    <p class="lead rv" style="margin:22px auto 0">The calls will find you.</p>
+    <div class="hero-actions rv">
+      <a href="#download" class="btn primary lg">Download for Windows <span class="sm">soon</span></a>
+      <a href="https://github.com/dwdo1337/intel" class="btn lg">View source</a>
+    </div>
+    <div class="socials rv">
+      <a class="social" href="https://github.com/dwdo1337/intel" rel="noopener">GitHub</a>
+      <a class="social" href="https://x.com/intelcmddesk" rel="noopener">X · @intelcmddesk</a>
+      <a class="social" href="https://t.me/intelcommand" rel="noopener">Telegram · @intelcommand</a>
+    </div>
+  </div>
+</section>
+
+</main>
 
 <footer>
   <div class="container">
-    <div>© 2026 intel. Command Deck</div>
-    <div>Built for Windows · Telegram · Discord · Solana · Base · Ethereum · BSC · Robinhood</div>
+    <div>© 2026 intel. Command Deck · MIT</div>
+    <div>Windows · Telegram · Discord · Solana · Base · Ethereum · BSC</div>
   </div>
 </footer>
-<div class="ca-strip bottom"><span class="k">CA</span><code>not launched yet — no contract exists</code></div>
+
+<div class="ca-strip bottom">
+  <span class="k">CA</span><code>coming soon</code>
+  <span class="soon">at launch</span>
+</div>
 
 <script>
-const sample = [
-  {name:'Cash Cat',sym:'CASHCAT',chain:'Robinhood',color:'#00C805',lp:'Uniswap',price:0.04152,mc:41100370,liq:3238219,vol:7890634,ch:13.85,tx:9633,addr:'0x020bfc650a365f8bb26819deaabf3e21291018b4',img:'https://cdn.dexscreener.com/cms/images/Lq7a3pS9Wn8EuGp0?width=56&height=56&quality=95&format=auto',platform:'Telegram',source:'Robinhood Gems',author:'@gem_hunter',badges:['CLEAN']},
-  {name:'Market Cat',sym:'MarketCat',chain:'Solana',color:'#9945FF',lp:'PumpSwap',price:0.0002699,mc:261470,liq:41925,vol:2426012,ch:768,tx:39530,addr:'G8ModkdDYTuUWLTVR4FAV8orFyZKXccZPhtUvvLBpump',img:'https://cdn.dexscreener.com/cms/images/c5cq-MtFnXZtey7Z?width=56&height=56&quality=95&format=auto',platform:'Discord',source:'Alpha DAO',author:'@alpha_dao',badges:['Follow-up']},
-  {name:'Catecoin',sym:'CATE',chain:'Solana',color:'#9945FF',lp:'PumpSwap',price:0.004604,mc:4440020,liq:277455,vol:5300384,ch:-1.79,tx:55781,addr:'Ai66LHZG9MCzg1WKdawwqduVAXpNDUuV8M3uyq5ppump',img:'https://cdn.dexscreener.com/cms/images/_aILGflqFiJQJ4A-?width=56&height=56&quality=95&format=auto',platform:'Telegram',source:'Cat Calls',author:'@cat_calls',badges:[]},
-  {name:'Pons',sym:'PONS',chain:'Robinhood',color:'#00C805',lp:'Uniswap',price:0.04118,mc:31873749,liq:1524232,vol:6110439,ch:-15.42,tx:7409,addr:'0x39dbed3a2bd333467115de45665cc57f813c4571',img:'https://cdn.dexscreener.com/cms/images/dkmXs8KYMyMXjuU1?width=56&height=56&quality=95&format=auto',platform:'Discord',source:'Pons HQ',author:'@pons_hq',badges:[]},
-];
-function fmt(n){if(n>=1e9)return '$'+(n/1e9).toFixed(2)+'B';if(n>=1e6)return '$'+(n/1e6).toFixed(2)+'M';if(n>=1e3)return '$'+(n/1e3).toFixed(2)+'K';return '$'+n}
-function fmtPct(n){return (n>0?'+':'')+n+'%'}
-function fmtAddr(a){if(a.startsWith('0x'))return a.slice(0,6)+'…'+a.slice(-4);return a.slice(0,4)+'…'+a.slice(-4)}
-function fmtPrice(p){if(p<0.001)return '$'+p.toFixed(6);if(p<0.1)return '$'+p.toFixed(4);return '$'+p.toFixed(3)}
-const feed=document.getElementById('feed');
-function renderFeed(){
-  feed.innerHTML='';
-  const head=document.createElement('div');head.className='feed-head';head.innerHTML='\u003cdiv class="feed-title"\u003eCommand deck · '+sample.length+' events\u003c/div\u003e\u003cdiv style="font-size:10px;color:var(--muted)"\u003ePrices from DexScreener · live 2026-07-29 11:01 UTC\u003c/div\u003e';feed.appendChild(head);
-  sample.forEach((t,i)=>{
-    const isTg=t.platform==='Telegram';
-    const border=t.chain==='Solana'?'var(--tg)':(t.chain==='Robinhood'?'#00C805':'var(--accent)');
-    const avatar=t.img?`\u003cimg src="${t.img}" style="width:40px;height:40px;border-radius:10px;object-fit:cover;background:var(--surface2)" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">\u003cdiv class="msg-av" style="display:none;background:linear-gradient(135deg,${isTg?'var(--tg)':'var(--dc)'},#000)">${t.sym.slice(0,2).toUpperCase()}\u003c/div>`:`\u003cdiv class="msg-av" style="background:linear-gradient(135deg,${isTg?'var(--tg)':'var(--dc)'},#000)">${t.sym.slice(0,2).toUpperCase()}\u003c/div>`;
-    const card=document.createElement('div');card.className='demo-card';card.style.borderLeft='3px solid '+border;
-    card.innerHTML=`
-      <div class="msg-head">
-        ${avatar}
-        <div class="msg-meta">
-          <div class="msg-line1">
-            <span class="msg-token">${t.name}</span>
-            <span class="msg-sym">$${t.sym}</span>
-            <span class="msg-chain" style="background:${t.color}22;border-color:${t.color}55;color:${t.color}">${t.chain}</span>
-          </div>
-          <div class="msg-badges">${t.badges.map(b=>`\u003cspan class="badge ${b==='CLEAN'?'clean':b.toLowerCase().includes('follow')?'followup':'signal'}">${b}\u003c/span>`).join('')}</div>
-        </div>
-        <div class="msg-time">${i===0?'now':(i*3)+'m ago'}</div>
-      </div>
-      <div class="msg-text">New CA posted in ${t.source} — early momentum on ${t.lp}.\u003c/div>
-      <div class="ca">${fmtAddr(t.addr)} \u003csvg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">\u003crect x="9" y="9" width="13" height="13" rx="2"/>\u003cpath d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>\u003c/svg></div>
-      <div class="msg-source">
-        ${isTg?`\u003csvg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">\u003cpath d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>\u003c/svg>`:`\u003csvg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">\u003cpath d="M9 11a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm6 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/>\u003cpath d="M5.5 4h13c.8 0 1.5.7 1.5 1.5v13c0 .8-.7 1.5-1.5 1.5h-3.8l-1.2-1.2-1.2 1.2H10l-1.2-1.2-1.2 1.2H5.5c-.8 0-1.5-.7-1.5-1.5v-13C4 4.7 4.7 4 5.5 4z"/>\u003c/svg>`}
-        <span>${t.platform} · ${t.source}</span>
-        ${t.author?`\u003cspan>called by <b>${t.author}</b>\u003c/span>`:''}
-        \u003cspan style="margin-left:auto">${t.lp}</span>
-      </div>
-      <div class="kpis">
-        <div class="kpi"><div class="kpi-label">Market cap</div><div class="kpi-value">${fmt(t.mc)}</div></div>
-        <div class="kpi"><div class="kpi-label">Liquidity</div><div class="kpi-value">${fmt(t.liq)}</div></div>
-        <div class="kpi"><div class="kpi-label">Price</div><div class="kpi-value">${fmtPrice(t.price)}</div></div>
-      </div>
-      <div class="msg-actions">
-        <span class="btn-buy">QUICK BUY</span>
-        <span class="link">${t.lp} \u003csvg width="12" height="12" viewBox="0 0 12 12" fill="none">\u003cpath d="M2 10L10 2M10 2H4M10 2V8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>\u003c/svg></span>
-        <span class="link">X \u003csvg width="12" height="12" viewBox="0 0 12 12" fill="none">\u003cpath d="M2 10L10 2M10 2H4M10 2V8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>\u003c/svg></span>
-        <span class="link">DEXSCREENER \u003csvg width="12" height="12" viewBox="0 0 12 12" fill="none">\u003cpath d="M2 10L10 2M10 2H4M10 2V8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>\u003c/svg></span>
-      </div>
-    `;
-    card.onclick=()=>showInspector(t);
-    feed.appendChild(card);
-  });
-}
-function showInspector(t){
-  const av=document.getElementById('inAv');
-  if(t.img){av.style.backgroundImage='url('+t.img+')';av.style.backgroundSize='cover';av.style.color='transparent';av.textContent='';}
-  else{av.style.backgroundImage='';av.style.background='linear-gradient(135deg,'+(t.platform==='Telegram'?'var(--tg)':'var(--dc)')+',#000)';av.textContent=t.sym.slice(0,2).toUpperCase();av.style.color='#fff';}
-  document.getElementById('inName').textContent=t.name;
-  document.getElementById('inSymbol').textContent='$'+t.sym+' · '+t.chain;
-  document.getElementById('inPrice').textContent=fmtPrice(t.price);
-  document.getElementById('inCa').textContent=fmtAddr(t.addr);
-  document.getElementById('inLp').textContent=t.lp;
-  document.getElementById('inLiq').textContent=fmt(t.liq);
-  document.getElementById('in24h').textContent=fmtPct(t.ch);
-  document.getElementById('in24h').style.color=t.ch>=0?'var(--accent)':'var(--sell)';
-}
-renderFeed();
-showInspector(sample[0]);
+(function(){
+  var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ── reveal on scroll ─────────────────────────────────────────────── */
+  var io = new IntersectionObserver(function(es){
+    es.forEach(function(e){
+      if(!e.isIntersecting) return;
+      e.target.classList.add('in');
+      io.unobserve(e.target);
+      if(e.target.id === 'spread') runSpread();
+      if(e.target.querySelector && e.target.querySelector('[data-count]')) runCounts(e.target);
+    });
+  },{threshold:.15,rootMargin:'0px 0px -60px 0px'});
+  /* #spread is observed by id as well as by .rv — the animated rows live
+     inside it, and its .rv wrapper is a different element. */
+  document.querySelectorAll('.rv, #stage, #spread').forEach(function(el){ io.observe(el); });
+
+  /* ── the marquee: rooms and chains, demo identities only ──────────── */
+  var items = [
+    ['Alpha Signals','TELEGRAM','#3b82f6'], ['Moonshot Lounge','TELEGRAM','#3b82f6'],
+    ['Trench Club / #calls','DISCORD','#a855f7'], ['Solana','CHAIN','#9945FF'],
+    ['Trench Club / #alpha','DISCORD','#a855f7'], ['Base','CHAIN','#0052FF'],
+    ['BSC','CHAIN','#F0B90B'], ['Ethereum','CHAIN','#627EEA'],
+    ['1,295 channels','REACHABLE','#4fe3a0'], ['18 servers','WATCHED','#4fe3a0']
+  ];
+  var track = document.getElementById('track');
+  if(track){
+    var html = items.map(function(i){
+      return '<span class="it"><i style="background:'+i[2]+'"></i>'+i[0]+' <b>'+i[1]+'</b></span>';
+    }).join('');
+    track.innerHTML = html + html;   /* doubled so the -50% loop has no visible join */
+  }
+
+  /* ── the spread rows appear one at a time ─────────────────────────── */
+  var spreadDone = false;
+  function runSpread(){
+    if(spreadDone) return; spreadDone = true;
+    var rows = document.querySelectorAll('#spread .srow');
+    var cnt  = document.getElementById('rcount');
+    rows.forEach(function(r,i){
+      setTimeout(function(){
+        r.classList.add('on');
+        if(cnt) cnt.textContent = i + 1;
+      }, reduce ? 0 : i * 900);
+    });
+  }
+
+  /* ── counters ─────────────────────────────────────────────────────── */
+  function runCounts(scope){
+    scope.querySelectorAll('[data-count]').forEach(function(el){
+      var target = parseFloat(el.getAttribute('data-count'));
+      var suffix = el.getAttribute('data-suffix') || '';
+      /* rAF does not run while the document is hidden, so a tab opened in the
+         background would sit on 0. The number matters more than the count-up. */
+      if(reduce || document.hidden){ el.textContent = target.toLocaleString() + suffix; return; }
+      var t0 = null, dur = 1300;
+      function step(ts){
+        if(!t0) t0 = ts;
+        var p = Math.min((ts - t0) / dur, 1);
+        var eased = 1 - Math.pow(1 - p, 3);
+        el.textContent = Math.round(target * eased).toLocaleString() + suffix;
+        if(p < 1) requestAnimationFrame(step);
+      }
+      requestAnimationFrame(step);
+    });
+  }
+
+  /* ── the toast filling in — this is the real behaviour, not a flourish.
+        The app opens the alert with market data and the rest lands
+        50–460 ms later; the delays below are stretched so a human can
+        see the order it happens in. ─────────────────────────────────── */
+  var tok = document.getElementById('tTok'),
+      dex = document.getElementById('cDex'),
+      hold= document.getElementById('mHold'),
+      kol = document.getElementById('tKol'),
+      el  = document.getElementById('elapsed'),
+      timers = [];
+
+  function resetToast(){
+    timers.forEach(clearTimeout); timers = [];
+    if(!tok) return;
+    tok.classList.remove('f2');
+    dex.className = 'chip pend'; dex.textContent = 'DEX Paid · checking…';
+    hold.textContent = '—'; hold.style.color = 'var(--dim)';
+    kol.classList.remove('on');
+    el.textContent = '+0 ms';
+  }
+  function playToast(){
+    resetToast();
+    if(!tok) return;
+    if(reduce){
+      tok.classList.add('f2');
+      dex.className = 'chip done'; dex.textContent = 'DEX Paid · yes';
+      hold.textContent = '2.6K'; hold.style.color = 'var(--text)';
+      kol.classList.add('on'); el.textContent = '+460 ms';
+      return;
+    }
+    timers.push(setTimeout(function(){
+      tok.classList.add('f2'); el.textContent = '+120 ms';
+    }, 900));
+    timers.push(setTimeout(function(){
+      dex.className = 'chip done'; dex.textContent = 'DEX Paid · yes';
+      el.textContent = '+240 ms';
+    }, 1800));
+    timers.push(setTimeout(function(){
+      hold.textContent = '2.6K'; hold.style.color = 'var(--text)';
+      el.textContent = '+380 ms';
+    }, 2700));
+    timers.push(setTimeout(function(){
+      kol.classList.add('on'); el.textContent = '+460 ms';
+    }, 3500));
+  }
+
+  var toastPlayed = false;
+  var tio = new IntersectionObserver(function(es){
+    es.forEach(function(e){
+      if(e.isIntersecting && !toastPlayed){ toastPlayed = true; playToast(); }
+    });
+  },{threshold:.4});
+  var lt = document.getElementById('liveToast');
+  if(lt) tio.observe(lt);
+  var rp = document.getElementById('replay');
+  if(rp) rp.addEventListener('click', playToast);
+
+  /* ── parallax on the hero deck, cheap and clamped ─────────────────── */
+  if(!reduce){
+    var deck = document.querySelector('.deck'), stage = document.getElementById('stage'), tick = false;
+    window.addEventListener('scroll', function(){
+      if(tick || !deck || !stage) return;
+      tick = true;
+      requestAnimationFrame(function(){
+        var r = stage.getBoundingClientRect();
+        var p = Math.min(Math.max(-r.top / (window.innerHeight * 1.1), 0), 1);
+        deck.style.transform = 'rotateX(' + (5 - p * 5).toFixed(2) + 'deg) scale(' + (1 + p * .015).toFixed(3) + ')';
+        tick = false;
+      });
+    }, {passive:true});
+  }
+})();
 </script>
 </body>
 </html>
