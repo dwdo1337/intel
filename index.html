@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>intel. — Memecoin Command Deck</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="icon" href="assets/logo-brand.svg" type="image/svg+xml">
+<meta name="description" content="A dense, terminal-style Windows command deck that turns Telegram and Discord chatter into structured memecoin signals with native toasts.">
+<style>
+:root{
+  --bg:#0a0b10;--surface:#0f1117;--surface2:#141721;--surface3:#1c2030;--line:#252a3a;--line2:#30384d;
+  --text:#f0f2f7;--muted:#6b7588;--dim:#4a5366;--accent:#4fe3a0;--accent2:#6effb8;--accent-dim:rgba(79,227,168,.12);
+  --buy:#22c55e;--sell:#ef4444;--warn:#f59e0b;--info:#3b82f6;--tg:#3b82f6;--dc:#a855f7;
+  --sans:'Inter',system-ui,sans-serif;--mono:'JetBrains Mono',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:1.55;min-height:100vh}
+body::before{content:'';position:fixed;inset:0;z-index:-1;
+  background:radial-gradient(circle at 20% 10%,rgba(79,227,168,.08),transparent 35%),
+    radial-gradient(circle at 80% 90%,rgba(159,232,195,.06),transparent 40%),
+    linear-gradient(rgba(255,255,255,.02) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(255,255,255,.02) 1px,transparent 1px);
+  background-size:100% 100%,100% 100%,40px 40px,40px 40px}
+.container{width:min(1180px,92%);margin:0 auto}
+a{color:var(--accent);text-decoration:none}
+
+/* Nav */
+nav{position:sticky;top:0;z-index:100;background:rgba(10,11,16,.82);backdrop-filter:blur(18px);border-bottom:1px solid var(--line)}
+nav .container{display:flex;align-items:center;justify-content:space-between;height:68px}
+.logo{display:flex;align-items:center;gap:12px;font-weight:800;letter-spacing:-.02em;font-size:20px;color:var(--text)}
+.logo img{width:30px;height:30px}
+.nav-links{display:flex;gap:30px;font-size:14px;font-weight:600}
+.nav-links a{color:var(--muted);transition:.15s}
+.nav-links a:hover{color:var(--text)}
+.cta{height:40px;padding:0 20px;border-radius:8px;background:var(--accent);color:#050705;font-size:13px;font-weight:800;border:none;cursor:pointer;transition:.15s;box-shadow:0 0 18px rgba(79,227,168,.25)}
+.cta:hover{background:var(--accent2);box-shadow:0 0 28px rgba(79,227,168,.4)}
+
+/* Hero */
+.hero{padding:90px 0 60px;text-align:center;position:relative;overflow:hidden}
+.badge{display:inline-flex;align-items:center;gap:8px;padding:8px 16px;border-radius:999px;border:1px solid var(--line);background:rgba(79,227,168,.08);color:var(--accent);font-size:12px;font-weight:700;margin-bottom:24px}
+.badge span{width:8px;height:8px;border-radius:50%;background:var(--accent);animation:pulse 1.6s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+h1{font-size:clamp(40px,5.5vw,68px);font-weight:800;line-height:1.05;letter-spacing:-.03em;margin-bottom:22px}
+h1 .hl{background:linear-gradient(90deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.hero p.lead{font-size:18px;color:var(--muted);max-width:700px;margin:0 auto 36px}
+.hero-actions{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-bottom:50px}
+.hero .demo-link{display:flex;align-items:center;gap:8px;height:46px;padding:0 22px;border-radius:8px;border:1px solid rgba(255,255,255,.12);color:var(--text);font-weight:700;transition:.15s}
+.hero .demo-link:hover{border-color:var(--accent);color:var(--accent)}
+
+/* Real app demo */
+.demo-window{border:1px solid var(--line);border-radius:16px;background:var(--bg);overflow:hidden;box-shadow:0 30px 100px rgba(0,0,0,.55)}
+.demo-bar{height:56px;background:var(--surface);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:20px;padding:0 22px}
+.demo-bar .logo{font-size:16px}
+.demo-bar .logo img{width:22px;height:22px;filter:brightness(1.2)}
+.demo-search{flex:1;max-width:420px;position:relative}
+.demo-search input{width:100%;height:36px;border-radius:8px;background:#0a0c12;border:1px solid var(--line);padding:0 12px 0 34px;color:var(--text);font-size:13px;outline:none}
+.demo-search::before{content:'⌘';position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--dim);font-size:14px}
+.demo-stats{display:flex;align-items:center;gap:20px;margin-left:auto;font-size:12px;color:var(--muted)}
+.demo-stats b{color:var(--text);margin-left:4px;font-size:13px;font-weight:700}
+.demo-pulse{width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 10px var(--accent)}
+.demo-icons{display:flex;gap:8px;margin-left:12px}
+.demo-icon{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;background:var(--surface2);border:1px solid var(--line);color:var(--muted)}
+.demo-body{display:grid;grid-template-columns:minmax(240px,18%) 1fr minmax(300px,26%);min-height:540px}
+.demo-filters{background:var(--bg);border-right:1px solid var(--line);padding:16px;overflow:auto}
+.demo-filters h4{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-bottom:12px;font-family:var(--mono)}
+.chip-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px}
+.chip{padding:6px 12px;border-radius:999px;border:1px solid var(--line);background:var(--surface2);color:var(--muted);font-size:12px;font-weight:600;cursor:pointer}
+.chip.active{background:var(--accent);color:#050705;border-color:var(--accent)}
+.chain-row{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border-radius:8px;background:var(--surface2);border:1px solid var(--line);margin-bottom:6px;font-size:12px;cursor:pointer}
+.chain-row:hover{border-color:rgba(79,227,168,.25)}
+.chain-dot{width:8px;height:8px;border-radius:50%;background:var(--accent)}
+.soon{font-size:10px;color:var(--muted);background:var(--surface3);padding:2px 6px;border-radius:4px}
+.demo-feed{background:var(--bg);padding:16px;border-right:1px solid var(--line);overflow:auto}
+.feed-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.feed-title{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:700}
+.demo-card{padding:14px;border-radius:12px;border:1px solid var(--line);background:var(--surface);margin-bottom:10px;cursor:pointer;transition:.12s;border-left:3px solid var(--tg)}
+.demo-card:hover{border-color:rgba(79,227,168,.3)}
+.msg-head{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+.msg-av{width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,var(--tg),#000);display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;font-family:var(--mono)}
+.msg-meta{flex:1}
+.msg-line1{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.msg-token{font-size:15px;font-weight:800}
+.msg-sym{font-size:12px;color:var(--muted)}
+.msg-chain{font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;background:rgba(153,69,255,.15);color:#b488ff;border:1px solid rgba(153,69,255,.3)}
+.msg-badges{display:flex;gap:5px;margin-top:5px;flex-wrap:wrap}
+.badge{font-size:10px;font-weight:700;padding:3px 7px;border-radius:4px}
+.badge.clean{background:rgba(34,197,94,.12);color:var(--buy)}
+.badge.followup{background:rgba(79,227,168,.12);color:var(--accent)}
+.badge.signal{background:rgba(59,130,246,.12);color:var(--info)}
+.msg-time{margin-left:auto;font-size:11px;color:var(--muted);white-space:nowrap}
+.msg-text{font-size:12px;color:var(--text);margin-bottom:10px;line-height:1.5}
+.ca{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:11px;color:var(--accent);background:rgba(79,227,168,.08);padding:4px 8px;border-radius:6px;border:1px solid rgba(79,227,168,.2);margin-bottom:8px}
+.msg-source{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--muted);margin-bottom:12px;flex-wrap:wrap}
+.msg-source b{color:var(--text)}
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px}
+.kpi{padding:8px;border-radius:6px;background:rgba(255,255,255,.03)}
+.kpi-label{font-size:9px;text-transform:uppercase;color:var(--muted);letter-spacing:.04em}
+.kpi-value{font-size:13px;font-weight:800;font-family:var(--mono);color:var(--text)}
+.msg-actions{display:flex;gap:10px;flex-wrap:wrap}
+.btn-buy{height:30px;padding:0 14px;border-radius:6px;background:var(--accent);color:#050705;border:none;font-size:11px;font-weight:800;cursor:pointer;display:flex;align-items:center}
+.link{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:3px}
+.link:hover{color:var(--accent)}
+.demo-inspector{background:var(--bg);padding:16px;overflow:auto}
+.in-card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:12px}
+.in-title{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--accent);margin-bottom:12px;font-family:var(--mono)}
+.in-row{display:flex;justify-content:space-between;font-size:12px;margin:8px 0;padding-bottom:6px;border-bottom:1px solid var(--line)}
+.in-row b{color:var(--text);font-family:var(--mono);font-weight:600}
+.in-price{font-size:22px;font-weight:800;color:var(--accent);margin:6px 0}
+.in-ca{display:flex;justify-content:space-between;align-items:center;font-family:var(--mono);font-size:11px;color:var(--accent);background:rgba(255,255,255,.03);padding:8px;border-radius:6px}
+.in-list{display:flex;flex-direction:column;gap:8px}
+.in-item{display:flex;gap:10px;align-items:flex-start;font-size:12px;color:var(--muted)}
+.in-item b{color:var(--text);display:block}
+
+/* Toast preview */
+.toast-section{padding:80px 0;background:linear-gradient(180deg,var(--bg),#0d0e14)}
+.toast-section h2{text-align:center;font-size:34px;margin-bottom:50px}
+.toast-grid{display:grid;grid-template-columns:1fr 1fr;gap:50px;align-items:center}
+.toast-preview{justify-self:center}
+.toast-card{width:380px;border:1px solid var(--line);border-radius:14px;background:var(--surface);backdrop-filter:blur(24px);padding:18px;box-shadow:0 20px 70px rgba(0,0,0,.6)}
+.toast-brand{display:flex;align-items:center;gap:10px;color:var(--accent);font-size:11px;font-weight:800;text-transform:uppercase;margin-bottom:12px;font-family:var(--mono)}
+.toast-main{display:flex;gap:14px;margin-bottom:14px}
+.timg{width:52px;height:52px;border-radius:10px;background:linear-gradient(135deg,#1f2535,#0e1219);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;color:var(--accent);font-family:var(--mono)}
+.toast-info h5{font-size:17px;margin-bottom:3px}
+.toast-info span{font-size:12px;color:var(--muted)}
+.toast-metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:14px 0;padding:12px;border-radius:10px;border:1px solid var(--line);background:rgba(255,255,255,.03)}
+.tm{text-align:center}
+.tm label{font-size:9px;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:2px}
+.tm val{font-size:13px;font-weight:800;display:block;font-family:var(--mono)}
+.toast-ca{display:flex;align-items:center;gap:10px;padding:10px;border-radius:8px;background:rgba(255,255,255,.04);border:1px solid var(--line);margin-top:12px}
+.toast-ca code{flex:1;font-family:var(--mono);font-size:11px;color:var(--accent)}
+.toast-ca button{height:28px;padding:0 14px;border-radius:6px;border:1px solid rgba(79,227,168,.35);background:rgba(79,227,168,.12);color:var(--accent);font-size:11px;font-weight:800;cursor:pointer}
+
+/* Sections */
+section{padding:80px 0}
+section h2{font-size:34px;margin-bottom:16px;letter-spacing:-.02em}
+section .sub{color:var(--muted);font-size:17px;max-width:700px;margin-bottom:42px}
+.grid-3{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:22px}
+.feature-card{padding:24px;border-radius:14px;border:1px solid var(--line);background:var(--surface2);transition:.15s}
+.feature-card:hover{border-color:rgba(79,227,168,.25);transform:translateY(-2px)}
+.feature-card h4{font-size:16px;margin-bottom:10px}
+.feature-card p{font-size:14px;color:var(--muted);line-height:1.5}
+ul.feature-list{list-style:none;display:grid;gap:16px}
+ul.feature-list li{display:flex;gap:12px;align-items:flex-start;font-size:15px;color:var(--muted)}
+ul.feature-list li::before{content:'✓';color:var(--accent);font-weight:800;flex-shrink:0}
+
+/* Download */
+.download{background:var(--surface);border-top:1px solid var(--line);border-bottom:1px solid var(--line);text-align:center}
+
+/* Footer */
+footer{padding:44px 0;font-size:13px;color:var(--muted);border-top:1px solid var(--line)}
+footer .container{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}
+
+/* Mobile */
+@media (max-width:980px){
+  .demo-body{grid-template-columns:1fr}
+  .demo-filters,.demo-inspector{display:none}
+  .toast-grid{grid-template-columns:1fr}
+  .toast-card{width:100%;max-width:380px;margin:0 auto}
+}
+@media (max-width:640px){
+  .nav-links{display:none}
+  h1{font-size:34px}
+  .kpis{grid-template-columns:repeat(2,1fr)}
+  section h2{font-size:28px}
+}
+
+/* ── download cards ─────────────────────────────────────────────── */
+.dl-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin:28px auto 18px;max-width:760px;text-align:left}
+.dl-card{display:flex;flex-direction:column;gap:6px;padding:20px;border-radius:14px;border:1px solid var(--line);background:var(--surface2);transition:.15s;color:var(--text)}
+.dl-card:hover{border-color:var(--line2);transform:translateY(-2px)}
+.dl-card.primary{border-color:rgba(79,227,168,.45);background:linear-gradient(180deg,rgba(79,227,168,.07),var(--surface2))}
+.dl-card.primary:hover{border-color:var(--accent);box-shadow:0 0 30px rgba(79,227,168,.14)}
+.dl-tag{align-self:flex-start;font-size:9.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;padding:3px 8px;border-radius:999px;background:var(--accent-dim);color:var(--accent);border:1px solid rgba(79,227,168,.3)}
+.dl-tag.alt{background:rgba(255,255,255,.05);color:var(--muted);border-color:var(--line)}
+.dl-title{font-size:19px;font-weight:800;margin-top:4px}
+.dl-file{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11px;color:var(--dim)}
+.dl-note{font-size:12.5px;line-height:1.6;color:var(--muted);margin-top:4px}
+.dl-fine{font-size:12px;color:var(--dim);line-height:1.7;max-width:640px;margin:0 auto 22px}
+.dl-fine b{color:var(--muted)}
+</style>
+</head>
+<body>
+<nav>
+  <div class="container">
+    <a href="#" class="logo">
+      <img src="assets/logo-brand.svg" alt="intel.">
+      intel.
+    </a>
+    <div class="nav-links">
+      <a href="#demo">Demo</a>
+      <a href="#features">Features</a>
+      <a href="#toast">Toasts</a>
+      <a href="#download">Download</a>
+    </div>
+    <a href="#download" class="cta">Download for Windows</a>
+  </div>
+</nav>
+
+<section class="hero">
+  <div class="container">
+    <div class="badge"><span></span>Live desktop signals for memecoins</div>
+    <h1>Your chats are bleeding alpha.<br><span class="hl">Catch it in one deck.</span></h1>
+    <p class="lead">intel. connects to your own Telegram and Discord sessions, detects contract addresses, links repeat mentions into follow-ups, and enriches each token with price, liquidity and safety data. No paid APIs required to start.</p>
+    <div class="hero-actions">
+      <a class="cta" style="height:48px;padding:0 26px;font-size:15px;display:flex;align-items:center" href="https://github.com/dwdo1337/intel/releases">Download for Windows</a>
+      <a class="demo-link" href="#demo">View live demo →</a>
+    </div>
+
+    <!-- Real app screenshots from the .exe build -->
+    <style>
+      .demo-shots{display:grid;gap:20px;grid-template-columns:1fr}
+      .demo-shot{border:1px solid var(--line);border-radius:16px;background:var(--surface);overflow:hidden;box-shadow:0 30px 100px rgba(0,0,0,.55)}
+      .demo-shot img{width:100%;height:auto;display:block}
+      .demo-shot-bar{height:44px;background:var(--surface);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;padding:0 18px;font-size:12px;color:var(--muted)}
+      .demo-shot-bar b{color:var(--text);font-weight:700}
+      .demo-caption{padding:14px 18px;font-size:13px;color:var(--muted);border-top:1px solid var(--line)}
+      .demo-caption b{color:var(--text)}
+      @media(min-width:980px){.demo-shots{grid-template-columns:1fr 1fr}}
+    </style>
+    <div class="demo-shots" id="demo">
+      <div class="demo-shot">
+        <div class="demo-shot-bar"><span style="color:var(--accent)">●</span> <b>Live dashboard</b> — matches the Windows .exe</div>
+        <img src="screenshots/app-dashboard.png" alt="Real app dashboard" loading="lazy">
+        <div class="demo-caption">
+          Filters · Feed · Inspector. Real tokens: <b>Cash Cat</b>, <b>Market Cat</b>, <b>Catecoin</b>, <b>Pons</b>. Data from DexScreener.
+        </div>
+      </div>
+      &nbsp;
+      <div class="demo-shot">
+        <div class="demo-shot-bar"><span style="color:var(--accent)">●</span> <b>Settings / Sources</b> — Telegram + Discord setup</div>
+        <img src="screenshots/app-settings.png" alt="Real app settings" loading="lazy">
+        <div class="demo-caption">
+          Connect Telegram and Discord in the app's Settings screen. No cloud account.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="features">
+  <div class="container">
+    <h2>From chat noise to conviction score.</h2>
+    <p class="sub">No paid APIs required to start. Connect your own Telegram / Discord sessions, pick the chats you care about, and let the deck surface the signals worth watching.</p>
+    <div class="grid-3">
+      <div class="feature-card"><h4>Cross-chat mention linking</h4><p>Same CA or ticker across multiple groups becomes a single, scored event. Repeat calls are follow-ups, not noise.</p></div>
+      <div class="feature-card"><h4>Free data stack</h4><p>DexScreener for price and liquidity. Optional GMGN key for holder intelligence. No subscriptions to start.</p></div>
+      <div class="feature-card"><h4>Native Windows toasts</h4><p>Borderless alerts with Copy CA, DexScreener and Quick buy. Click to focus the app and inspect the signal.</p></div>
+      <div class="feature-card"><h4>Follow-up tracking</h4><p>Every repeat call is tagged and compared to the first entry mcap. See who keeps talking and how the price moved.</p></div>
+      <div class="feature-card"><h4>Terminal UI</h4><p>Maximum signal per pixel. Monospace numbers, mint accents, zero clutter. Built for speed readers.</p></div>
+      <div class="feature-card"><h4>Privacy first</h4><p>Your sessions and config live in a local JSON file on your machine. No cloud account, no database.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="toast-section" id="toast">
+  <div class="container">
+    <h2>Windows toasts that actually help.</h2>
+    <div class="toast-grid">
+      <div>
+        <ul class="feature-list">
+          <li>App logo + live signal badge</li>
+          <li>CA with one-click copy</li>
+          <li>Vol · MC · Liq · 24h at a glance</li>
+          <li>Source, chat name and caller</li>
+          <li>Quick buy + DexScreener buttons</li>
+          <li>Click toast to open the app</li>
+        </ul>
+      </div>
+      <div class="toast-preview">
+        <div class="toast-card">
+          <div class="toast-brand">intel. Command Deck · NEW SIGNAL</div>
+          <div class="toast-main">
+            <div class="timg" style="background:url('https://cdn.dexscreener.com/cms/images/c5cq-MtFnXZtey7Z?width=56&height=56&quality=95&format=auto') center/cover;overflow:hidden"></div>
+            <div class="toast-info">
+              <h5>Market Cat <span style="color:var(--muted);font-weight:500">$MarketCat</span></h5>
+              <span>Called by <b>@alpha_dao</b> · Alpha DAO · now</span>
+            </div>
+          </div>
+          <div class="toast-metrics">
+            <div class="tm"><label>Vol</label><val>$2.43M</val></div>
+            <div class="tm"><label>MC</label><val>$261.47K</val></div>
+            <div class="tm"><label>Liq</label><val>$41.93K</val></div>
+            <div class="tm"><label>24h</label><val style="color:var(--accent)">+768%</val></div>
+          </div>
+          <div class="toast-ca"><code>G8Mo…LBpump</code><button>Copy CA</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="download" class="download">
+  <div class="container">
+    <h2>Download the Windows command deck.</h2>
+    <!-- Two builds, and the difference is stated plainly. The old copy said
+         "no installer" and told people to hand-edit config.json — neither is
+         true any more: there is a proper wizard, and credentials are entered in
+         the app's Settings screen. -->
+    <p class="sub">Two ways to run it. Connect Telegram and Discord in the app’s
+      Settings screen — nothing to hand-edit, nothing leaves your machine.</p>
+
+    <div class="dl-grid">
+      <a class="dl-card primary" href="https://github.com/dwdo1337/intel/releases/latest">
+        <span class="dl-tag">Recommended</span>
+        <span class="dl-title">Installer</span>
+        <span class="dl-file">intel-Command-Deck-Setup.exe</span>
+        <span class="dl-note">Standard wizard. Desktop and Start-menu shortcuts.
+          Installs per user — no admin rights, no UAC prompt. Uninstalling keeps
+          your credentials and history.</span>
+      </a>
+      <a class="dl-card" href="https://github.com/dwdo1337/intel/releases/latest">
+        <span class="dl-tag alt">No install</span>
+        <span class="dl-title">Portable</span>
+        <span class="dl-file">intel-Command-Deck-Portable.exe</span>
+        <span class="dl-note">Single file, runs anywhere, leaves nothing behind.
+          Unpacks on each launch, so it starts a little slower. Good for a USB stick.</span>
+      </a>
+    </div>
+
+    <!-- Said up front rather than discovered as a scare after downloading. -->
+    <p class="dl-fine">
+      Windows 10/11, 64-bit · first launch takes about 15 seconds ·
+      the build is unsigned, so SmartScreen will warn once — <b>More info → Run anyway</b>,
+      or <a href="https://github.com/dwdo1337/intel">build it yourself from source</a>.
+    </p>
+
+    <div class="hero-actions" style="margin-bottom:0">
+      <a class="demo-link" href="https://github.com/dwdo1337/intel">View on GitHub →</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    <div>© 2026 intel. Command Deck</div>
+    <div>Built for Windows · Telegram · Discord · Solana · Base · Ethereum · BSC · Robinhood</div>
+  </div>
+</footer>
+
+<script>
+const sample = [
+  {name:'Cash Cat',sym:'CASHCAT',chain:'Robinhood',color:'#00C805',lp:'Uniswap',price:0.04152,mc:41100370,liq:3238219,vol:7890634,ch:13.85,tx:9633,addr:'0x020bfc650a365f8bb26819deaabf3e21291018b4',img:'https://cdn.dexscreener.com/cms/images/Lq7a3pS9Wn8EuGp0?width=56&height=56&quality=95&format=auto',platform:'Telegram',source:'Robinhood Gems',author:'@gem_hunter',badges:['CLEAN']},
+  {name:'Market Cat',sym:'MarketCat',chain:'Solana',color:'#9945FF',lp:'PumpSwap',price:0.0002699,mc:261470,liq:41925,vol:2426012,ch:768,tx:39530,addr:'G8ModkdDYTuUWLTVR4FAV8orFyZKXccZPhtUvvLBpump',img:'https://cdn.dexscreener.com/cms/images/c5cq-MtFnXZtey7Z?width=56&height=56&quality=95&format=auto',platform:'Discord',source:'Alpha DAO',author:'@alpha_dao',badges:['Follow-up']},
+  {name:'Catecoin',sym:'CATE',chain:'Solana',color:'#9945FF',lp:'PumpSwap',price:0.004604,mc:4440020,liq:277455,vol:5300384,ch:-1.79,tx:55781,addr:'Ai66LHZG9MCzg1WKdawwqduVAXpNDUuV8M3uyq5ppump',img:'https://cdn.dexscreener.com/cms/images/_aILGflqFiJQJ4A-?width=56&height=56&quality=95&format=auto',platform:'Telegram',source:'Cat Calls',author:'@cat_calls',badges:[]},
+  {name:'Pons',sym:'PONS',chain:'Robinhood',color:'#00C805',lp:'Uniswap',price:0.04118,mc:31873749,liq:1524232,vol:6110439,ch:-15.42,tx:7409,addr:'0x39dbed3a2bd333467115de45665cc57f813c4571',img:'https://cdn.dexscreener.com/cms/images/dkmXs8KYMyMXjuU1?width=56&height=56&quality=95&format=auto',platform:'Discord',source:'Pons HQ',author:'@pons_hq',badges:[]},
+];
+function fmt(n){if(n>=1e9)return '$'+(n/1e9).toFixed(2)+'B';if(n>=1e6)return '$'+(n/1e6).toFixed(2)+'M';if(n>=1e3)return '$'+(n/1e3).toFixed(2)+'K';return '$'+n}
+function fmtPct(n){return (n>0?'+':'')+n+'%'}
+function fmtAddr(a){if(a.startsWith('0x'))return a.slice(0,6)+'…'+a.slice(-4);return a.slice(0,4)+'…'+a.slice(-4)}
+function fmtPrice(p){if(p<0.001)return '$'+p.toFixed(6);if(p<0.1)return '$'+p.toFixed(4);return '$'+p.toFixed(3)}
+const feed=document.getElementById('feed');
+function renderFeed(){
+  feed.innerHTML='';
+  const head=document.createElement('div');head.className='feed-head';head.innerHTML='\u003cdiv class="feed-title"\u003eCommand deck · '+sample.length+' events\u003c/div\u003e\u003cdiv style="font-size:10px;color:var(--muted)"\u003ePrices from DexScreener · live 2026-07-29 11:01 UTC\u003c/div\u003e';feed.appendChild(head);
+  sample.forEach((t,i)=>{
+    const isTg=t.platform==='Telegram';
+    const border=t.chain==='Solana'?'var(--tg)':(t.chain==='Robinhood'?'#00C805':'var(--accent)');
+    const avatar=t.img?`\u003cimg src="${t.img}" style="width:40px;height:40px;border-radius:10px;object-fit:cover;background:var(--surface2)" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">\u003cdiv class="msg-av" style="display:none;background:linear-gradient(135deg,${isTg?'var(--tg)':'var(--dc)'},#000)">${t.sym.slice(0,2).toUpperCase()}\u003c/div>`:`\u003cdiv class="msg-av" style="background:linear-gradient(135deg,${isTg?'var(--tg)':'var(--dc)'},#000)">${t.sym.slice(0,2).toUpperCase()}\u003c/div>`;
+    const card=document.createElement('div');card.className='demo-card';card.style.borderLeft='3px solid '+border;
+    card.innerHTML=`
+      <div class="msg-head">
+        ${avatar}
+        <div class="msg-meta">
+          <div class="msg-line1">
+            <span class="msg-token">${t.name}</span>
+            <span class="msg-sym">$${t.sym}</span>
+            <span class="msg-chain" style="background:${t.color}22;border-color:${t.color}55;color:${t.color}">${t.chain}</span>
+          </div>
+          <div class="msg-badges">${t.badges.map(b=>`\u003cspan class="badge ${b==='CLEAN'?'clean':b.toLowerCase().includes('follow')?'followup':'signal'}">${b}\u003c/span>`).join('')}</div>
+        </div>
+        <div class="msg-time">${i===0?'now':(i*3)+'m ago'}</div>
+      </div>
+      <div class="msg-text">New CA posted in ${t.source} — early momentum on ${t.lp}.\u003c/div>
+      <div class="ca">${fmtAddr(t.addr)} \u003csvg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">\u003crect x="9" y="9" width="13" height="13" rx="2"/>\u003cpath d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>\u003c/svg></div>
+      <div class="msg-source">
+        ${isTg?`\u003csvg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">\u003cpath d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>\u003c/svg>`:`\u003csvg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">\u003cpath d="M9 11a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm6 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/>\u003cpath d="M5.5 4h13c.8 0 1.5.7 1.5 1.5v13c0 .8-.7 1.5-1.5 1.5h-3.8l-1.2-1.2-1.2 1.2H10l-1.2-1.2-1.2 1.2H5.5c-.8 0-1.5-.7-1.5-1.5v-13C4 4.7 4.7 4 5.5 4z"/>\u003c/svg>`}
+        <span>${t.platform} · ${t.source}</span>
+        ${t.author?`\u003cspan>called by <b>${t.author}</b>\u003c/span>`:''}
+        \u003cspan style="margin-left:auto">${t.lp}</span>
+      </div>
+      <div class="kpis">
+        <div class="kpi"><div class="kpi-label">Market cap</div><div class="kpi-value">${fmt(t.mc)}</div></div>
+        <div class="kpi"><div class="kpi-label">Liquidity</div><div class="kpi-value">${fmt(t.liq)}</div></div>
+        <div class="kpi"><div class="kpi-label">Price</div><div class="kpi-value">${fmtPrice(t.price)}</div></div>
+      </div>
+      <div class="msg-actions">
+        <span class="btn-buy">QUICK BUY</span>
+        <span class="link">${t.lp} \u003csvg width="12" height="12" viewBox="0 0 12 12" fill="none">\u003cpath d="M2 10L10 2M10 2H4M10 2V8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>\u003c/svg></span>
+        <span class="link">X \u003csvg width="12" height="12" viewBox="0 0 12 12" fill="none">\u003cpath d="M2 10L10 2M10 2H4M10 2V8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>\u003c/svg></span>
+        <span class="link">DEXSCREENER \u003csvg width="12" height="12" viewBox="0 0 12 12" fill="none">\u003cpath d="M2 10L10 2M10 2H4M10 2V8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>\u003c/svg></span>
+      </div>
+    `;
+    card.onclick=()=>showInspector(t);
+    feed.appendChild(card);
+  });
+}
+function showInspector(t){
+  const av=document.getElementById('inAv');
+  if(t.img){av.style.backgroundImage='url('+t.img+')';av.style.backgroundSize='cover';av.style.color='transparent';av.textContent='';}
+  else{av.style.backgroundImage='';av.style.background='linear-gradient(135deg,'+(t.platform==='Telegram'?'var(--tg)':'var(--dc)')+',#000)';av.textContent=t.sym.slice(0,2).toUpperCase();av.style.color='#fff';}
+  document.getElementById('inName').textContent=t.name;
+  document.getElementById('inSymbol').textContent='$'+t.sym+' · '+t.chain;
+  document.getElementById('inPrice').textContent=fmtPrice(t.price);
+  document.getElementById('inCa').textContent=fmtAddr(t.addr);
+  document.getElementById('inLp').textContent=t.lp;
+  document.getElementById('inLiq').textContent=fmt(t.liq);
+  document.getElementById('in24h').textContent=fmtPct(t.ch);
+  document.getElementById('in24h').style.color=t.ch>=0?'var(--accent)':'var(--sell)';
+}
+renderFeed();
+showInspector(sample[0]);
+</script>
+</body>
+</html>

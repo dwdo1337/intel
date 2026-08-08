@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!-- background -->
+  <rect width="256" height="256" rx="48" fill="#0a0b10"/>
+
+  <!-- outer pale mint arc -->
+  <path d="M 70 100 Q 128 40 186 100" fill="none" stroke="#9FE8C3" stroke-width="22" stroke-linecap="round"/>
+
+  <!-- inner spring green arc -->
+  <path d="M 92 120 Q 128 82 164 120" fill="none" stroke="#4FE3A8" stroke-width="22" stroke-linecap="round"/>
+
+  <!-- i body: vertical rounded rectangle, light grey/off-white -->
+  <rect x="114" y="128" width="28" height="80" rx="14" fill="#E8F2EC"/>
+</svg>
