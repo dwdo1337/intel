@@ -244,18 +244,20 @@ footer .container{display:flex;justify-content:space-between;gap:20px;flex-wrap:
     </style>
     <div class="demo-shots" id="demo">
       <div class="demo-shot">
-        <div class="demo-shot-bar"><span style="color:var(--accent)">●</span> <b>Live dashboard</b> — matches the Windows .exe</div>
-        <img src="screenshots/app-dashboard.png" alt="Real app dashboard" loading="lazy">
+        <div class="demo-shot-bar"><span style="color:var(--accent)">●</span> <b>The deck</b> — unretouched capture of the Windows build</div>
+        <img src="screenshots/deck.png" alt="intel. Command Deck — filters, live feed, inspector" loading="lazy">
         <div class="demo-caption">
-          Filters · Feed · Inspector. Real tokens: <b>Cash Cat</b>, <b>Market Cat</b>, <b>Catecoin</b>, <b>Pons</b>. Data from DexScreener.
+          Filters left, feed centre, inspector right. Market data from DexScreener; the call spread
+          across <b>three rooms</b>, with who called it first. Chat names and callers are demo data.
         </div>
       </div>
       &nbsp;
       <div class="demo-shot">
-        <div class="demo-shot-bar"><span style="color:var(--accent)">●</span> <b>Settings / Sources</b> — Telegram + Discord setup</div>
-        <img src="screenshots/app-settings.png" alt="Real app settings" loading="lazy">
+        <div class="demo-shot-bar"><span style="color:var(--accent)">●</span> <b>The notification</b> — what you actually see all day</div>
+        <img src="screenshots/toast.png" alt="intel. desktop notification, fully enriched" loading="lazy">
         <div class="demo-caption">
-          Connect Telegram and Discord in the app's Settings screen. No cloud account.
+          It opens with market data and fills itself in — DEX-paid, artwork, the caller's own line.
+          Copy CA and DexScreener work from the toast. <b>Quick buy opens a link</b>; it holds no keys.
         </div>
       </div>
     </div>
@@ -264,12 +266,12 @@ footer .container{display:flex;justify-content:space-between;gap:20px;flex-wrap:
 
 <section id="features">
   <div class="container">
-    <h2>From chat noise to conviction score.</h2>
+    <h2>From chat noise to one readable card.</h2>
     <p class="sub">No paid APIs required to start. Connect your own Telegram / Discord sessions, pick the chats you care about, and let the deck surface the signals worth watching.</p>
     <div class="grid-3">
-      <div class="feature-card"><h4>Cross-chat mention linking</h4><p>Same CA or ticker across multiple groups becomes a single, scored event. Repeat calls are follow-ups, not noise.</p></div>
+      <div class="feature-card"><h4>Cross-chat mention linking</h4><p>The same contract address across multiple groups becomes one event, with every room and caller listed in order. Repeat calls are follow-ups, not noise.</p></div>
       <div class="feature-card"><h4>Free data stack</h4><p>DexScreener for price and liquidity. Optional GMGN key for holder intelligence. No subscriptions to start.</p></div>
-      <div class="feature-card"><h4>Native Windows toasts</h4><p>Borderless alerts with Copy CA, DexScreener and Quick buy. Click to focus the app and inspect the signal.</p></div>
+      <div class="feature-card"><h4>Desktop alerts that fill in</h4><p>Borderless alerts with Copy CA, DexScreener and Quick buy. They open with market data and complete themselves as safety and holder data lands.</p></div>
       <div class="feature-card"><h4>Follow-up tracking</h4><p>Every repeat call is tagged and compared to the first entry mcap. See who keeps talking and how the price moved.</p></div>
       <div class="feature-card"><h4>Terminal UI</h4><p>Maximum signal per pixel. Monospace numbers, mint accents, zero clutter. Built for speed readers.</p></div>
       <div class="feature-card"><h4>Privacy first</h4><p>Your sessions and config live in a local JSON file on your machine. No cloud account, no database.</p></div>
