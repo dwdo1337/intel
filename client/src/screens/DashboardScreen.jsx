@@ -21,6 +21,11 @@ const BLANK_FILTER = () => ({
   // only what the feed displays. Defaults to all until the backend says
   // otherwise; the backend's stored value always wins on load.
   alertChains: ALL_CHAIN_IDS(),
+  // Do the metric thresholds below also gate DESKTOP ALERTS? Off by default:
+  // narrowing the feed is looking, silencing an alert is a decision, and the
+  // two are deliberately separate controls -- same reason the chain pill and
+  // the bell are. The backend's stored value wins on load.
+  alertFiltersOn: false,
   chips: 'All',
   search: '',
   ageMin: '', ageMax: '',
@@ -109,6 +114,25 @@ function pushNotifyChains(chains) {
   }).catch(() => {});
 }
 
+/**
+ * Push "only alert on calls matching my filters" + the thresholds themselves.
+ *
+ * Same rules as pushNotifyChains above, for the same reason: this is a durable
+ * preference and the renderer must never write it on mount. The metric filters
+ * live in localStorage and differ per window, so an automatic write would let a
+ * stale tab silently start (or stop) suppressing alerts.
+ *
+ * Only two things call this, and both are unambiguously a person acting: the
+ * toggle itself, and editing a threshold while the toggle is already on.
+ */
+function pushAlertFilters(enabled, thresholds) {
+  return fetch('/api/alert-filters', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ enabled: !!enabled, thresholds: thresholds || {}, intent: 'user-toggle' }),
+  }).catch(() => {});
+}
+
 export function DashboardScreen({ feed, selected, onSelect, onOpenSettings, onOpenSources, onOpenHistory, showcase }) {
   const [filter, setFilter] = useState(() => loadFilter());
   const [logsOpen, setLogsOpen] = useState(false);
@@ -130,7 +154,15 @@ export function DashboardScreen({ feed, selected, onSelect, onOpenSettings, onOp
     fetch('/api/notify-prefs')
       .then(r => r.json())
       .then(d => {
-        if (cancelled || !Array.isArray(d?.chains)) return;
+        if (cancelled) return;
+        // ADOPT the alert-filter switch too. Same argument as the chains: the
+        // backend outlives localStorage, so it says whether alerts are gated by
+        // the thresholds -- the renderer starting up does not.
+        if (d && d.alertFilters) {
+          const on = !!d.alertFilters.enabled;
+          setFilter(p => (p.alertFiltersOn === on ? p : { ...p, alertFiltersOn: on }));
+        }
+        if (!Array.isArray(d?.chains)) return;
         const fromServer = new Set(d.chains.map(c => String(c).toLowerCase()));
         setFilter(p => {
           const cur = p.alertChains || new Set();
@@ -151,6 +183,44 @@ export function DashboardScreen({ feed, selected, onSelect, onOpenSettings, onOp
     if (next.has(id)) next.delete(id); else next.add(id);
     setFilter(prev => ({ ...prev, alertChains: next }));
     pushNotifyChains(next);
+  };
+
+  /**
+   * The thresholds the backend needs, pulled out of the filter object.
+   *
+   * Only the numeric metric fields -- never `search`, `chains`, `chips` or the
+   * launchpad set. Those are view state, and persisting them into config.json
+   * would make it grow on every UI interaction.
+   */
+  const alertThresholdsFrom = (f) => {
+    const out = {};
+    // Derived from the shape rather than a second hardcoded list, so adding a
+    // metric row can't leave the alert gate quietly out of date. The backend
+    // sanitises to the keys it knows, so anything unrecognised is dropped
+    // there rather than written into config.json.
+    for (const k of Object.keys(f || {})) {
+      if (!/(Min|Max)$/.test(k)) continue;
+      if (f[k] !== '' && f[k] != null) out[k] = f[k];
+    }
+    return out;
+  };
+
+  // The switch itself.
+  const toggleAlertFilters = () => {
+    const next = !filter.alertFiltersOn;
+    setFilter(prev => ({ ...prev, alertFiltersOn: next }));
+    pushAlertFilters(next, alertThresholdsFrom(filter));
+  };
+
+  /**
+   * A threshold was edited. Only re-pushes while the switch is ON -- otherwise
+   * typing in the left rail would write a preference the user has not opted
+   * into, which is precisely the automatic-write failure the intent guard on
+   * the backend exists to catch.
+   */
+  const onThresholdChange = (nextFilter) => {
+    if (!nextFilter.alertFiltersOn) return;
+    pushAlertFilters(true, alertThresholdsFrom(nextFilter));
   };
 
   const safeFeed = useMemo(() => (feed || []).filter(ev => ev && ev.token), [feed]);
@@ -276,7 +346,13 @@ export function DashboardScreen({ feed, selected, onSelect, onOpenSettings, onOp
       </header>
 
       <div className="dash-body">
-        <Filters filter={filter} setFilter={setFilter} onAlertToggle={toggleAlertChain} />
+        <Filters
+          filter={filter}
+          setFilter={setFilter}
+          onAlertToggle={toggleAlertChain}
+          onAlertFiltersToggle={toggleAlertFilters}
+          onThresholdChange={onThresholdChange}
+        />
         {/* Plain layout wrapper -- deliberately NOT `.feed-col`, and it must not
             scroll. `<Feed>` already renders its own `.dash-col > .feed-col`
             (the same structure the Inspector uses), so carrying that class and

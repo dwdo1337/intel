@@ -99,7 +99,7 @@ const METRIC_SECTIONS = [
   },
 ];
 
-export function Filters({ filter, setFilter, onAlertToggle }) {
+export function Filters({ filter, setFilter, onAlertToggle, onAlertFiltersToggle, onThresholdChange }) {
   // Sections start collapsed. Twelve always-visible min/max pairs made the
   // rail an unreadable wall; you open the one you actually need.
   const [open, setOpen] = useState({ chains: true, market: false, flow: false, risk: false });
@@ -139,7 +139,17 @@ export function Filters({ filter, setFilter, onAlertToggle }) {
     });
   };
 
-  const update = (key, value) => setFilter(p => ({ ...p, [key]: value }));
+  // Editing a threshold. If these ALSO gate desktop alerts, the backend has to
+  // hear about it -- otherwise the switch would apply whatever numbers happened
+  // to be set when it was flipped, and every edit after that would change the
+  // feed while the alerts kept using the old ceiling.
+  // Computed outside the updater on purpose: a setState updater must stay pure,
+  // and StrictMode double-invokes it in dev -- which would fire the POST twice.
+  const update = (key, value) => {
+    const next = { ...filter, [key]: value };
+    setFilter(next);
+    onThresholdChange?.(next);
+  };
 
   const activeCount = useMemo(() => {
     let n = 0;
@@ -162,14 +172,16 @@ export function Filters({ filter, setFilter, onAlertToggle }) {
   };
 
   const clearAll = () => {
-    setFilter(p => {
-      const next = { ...p };
-      for (const s of METRIC_SECTIONS) {
-        for (const r of s.rows) { next[`${r.key}Min`] = ''; next[`${r.key}Max`] = ''; }
-      }
-      next.rugRiskMax = '';
-      return next;
-    });
+    const next = { ...filter };
+    for (const s of METRIC_SECTIONS) {
+      for (const r of s.rows) { next[`${r.key}Min`] = ''; next[`${r.key}Max`] = ''; }
+    }
+    next.rugRiskMax = '';
+    setFilter(next);
+    // Clearing is an edit like any other: if alerts are gated by these, the
+    // backend must be told they are now wide open, or it keeps suppressing on
+    // numbers no longer visible anywhere in the UI.
+    onThresholdChange?.(next);
   };
 
   return (
@@ -276,6 +288,28 @@ export function Filters({ filter, setFilter, onAlertToggle }) {
           );
         })}
       </Section>
+
+      {/* THE FILTERS BELOW ARE A VIEW, NOT A MUTE, UNLESS THIS IS ON.
+          Without this switch the thresholds only ever reached the feed, so a
+          Market cap max emptied the deck while toasts kept arriving for tokens
+          far above it. Stated on the control itself, because "why am I still
+          being notified" is not something anyone should have to work out. */}
+      <button
+        type="button"
+        className={`fx-alertmatch${filter.alertFiltersOn ? ' on' : ''}`}
+        onClick={() => onAlertFiltersToggle?.()}
+        aria-pressed={!!filter.alertFiltersOn}
+      >
+        <span className="fx-am-box" aria-hidden="true">{filter.alertFiltersOn ? '✓' : ''}</span>
+        <span className="fx-am-text">
+          <b>Only alert me about calls matching these filters</b>
+          <em>
+            {filter.alertFiltersOn
+              ? 'Desktop alerts obey the thresholds below.'
+              : 'Filters affect the feed only — alerts still fire for everything.'}
+          </em>
+        </span>
+      </button>
 
       {METRIC_SECTIONS.map(s => (
         <Section

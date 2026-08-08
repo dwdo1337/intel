@@ -16,6 +16,7 @@ import { fetchSafety, isSolanaAddress, fetchImageFromMetadata } from './safety.j
 import { configureGmgn, isGmgnConfigured, fetchGmgnSecurity, fetchGmgnDevHistory, extractTokenExtrasFromDevHistory, fetchGmgnTokenInfo, fetchGmgnTokenWallets, gmgnHolderChain, WALLET_PAGE } from './gmgn.js';
 import { startKolWatcher, getKolActivity, kolWatcherStatus } from './kol.js';
 import { startFlowWatcher, getFlow, flowWatcherStatus } from './flow.js';
+import { passesAlertFilters, sanitizeThresholds } from './alert-filter.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 // The React build sits at ../client/dist from the SOURCE (server/), and at the
@@ -1792,11 +1793,32 @@ function notifyChainsAllowed() {
   return new Set(list.map(c => String(c).toLowerCase()));
 }
 
-function shouldNotify(chain) {
+function chainNotifyAllowed(chain) {
   const allowed = notifyChainsAllowed();
   if (!allowed) return true;
   // Same comparison the UI does: the raw chain id, lowercased.
   return allowed.has(String(chain || '').toLowerCase());
+}
+
+/**
+ * May this hit raise a desktop alert?
+ *
+ * TWO independent gates, and it takes the whole hit rather than just a chain
+ * because the second one needs the metrics:
+ *
+ *   1. the CHAIN, from the bell on each chain pill;
+ *   2. the METRIC thresholds, only when the user has switched on
+ *      "only alert on calls matching my filters".
+ *
+ * (2) is why this changed shape. The left-rail filters used to reach the feed
+ * and nothing else, so a Market cap max of 6000 emptied the feed while toasts
+ * kept arriving for tokens far above it. Gate (2) is off unless explicitly
+ * enabled -- looking at a range is not the same as agreeing to be interrupted
+ * by it, which is the same reason the pill and the bell are separate controls.
+ */
+function shouldNotify(hit) {
+  if (!chainNotifyAllowed(hit && hit.chain)) return false;
+  return passesAlertFilters(hit, config.filters && config.filters.alert_filters);
 }
 
 /**
@@ -1814,7 +1836,8 @@ function shouldNotify(chain) {
 function emitAlert(hit, kind, trigger) {
   io.emit('ca', {
     ...hit,
-    _notify: shouldNotify(hit.chain),
+    // The whole hit, not just the chain -- the metric gate needs the numbers.
+    _notify: shouldNotify(hit),
     _alert_kind: kind,
     // The event that caused THIS alert (a new mention, say). Underscored and
     // never persisted -- it describes the alert, not the token.
@@ -1823,7 +1846,55 @@ function emitAlert(hit, kind, trigger) {
 }
 
 app.get('/api/notify-prefs', (req, res) => {
-  res.json({ chains: (config.filters && config.filters.notify_chains) || null });
+  res.json({
+    chains: (config.filters && config.filters.notify_chains) || null,
+    alertFilters: (config.filters && config.filters.alert_filters) || { enabled: false, thresholds: {} },
+  });
+});
+
+/**
+ * Change whether the metric filters also gate desktop alerts, and with what
+ * thresholds.
+ *
+ * REQUIRES `intent: "user-toggle"`, for the same reason `/api/notify-prefs`
+ * does: this is a preference a renderer must never write on mount. The filter
+ * state lives in localStorage and differs per window, so without the guard a
+ * stale tab could push its own thresholds over yours and start suppressing
+ * alerts you never asked to suppress -- silently, because the UI would show
+ * its own state as if you had chosen it.
+ *
+ * Thresholds are sanitised to the known keys, so the renderer's search text,
+ * chain sets and chip selection never leak into config.json.
+ */
+app.post('/api/alert-filters', (req, res) => {
+  const { enabled, thresholds, intent } = req.body || {};
+  if (intent !== 'user-toggle') {
+    log('error', 'Refused alert-filter write without user intent', {
+      from: (req.socket.remoteAddress || '').replace('::ffff:', ''),
+      keeping: config.filters?.alert_filters?.enabled ? 'on' : 'off',
+    });
+    return res.status(400).json({
+      ok: false,
+      error: 'alert filters may only be changed by an explicit user toggle (intent: "user-toggle")',
+    });
+  }
+  const clean = { enabled: !!enabled, thresholds: sanitizeThresholds(thresholds) };
+  config.filters = { ...(config.filters || {}), alert_filters: clean };
+  saveConfig(config);
+  log('system', 'Alert filters updated', {
+    enabled: clean.enabled,
+    set: Object.keys(clean.thresholds).length
+      ? Object.entries(clean.thresholds).map(([k, v]) => `${k}=${v}`).join(' ')
+      : 'none',
+  });
+  // Same reasoning as the chain preference: tell the toast layer rather than
+  // making it poll, or a threshold just set keeps alerting until reconnect —
+  // which looks exactly like the filter not working.
+  io.emit('notify_prefs', {
+    chains: config.filters.notify_chains ?? null,
+    alertFilters: clean,
+  });
+  res.json({ ok: true, alertFilters: clean });
 });
 
 /**
