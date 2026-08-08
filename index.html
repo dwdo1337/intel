@@ -176,62 +176,94 @@ section.pad{padding:clamp(72px,10vw,130px) 0}
  border:1px solid rgba(79,227,168,.35);background:var(--accent-dim);color:var(--accent);
  display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800}
 
-/* the toast component — layout and tokens taken from the app's real toast */
-.toast{border:1px solid var(--line2);border-radius:13px;background:var(--surface);
- overflow:hidden;box-shadow:0 34px 90px rgba(0,0,0,.7);font-size:13px;
- border-left:2px solid var(--accent)}
-.toast-hd{display:flex;align-items:center;gap:9px;padding:11px 13px;
- background:var(--surface2);border-bottom:1px solid var(--line)}
-.toast-hd .lb{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
- color:var(--accent);font-weight:600}
-.toast-hd .new{margin-left:auto;font-family:var(--mono);font-size:9.5px;letter-spacing:.09em;
- text-transform:uppercase;font-weight:800;color:#04140d;background:var(--accent);
- border-radius:999px;padding:3px 9px}
-.toast-bd{padding:15px 15px 16px}
-.toast-tok{display:flex;align-items:center;gap:12px}
-.toast-tok .av{width:44px;height:44px;border-radius:10px;flex:none;position:relative;
- background:var(--surface2);border:1px solid var(--line);overflow:hidden}
-.toast-tok .av span{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
- font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:.06em}
-.toast-tok .av b{position:absolute;inset:0;background:linear-gradient(135deg,#2a1a3d,#7a3fb0);
- display:flex;align-items:center;justify-content:center;font-size:19px;
- opacity:0;transition:opacity .5s}
-.toast-tok.f2 .av b{opacity:1}
-.toast-tok h5{font-size:16px;font-weight:800;letter-spacing:-.02em}
-.toast-tok h5 span{color:var(--muted);font-weight:500;font-size:13px;margin-left:5px;font-family:var(--mono)}
-.toast-tok .who{font-size:12px;color:var(--muted);margin-top:2px}
-.toast-tok .who b{color:var(--tg);font-weight:600}
-.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}
-.chip{font-family:var(--mono);font-size:9.5px;font-weight:600;letter-spacing:.06em;
- text-transform:uppercase;padding:4px 8px;border-radius:5px;border:1px solid var(--line2);
- color:var(--muted);transition:.45s}
-.chip.sol{color:#c4a0ff;border-color:rgba(153,69,255,.35);background:rgba(153,69,255,.12)}
-.chip.pend{color:var(--dim)}
-.chip.done{color:var(--accent);border-color:rgba(79,227,168,.35);background:var(--accent-dim)}
-.tmetrics{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;margin-top:14px;
- background:var(--line);border:1px solid var(--line);border-radius:9px;overflow:hidden}
-.tmetrics div{background:var(--surface2);padding:10px 11px}
-.tmetrics label{display:block;font-family:var(--mono);font-size:9px;letter-spacing:.08em;
- text-transform:uppercase;color:var(--dim);margin-bottom:4px}
-.tmetrics val{display:block;font-family:var(--mono);font-size:15px;font-weight:600;letter-spacing:-.02em}
-.tmetrics val.up{color:var(--accent)}
-.tmsg{margin-top:12px;padding:9px 12px;border-left:2px solid var(--line2);
- background:var(--surface2);border-radius:0 7px 7px 0;font-size:12.5px;color:var(--muted)}
-.trow{display:flex;align-items:center;gap:9px;margin-top:12px;font-family:var(--mono);font-size:11px}
-.trow code{color:var(--dim);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.trow .cp{border:1px solid var(--line2);border-radius:6px;padding:5px 10px;color:var(--muted);
- font-size:10px;letter-spacing:.05em;text-transform:uppercase;font-weight:600}
-.tkol{margin-top:12px;display:flex;align-items:center;gap:8px;font-size:12px;color:var(--dim);
- opacity:0;transition:opacity .5s}
-.tkol.on{opacity:1}
-.tkol i{width:6px;height:6px;border-radius:50%;background:var(--accent);display:block;
- box-shadow:0 0 8px var(--accent)}
-.tkol b{color:var(--accent);font-family:var(--mono);font-weight:600}
-.tbtns{display:flex;gap:8px;margin-top:14px}
-.tbtn{flex:1;text-align:center;border-radius:8px;padding:10px;font-size:12px;font-weight:700;
- background:linear-gradient(180deg,var(--accent2),var(--accent));color:#04140d}
-.tbtn.alt{flex:none;padding:10px 14px;background:var(--surface2);color:var(--muted);
- border:1px solid var(--line2);font-weight:600}
+/* ── the toast ────────────────────────────────────────────────────────
+   Copied from app/electron/toast.html, not approximated. Same class
+   names, same values, so it stays checkable against the real component.
+   Only change: the fixed 420px width is fluid here. */
+.toast{position:relative;width:100%;max-width:420px;border-radius:10px;overflow:hidden;
+ background:rgba(16,19,27,.92);border:1px solid rgba(255,255,255,.09);
+ box-shadow:0 18px 60px rgba(0,0,0,.7),0 0 0 1px rgba(79,227,168,.08) inset,0 0 45px rgba(79,227,168,.06);
+ backdrop-filter:blur(22px);font-family:var(--sans)}
+.toast .glow-t{position:absolute;top:-50px;left:50%;transform:translateX(-50%);
+ width:220px;height:110px;pointer-events:none;z-index:0;
+ background:radial-gradient(ellipse,rgba(79,227,168,.18) 0%,transparent 70%)}
+.toast .accent-line{position:absolute;left:0;top:36px;bottom:36px;width:3px;z-index:2;
+ background:linear-gradient(180deg,var(--accent) 0%,rgba(79,227,168,0) 100%)}
+.toast .inner{position:relative;z-index:1;padding:16px 16px 16px 18px;
+ display:flex;flex-direction:column;gap:13px}
+.toast .topbar{min-height:30px;display:flex;align-items:center;gap:10px}
+.toast .brand{flex:1 1 auto;min-width:0;display:flex;align-items:center;gap:7px;
+ font-size:10px;font-weight:800;letter-spacing:.07em;color:var(--accent);text-transform:uppercase}
+.toast .brand svg{width:15px;height:15px;flex:none}
+.toast .live{display:flex;align-items:center;gap:5px;font-size:10px;font-weight:800;
+ color:#0a0b10;background:var(--accent);padding:3px 8px;border-radius:20px;flex:none}
+.toast .live-dot{width:5px;height:5px;border-radius:50%;background:#0a0b10;animation:blink 1.2s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+.toast .close{width:26px;height:26px;flex-shrink:0;border-radius:7px;
+ border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.05);color:#9aa4ba;
+ font-size:15px;line-height:1;display:flex;align-items:center;justify-content:center}
+.toast .main{display:flex;gap:13px;align-items:flex-start}
+.toast .token-img{width:54px;height:54px;border-radius:8px;overflow:hidden;flex-shrink:0;
+ background:linear-gradient(135deg,#1a2030,#0d1118);border:1px solid rgba(255,255,255,.09);position:relative}
+.toast .token-img .fallback{width:100%;height:100%;display:flex;align-items:center;
+ justify-content:center;font-size:20px;font-weight:800;color:var(--accent)}
+.toast .token-img .art{position:absolute;inset:0;opacity:0;transition:opacity .25s ease;
+ background:radial-gradient(circle at 30% 28%,#ffe9a8,#f0a93c 42%,#8d3b12 100%);
+ display:flex;align-items:center;justify-content:center;font-size:23px}
+.toast .token-img.on .art{opacity:1}
+.toast .info{flex:1;min-width:0;display:flex;flex-direction:column;gap:5px}
+.toast .title{display:flex;align-items:baseline;gap:8px}
+.toast .name{font-size:16px;font-weight:800;color:var(--text)}
+.toast .symbol{font-size:11px;font-weight:700;color:#6b7588}
+.toast .badges{display:flex;gap:6px;flex-wrap:wrap}
+.toast .badge{font-size:9px;font-weight:800;padding:3px 6px;border-radius:4px;
+ text-transform:uppercase;letter-spacing:.04em;border:1px solid transparent;transition:.45s}
+/* chainColor() tints this per chain — Solana #9945FF, at 18/35 alpha */
+.toast .badge.chain{background:#9945FF18;color:#9945FF;border-color:#9945FF35}
+.toast .badge.lp{background:rgba(255,255,255,.05);color:#9fa6b5;border-color:rgba(255,255,255,.10)}
+.toast .badge.src-tg{background:rgba(59,130,246,.12);color:#60a5fa;border-color:rgba(59,130,246,.25)}
+.toast .sender{font-size:12px;color:#8b95ab;margin-top:6px;line-height:1.5;font-weight:450}
+.toast .sender b{color:var(--text)}
+.toast .metrics{display:flex;gap:0;border:1px solid rgba(255,255,255,.09);
+ border-radius:8px;overflow:hidden}
+.toast .metric{flex:1;padding:11px 4px;text-align:center;border-right:1px solid rgba(255,255,255,.06)}
+.toast .metric:last-child{border-right:none}
+.toast .metric-label{font-size:9px;font-weight:700;color:#6b7588;text-transform:uppercase;
+ letter-spacing:.05em;margin-bottom:1px}
+.toast .metric-value{font-size:12px;font-weight:800;color:var(--text);font-family:var(--mono)}
+.toast .metric-value.up{color:var(--buy)}
+.toast .metric-value.pend{color:#6b7588}
+.toast .footer{display:flex;align-items:center;justify-content:space-between;gap:12px;
+ font-size:11px;color:#6b7588;flex-wrap:wrap}
+.toast .status-pill{display:flex;align-items:center;gap:6px;padding:6px 10px;border-radius:20px;
+ background:rgba(34,197,94,.10);border:1px solid rgba(34,197,94,.25);
+ font-size:11px;font-weight:700;color:var(--buy);transition:.45s}
+.toast .status-pill.unknown{background:rgba(255,255,255,.05);
+ border-color:rgba(255,255,255,.09);color:#6b7588}
+.toast .status-dot{width:6px;height:6px;border-radius:50%;background:currentColor;
+ box-shadow:0 0 8px currentColor}
+.toast .counts{display:flex;gap:14px;font-size:11px;color:#6b7588;align-items:center;
+ opacity:0;transition:opacity .45s}
+.toast .counts.on{opacity:1}
+.toast .counts b{color:var(--text);margin-right:3px}
+.toast .counts .hot,.toast .counts .hot b{color:var(--buy)}
+.toast .msg-row{padding:9px 11px;border-radius:8px;background:rgba(255,255,255,.028);
+ border-left:2px solid rgba(79,227,168,.5)}
+.toast .msg-text{font-size:12px;line-height:1.5;color:#c2cad9;font-weight:450}
+.toast .ca-row{display:flex;align-items:center;gap:10px;padding:7px 9px;border-radius:7px;
+ background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09)}
+.toast .ca{font-family:var(--mono);font-size:10px;color:var(--accent);flex:1;
+ overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.toast .copy-btn{height:26px;padding:0 11px;border-radius:6px;
+ border:1px solid rgba(79,227,168,.35);background:rgba(79,227,168,.10);color:var(--accent);
+ font-size:10px;font-weight:800;text-transform:uppercase;display:flex;align-items:center}
+.toast .actions{display:flex;gap:8px}
+.toast .tbtn{flex:1;height:34px;border-radius:6px;border:1px solid transparent;font-size:11px;
+ font-weight:800;text-transform:uppercase;letter-spacing:.04em;
+ display:flex;align-items:center;justify-content:center;
+ background:var(--accent);color:#050705}
+.toast .tbtn.ghost{background:rgba(255,255,255,.04);color:var(--text);
+ border-color:rgba(255,255,255,.09)}
 .demo-ctl{display:flex;align-items:center;gap:12px;margin-top:20px;justify-content:center;
  font-family:var(--mono);font-size:11px;color:var(--dim)}
 .demo-ctl button{background:var(--surface2);border:1px solid var(--line2);color:var(--muted);
@@ -415,7 +447,7 @@ footer .container{display:flex;flex-wrap:wrap;gap:14px;justify-content:space-bet
     <div class="trust rv">
       <span><b>Free</b> &amp; <i>MIT</i> open source</span>
       <span><b>No account</b>, no server, no telemetry</span>
-      <span><b>18</b> servers · <i>1,295</i> channels · <b>6</b> chains</span>
+      <span>Windows 10/11 · <b>Telegram</b> + <b>Discord</b></span>
     </div>
 
     <div class="stage rv" id="stage">
@@ -427,19 +459,49 @@ footer .container{display:flex;flex-wrap:wrap;gap:14px;justify-content:space-bet
         </div>
         <div class="float-toast">
           <div class="toast">
-            <div class="toast-hd"><span class="lb">intel. command deck</span><span class="new">new signal</span></div>
-            <div class="toast-bd">
-              <div class="toast-tok f2">
-                <div class="av"><b>★</b></div>
-                <div>
-                  <h5>STARMIND <span>$STARMIND</span></h5>
-                  <div class="who">Called by <b>@whale_watcher</b> · Alpha Signals</div>
+            <div class="glow-t"></div>
+            <div class="accent-line"></div>
+            <div class="inner">
+              <div class="topbar">
+                <div class="brand">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                       stroke-linecap="round" aria-hidden="true">
+                    <path d="M5 12.55a11 11 0 0 1 14.08 0M8.53 16.11a6 6 0 0 1 6.95 0M12 20h.01"/>
+                  </svg>
+                  intel. Command Deck
+                </div>
+                <div class="live"><span class="live-dot"></span>NEW SIGNAL</div>
+                <div class="close">&times;</div>
+              </div>
+              <div class="main">
+                <div class="token-img on"><div class="fallback">S</div><div class="art">★</div></div>
+                <div class="info">
+                  <div class="title"><span class="name">STARMIND</span><span class="symbol">$STARMIND</span></div>
+                  <div class="badges">
+                    <span class="badge chain" style="background:#F3BA2F18;color:#F3BA2F;border-color:#F3BA2F35">BSC</span>
+                    <span class="badge lp">PancakeSwap</span>
+                    <span class="badge src-tg">Telegram</span>
+                  </div>
+                  <div class="sender">Called by <b>@whale_watcher</b> · Alpha Signals · now</div>
                 </div>
               </div>
-              <div class="tmetrics">
-                <div><label>MC</label><val>$60.2K</val></div>
-                <div><label>Liq</label><val>$25.6K</val></div>
-                <div><label>24h</label><val class="up">+0.25%</val></div>
+              <div class="metrics">
+                <div class="metric"><div class="metric-label">Vol</div><div class="metric-value">$70.78K</div></div>
+                <div class="metric"><div class="metric-label">MC</div><div class="metric-value">$60.27K</div></div>
+                <div class="metric"><div class="metric-label">Liq</div><div class="metric-value">$25.67K</div></div>
+                <div class="metric"><div class="metric-label">24h</div><div class="metric-value up">+0.25%</div></div>
+              </div>
+              <div class="footer">
+                <div class="status-pill"><span class="status-dot"></span>DEX Paid · Yes</div>
+              </div>
+              <div class="msg-row"><div class="msg-text">aping this one</div></div>
+              <div class="ca-row">
+                <div class="ca">0x98f098…a17777</div>
+                <div class="copy-btn">Copy CA</div>
+              </div>
+              <div class="actions">
+                <div class="tbtn">Quick buy</div>
+                <div class="tbtn ghost">DexScreener</div>
               </div>
             </div>
           </div>
@@ -500,31 +562,56 @@ footer .container{display:flex;flex-wrap:wrap;gap:14px;justify-content:space-bet
       </div>
       <div class="rv" id="alert">
         <div class="toast" id="liveToast">
-          <div class="toast-hd"><span class="lb">intel. command deck</span><span class="new">new signal</span></div>
-          <div class="toast-bd">
-            <div class="toast-tok" id="tTok">
-              <div class="av"><span>loading</span><b>◈</b></div>
-              <div>
-                <h5>RUBY <span>$ruby</span></h5>
-                <div class="who">Called by <b>@degenmike</b> · Alpha Signals · now</div>
+          <div class="glow-t"></div>
+          <div class="accent-line"></div>
+          <div class="inner">
+            <div class="topbar">
+              <div class="brand">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                     stroke-linecap="round" aria-hidden="true">
+                  <path d="M5 12.55a11 11 0 0 1 14.08 0M8.53 16.11a6 6 0 0 1 6.95 0M12 20h.01"/>
+                </svg>
+                intel. Command Deck
+              </div>
+              <div class="live"><span class="live-dot"></span>NEW SIGNAL</div>
+              <div class="close">&times;</div>
+            </div>
+            <div class="main">
+              <div class="token-img" id="tImg">
+                <div class="fallback">R</div>
+                <div class="art">★</div>
+              </div>
+              <div class="info">
+                <div class="title"><span class="name">r/dog</span><span class="symbol">$ruby</span></div>
+                <div class="badges">
+                  <span class="badge chain">Solana</span>
+                  <span class="badge lp">Pump.Fun</span>
+                  <span class="badge src-tg">Telegram</span>
+                </div>
+                <div class="sender">Called by <b>@degenmike</b> · Alpha Signals · now</div>
               </div>
             </div>
-            <div class="chips">
-              <span class="chip sol">Solana</span>
-              <span class="chip">Pump.Fun</span>
-              <span class="chip pend" id="cDex">DEX Paid · checking…</span>
+            <div class="metrics">
+              <div class="metric"><div class="metric-label">Vol</div><div class="metric-value">$1.0M</div></div>
+              <div class="metric"><div class="metric-label">MC</div><div class="metric-value">$44.4K</div></div>
+              <div class="metric"><div class="metric-label">Liq</div><div class="metric-value">$15.7K</div></div>
+              <div class="metric"><div class="metric-label">24h</div><div class="metric-value up">+110.0%</div></div>
             </div>
-            <div class="tmetrics">
-              <div><label>Market cap</label><val>$44.4K</val></div>
-              <div><label>Liquidity</label><val>$15.7K</val></div>
-              <div><label>Holders</label><val id="mHold" style="color:var(--dim)">—</val></div>
+            <div class="footer">
+              <div class="status-pill unknown" id="tDex"><span class="status-dot"></span>DEX Paid · checking…</div>
+              <div class="counts" id="tCounts">
+                <span><b>Holders</b>2.6K</span>
+                <span class="hot"><b>Smart</b>1</span>
+              </div>
             </div>
-            <div class="tmsg">early on this one, chart looks clean</div>
-            <div class="trow"><code>5WMzts…MKpump</code><span class="cp">Copy CA</span></div>
-            <div class="tkol" id="tKol"><i></i>Smart money <b>1 holding</b></div>
-            <div class="tbtns">
-              <span class="tbtn">Quick buy</span>
-              <span class="tbtn alt">DexScreener</span>
+            <div class="msg-row"><div class="msg-text">early on this one, chart looks clean</div></div>
+            <div class="ca-row">
+              <div class="ca">5WMzts…MKpump</div>
+              <div class="copy-btn">Copy CA</div>
+            </div>
+            <div class="actions">
+              <div class="tbtn">Quick buy</div>
+              <div class="tbtn ghost">DexScreener</div>
             </div>
           </div>
         </div>
@@ -570,11 +657,17 @@ footer .container{display:flex;flex-wrap:wrap;gap:14px;justify-content:space-bet
 <!-- ═══ STATS ══════════════════════════════════════════════════════════ -->
 <section class="pad" style="padding-top:0">
   <div class="container">
+    <div class="sec-head rv" style="margin-bottom:30px">
+      <div class="eyebrow"><i></i>measured on one real install</div>
+      <h2>Numbers from a machine<br>actually running it.</h2>
+      <p class="lead" style="margin-top:16px">Not a spec sheet. This is what one account reached and
+        what one store of 500 tokens looked like — yours will differ.</p>
+    </div>
     <div class="stats rv">
-      <div class="stat"><b data-count="1295">0</b><span>channels across 18 Discord servers, from one account</span></div>
-      <div class="stat"><b data-count="205" data-suffix="/500">0</b><span>tokens called by more than one person — the rest were one guy and an echo</span></div>
-      <div class="stat"><b data-count="500" data-prefix="" data-suffix="/500">0</b><span>tokens had DEX-paid status resolved. It's keyless — most scanners just don't check</span></div>
-      <div class="stat"><b data-count="14" data-suffix="s">0</b><span>cold start. Installer or portable, no admin rights</span></div>
+      <div class="stat"><b data-count="1295">0</b><span>Discord channels reachable from a single account, across 18 servers</span></div>
+      <div class="stat"><b data-count="205" data-suffix="/500">0</b><span>tokens called by more than one person. The other 295 were one guy and an echo</span></div>
+      <div class="stat"><b data-count="500" data-suffix="/500">0</b><span>had DEX-paid resolved. It's a keyless endpoint — most scanners just don't check</span></div>
+      <div class="stat"><b data-count="14" data-suffix="s">0</b><span>cold start, from launch to a working deck</span></div>
     </div>
   </div>
 </section>
@@ -844,46 +937,43 @@ footer .container{display:flex;flex-wrap:wrap;gap:14px;justify-content:space-bet
         The app opens the alert with market data and the rest lands
         50–460 ms later; the delays below are stretched so a human can
         see the order it happens in. ─────────────────────────────────── */
-  var tok = document.getElementById('tTok'),
-      dex = document.getElementById('cDex'),
-      hold= document.getElementById('mHold'),
-      kol = document.getElementById('tKol'),
-      el  = document.getElementById('elapsed'),
+  var tImg   = document.getElementById('tImg'),
+      tDex   = document.getElementById('tDex'),
+      tCounts= document.getElementById('tCounts'),
+      el     = document.getElementById('elapsed'),
       timers = [];
+
+  var DEX_DONE = '<span class="status-dot"></span>DEX Paid · Yes',
+      DEX_WAIT = '<span class="status-dot"></span>DEX Paid · checking…';
 
   function resetToast(){
     timers.forEach(clearTimeout); timers = [];
-    if(!tok) return;
-    tok.classList.remove('f2');
-    dex.className = 'chip pend'; dex.textContent = 'DEX Paid · checking…';
-    hold.textContent = '—'; hold.style.color = 'var(--dim)';
-    kol.classList.remove('on');
+    if(!tImg) return;
+    tImg.classList.remove('on');
+    tDex.className = 'status-pill unknown'; tDex.innerHTML = DEX_WAIT;
+    tCounts.classList.remove('on');
     el.textContent = '+0 ms';
+  }
+  function settle(){
+    tImg.classList.add('on');
+    tDex.className = 'status-pill'; tDex.innerHTML = DEX_DONE;
+    tCounts.classList.add('on');
+    el.textContent = '+460 ms';
   }
   function playToast(){
     resetToast();
-    if(!tok) return;
-    if(reduce){
-      tok.classList.add('f2');
-      dex.className = 'chip done'; dex.textContent = 'DEX Paid · yes';
-      hold.textContent = '2.6K'; hold.style.color = 'var(--text)';
-      kol.classList.add('on'); el.textContent = '+460 ms';
-      return;
-    }
+    if(!tImg) return;
+    if(reduce){ settle(); return; }
     timers.push(setTimeout(function(){
-      tok.classList.add('f2'); el.textContent = '+120 ms';
+      tImg.classList.add('on'); el.textContent = '+120 ms';
     }, 900));
     timers.push(setTimeout(function(){
-      dex.className = 'chip done'; dex.textContent = 'DEX Paid · yes';
+      tDex.className = 'status-pill'; tDex.innerHTML = DEX_DONE;
       el.textContent = '+240 ms';
     }, 1800));
     timers.push(setTimeout(function(){
-      hold.textContent = '2.6K'; hold.style.color = 'var(--text)';
-      el.textContent = '+380 ms';
+      tCounts.classList.add('on'); el.textContent = '+460 ms';
     }, 2700));
-    timers.push(setTimeout(function(){
-      kol.classList.add('on'); el.textContent = '+460 ms';
-    }, 3500));
   }
 
   var toastPlayed = false;
