@@ -180,9 +180,31 @@ footer .container{display:flex;justify-content:space-between;gap:20px;flex-wrap:
 .dl-note{font-size:12.5px;line-height:1.6;color:var(--muted);margin-top:4px}
 .dl-fine{font-size:12px;color:var(--dim);line-height:1.7;max-width:640px;margin:0 auto 22px}
 .dl-fine b{color:var(--muted)}
+
+/* CA strip — deliberately small. It is a detail, not the pitch. */
+.ca-strip{display:flex;align-items:center;justify-content:center;gap:10px;
+ padding:7px 12px;font-family:var(--mono);font-size:11px;color:var(--dim);
+ background:var(--surface);border-bottom:1px solid var(--line)}
+.ca-strip .k{color:var(--muted);letter-spacing:.08em;text-transform:uppercase;font-size:9.5px}
+.ca-strip code{color:var(--muted);user-select:all}
+.ca-strip.bottom{border-bottom:none;border-top:1px solid var(--line)}
+/* download cards, disabled state */
+.dl-card.locked{opacity:.55;cursor:not-allowed;pointer-events:none;filter:saturate(.4)}
+.dl-lock{display:inline-flex;align-items:center;gap:6px;margin-top:22px;
+ padding:9px 16px;border-radius:999px;border:1px solid var(--line2);
+ background:var(--surface);color:var(--muted);font-size:12px;font-weight:700}
+.dl-lock .dot{width:7px;height:7px;border-radius:50%;background:var(--warn);
+ box-shadow:0 0 10px var(--warn)}
+.socials{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:26px}
+.social{display:inline-flex;align-items:center;gap:8px;padding:9px 16px;border-radius:8px;
+ border:1px solid var(--line);background:var(--surface2);color:var(--text);
+ font-size:13px;font-weight:600;transition:.15s}
+.social:hover{border-color:var(--accent);color:var(--accent)}
+.nav-links a.locked{color:var(--dim);cursor:not-allowed}
 </style>
 </head>
 <body>
+<div class="ca-strip"><span class="k">CA</span><code>not launched yet — no contract exists</code></div>
 <nav>
   <div class="container">
     <a href="#" class="logo">
@@ -193,9 +215,9 @@ footer .container{display:flex;justify-content:space-between;gap:20px;flex-wrap:
       <a href="#demo">Demo</a>
       <a href="#features">Features</a>
       <a href="#toast">Toasts</a>
-      <a href="#download">Download</a>
+      <a href="#download" class="locked">Download &middot; soon</a>
     </div>
-    <a href="#download" class="cta">Download for Windows</a>
+    <a href="https://github.com/dwdo1337/intel" class="cta">View on GitHub</a>
   </div>
 </nav>
 
@@ -303,21 +325,21 @@ footer .container{display:flex;justify-content:space-between;gap:20px;flex-wrap:
       Settings screen — nothing to hand-edit, nothing leaves your machine.</p>
 
     <div class="dl-grid">
-      <a class="dl-card primary" href="https://github.com/dwdo1337/intel/releases/latest">
+      <div class="dl-card primary locked">
         <span class="dl-tag">Recommended</span>
         <span class="dl-title">Installer</span>
         <span class="dl-file">intel-Command-Deck-Setup.exe</span>
         <span class="dl-note">Standard wizard. Desktop and Start-menu shortcuts.
           Installs per user — no admin rights, no UAC prompt. Uninstalling keeps
           your credentials and history.</span>
-      </a>
-      <a class="dl-card" href="https://github.com/dwdo1337/intel/releases/latest">
+      </div>
+      <div class="dl-card locked">
         <span class="dl-tag alt">No install</span>
         <span class="dl-title">Portable</span>
         <span class="dl-file">intel-Command-Deck-Portable.exe</span>
         <span class="dl-note">Single file, runs anywhere, leaves nothing behind.
           Unpacks on each launch, so it starts a little slower. Good for a USB stick.</span>
-      </a>
+      </div>
     </div>
 
     <!-- Said up front rather than discovered as a scare after downloading. -->
@@ -327,7 +349,15 @@ footer .container{display:flex;justify-content:space-between;gap:20px;flex-wrap:
       or <a href="https://github.com/dwdo1337/intel">build it yourself from source</a>.
     </p>
 
-    <div class="hero-actions" style="margin-bottom:0">
+    <div class="dl-lock"><span class="dot"></span>Downloads open at launch</div>
+
+    <div class="socials">
+      <a class="social" href="https://github.com/dwdo1337/intel">GitHub</a>
+      <a class="social" href="https://x.com/">X</a>
+      <a class="social" href="https://t.me/">Telegram</a>
+    </div>
+
+    <div class="hero-actions" style="margin-bottom:0;margin-top:26px">
       <a class="demo-link" href="https://github.com/dwdo1337/intel">View on GitHub →</a>
     </div>
   </div>
@@ -339,6 +369,7 @@ footer .container{display:flex;justify-content:space-between;gap:20px;flex-wrap:
     <div>Built for Windows · Telegram · Discord · Solana · Base · Ethereum · BSC · Robinhood</div>
   </div>
 </footer>
+<div class="ca-strip bottom"><span class="k">CA</span><code>not launched yet — no contract exists</code></div>
 
 <script>
 const sample = [
