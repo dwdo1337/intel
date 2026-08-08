@@ -141,7 +141,19 @@ input:focus,textarea:focus{border-color:var(--accent)}
 
 /* Feed column */
 .feed-col{flex:1;overflow:auto;padding:20px;display:flex;flex-direction:column;gap:14px}
-.feed-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:2px;position:sticky;top:0;background:var(--bg);padding:6px 0;z-index:2}
+/* A sticky child of a padded scroller parks at the PADDING edge, so `.feed-col`'s
+   20px padding leaves a strip above the header where cards scroll past in plain
+   sight -- that is the green QUICK BUY bar and card avatars appearing above the
+   LIVE FEED title. Negative margins do not fix it: they move the box but sticky
+   still anchors to the padding box.
+   So the header paints its own cover strip upward with ::before, which travels
+   with it and is immune to how sticky and padding interact. Also stretched
+   sideways past the column padding so a card's accent border cannot peek out. */
+.feed-head{display:flex;align-items:center;justify-content:space-between;
+  position:sticky;top:0;z-index:5;background:var(--bg);
+  margin:0 -20px 2px;padding:8px 20px 10px}
+.feed-head::before{content:'';position:absolute;left:0;right:0;bottom:100%;
+  height:26px;background:var(--bg);pointer-events:none}
 .feed-title{font-size:13px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:var(--muted)}
 .feed-title span{color:var(--dim);font-weight:500;margin-left:6px}
 .feed-chips{display:flex;gap:8px;flex-wrap:wrap}

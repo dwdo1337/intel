@@ -1,8 +1,8 @@
 # intel. Command Deck — what it does and how
 
 A plain-English walkthrough of the whole app, in the order things actually
-happen. For the engineering detail see [OVERVIEW.md](OVERVIEW.md); for the
-build log and every known limitation see [../app/AGENTS.md](../app/AGENTS.md).
+happen. For the engineering detail see **OVERVIEW.md**; for the
+build log and every known limitation see **../app/AGENTS.md**.
 
 ---
 

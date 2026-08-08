@@ -1,7 +1,7 @@
 # intel. Command Deck — where development stands
 
 Last updated 2026-08-06. See [HOW-IT-WORKS.md](HOW-IT-WORKS.md) for what the app
-does, [OVERVIEW.md](OVERVIEW.md) for architecture, [../app/AGENTS.md](../app/AGENTS.md)
+does, **OVERVIEW.md** for architecture, **../app/AGENTS.md**
 for the full engineering log.
 
 ---
@@ -25,7 +25,7 @@ desktop is the correct outcome of that setting.
 That is exactly what happened on 2026-08-06: 135 suppressed vs 5 raised, with
 both chains switched off at 17:23 the previous run. The toast path itself was
 verified working end to end. Diagnostic commands are in
-[../app/AGENT-BRIEF.md](../app/AGENT-BRIEF.md) §7.
+**../app/AGENT-BRIEF.md** §7.
 
 Alerts are toggled by the **bell** on each chain pill; the pill itself only
 filters the feed.
@@ -151,9 +151,9 @@ both lack would need per-launchpad scraping — fragile, deliberately not done.
   Ticker matching would work but throws false positives on symbols like `UP`.
 - **Callout counts** need GMGN partner credentials (AK/SK).
 - **Landing page** demo in `design/promo/landing/` is outlined, not built.
-  Briefed in [../design/promo/DESIGN-AGENT-PROMPT.md](../design/promo/DESIGN-AGENT-PROMPT.md),
-  which supersedes the earlier `AGENT-PROMPT.md` (that one produced generic
-  material because it described the app instead of requiring screenshots of it).
+  Briefed in **../design/promo/CLAUDE-DESIGN-BRIEF.md**, which supersedes the
+  earlier `AGENT-PROMPT.md` (that one produced generic material because it
+  described the app instead of requiring screenshots of it).
 - **New chains arrive without a filter pill.** `unichain` appeared in the feed
   on 2026-08-06: detected and priced, but no safety provider, no GMGN holder
   data, and no pill — so it cannot be muted from the UI. Same gap Stable and Arc
@@ -199,9 +199,9 @@ It contains **no credentials, no `data/`, no build output and no machine-specifi
 paths** — verified by scanning every real credential value from the live config
 against every file in the directory.
 
-- [../github-release/README.md](../github-release/README.md) — the public README
-- [../github-release/PUBLISHING.md](../github-release/PUBLISHING.md) — how to push and cut a release
-- [../github-release/AGENT-SETUP-PROMPT.md](../github-release/AGENT-SETUP-PROMPT.md) — hand to an agent to install and verify
+- **../github-release/README.md** — the public README
+- **../github-release/PUBLISHING.md** — how to push and cut a release
+- **../github-release/AGENT-SETUP-PROMPT.md** — hand to an agent to install and verify
 
 The app now builds **two** Windows artifacts (`npm run electron:pack`):
 
@@ -222,7 +222,7 @@ it advertised a product that does not exist. Measured before archiving:
 - **0 of 10** promo pages used the app's accent colour `#4fe3a0` — they did not
   match the interface at all.
 - **7 of 10** carried claims from the "do not use" table in
-  [../design/promo/COPY-TEXTS.md](../design/promo/COPY-TEXTS.md): 4chan /
+  **../design/promo/COPY-TEXTS.md**: 4chan /
   Farcaster / Truth Social as sources (only Telegram and Discord exist), GoPlus
   (never integrated), "Native toast" (deliberately not native), "Never miss",
   and a "7-day trial" for a product with no payment system.
@@ -231,10 +231,9 @@ Also archived: 17 pre-build UI mockups, screenshots predating the card and
 toast redesigns, the brief that produced the false material
 (`AGENT-PROMPT.md`), and `public-repo/` (superseded by `github-release/`).
 
-`_archive-superseded/README.md` records exactly why each item went and can be
-deleted wholesale once reviewed.
+The archive was reviewed and deleted wholesale on 2026-08-08.
 
-**What survives is current:** `DESIGN-AGENT-PROMPT.md` (real tokens, mandatory
+**What survives is current:** `CLAUDE-DESIGN-BRIEF.md` (real tokens, mandatory
 screenshot procedure, verified claims), `COPY-TEXTS.md`, the landing page, and
 the brand assets.
 
