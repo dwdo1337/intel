@@ -9,10 +9,11 @@ what was actually published to [Releases](../../releases) — code sitting under
 
 ---
 
-## Unreleased
+## v0.2.1
 
-Both entries below are fixes to behaviour people have already hit. Neither is in
-the published `v0.2.0` binaries.
+Two fixes to behaviour people had already hit. Both were in the repository for a
+while before this build existed, which is the gap this file now exists to make
+visible.
 
 ### Fixed
 
