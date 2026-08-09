@@ -145,11 +145,37 @@ as soon as you publish a release.
 
 ## 6. Keeping it updated
 
+**This directory is a mirror of `app/`. Do not edit its source by hand.**
+Change `app/`, then run the sync from the workspace root:
+
+```bash
+python sync-release.py
+```
+
+It copies the mirrored source (`server/`, `client/src`, `electron/`, `build/`
+and the build config), removes files deleted from `app/`, and then runs the
+credential gate from §1 automatically — every time, not when someone remembers.
+It exits non-zero and refuses to report success if any value from the live
+`app/config.json` appears anywhere in this directory, so a leak stops the
+process rather than being noticed later. `--check` reports drift without
+changing anything.
+
+`README.md` and `config.example.json` are deliberately **not** mirrored — the
+public versions differ from the working ones, and syncing them would overwrite
+the public copy.
+
+Then, as usual:
+
 ```bash
 git add -A
 git commit -m "what changed"
 git push
 ```
+
+Add anything user-visible to [CHANGELOG.md](CHANGELOG.md) in the same commit.
+Entries stay under **Unreleased** until binaries carrying them are actually
+published — the gap between "fixed in the repo" and "fixed in the thing people
+download" is exactly what that heading exists to make visible.
 
 For a new version: bump `version` in `package.json`, rebuild, then
 `gh release create vX.Y.Z ...` with the new binaries. The installer's artifact

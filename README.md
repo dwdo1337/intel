@@ -13,7 +13,8 @@ you only when something is worth it.**
 [![Licence](https://img.shields.io/badge/licence-MIT-6b7588?style=flat-square)](LICENSE)
 
 [**Download**](../../releases) · [Setup](docs/SETUP.md) ·
-[How it works](docs/HOW-IT-WORKS.md) · [Architecture](docs/ARCHITECTURE.md)
+[How it works](docs/HOW-IT-WORKS.md) · [Architecture](docs/ARCHITECTURE.md) ·
+[Changelog](CHANGELOG.md)
 
 </div>
 
@@ -208,6 +209,11 @@ confident blank.
 ---
 
 ## Screenshots
+
+The deck — filters left, feed centre, inspector right. Unretouched capture of
+the Windows build; chat names and callers are demo data:
+
+<img src="assets/screenshots/deck.png" width="880" alt="intel. Command Deck — filters, live feed and inspector">
 
 The notification, captured from the running build:
 
