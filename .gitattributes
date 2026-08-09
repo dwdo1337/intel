@@ -1,0 +1,17 @@
+# Normalise line endings to LF in the repository AND in the working tree.
+#
+# Both repos were created with core.autocrlf=true, so git rewrote text files to
+# CRLF on checkout. app/ and github-release/ are byte-compared by
+# sync-release.py, so the same file would differ purely by line ending and be
+# reported as drift on every run -- then copied back and forth forever.
+#
+# eol=lf (not just text=auto) is the part that matters: it stops the checkout
+# rewrite, so what is on disk matches what is committed.
+* text=auto eol=lf
+
+# Binary: never touch these.
+*.png binary
+*.ico binary
+*.exe binary
+*.webp binary
+*.blockmap binary
