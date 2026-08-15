@@ -54,8 +54,8 @@
       "!**/*.session-journal"
     ],
     "asarUnpack": [
-      "dist-server/**",
-      "client/dist/**"
+      "dist-server/**/*",
+      "client/dist/**/*"
     ],
     "win": {
       "target": [

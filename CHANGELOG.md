@@ -9,6 +9,32 @@ what was actually published to [Releases](../../releases) — code sitting under
 
 ---
 
+## Unreleased
+
+### Fixed
+
+- **KOL and smart-money tracking was dead in the portable build.** The
+  chain-wide wallet watcher failed on every poll — 2,580 times across recent
+  runs, 329 in a single session — with
+  `Cannot find module '…app.asar.unpacked/dist-server/gmgn-cli-shim.cjs'`.
+
+  `asarUnpack` listed `dist-server/**` where the `files` array uses
+  `dist-server/**/*`. That trailing `/*` matters: the **portable** build's
+  self-extractor created `app.asar.unpacked/dist-server/` as an empty directory
+  and put nothing in it, while `win-unpacked` extracted correctly. Checking the
+  unpacked build therefore showed a healthy tree, which is how this survived —
+  only the artifact people actually download was broken.
+
+  Consequences while broken: no chain-wide "a KOL just bought this" detection,
+  and the `watchlist-wallet` alert could never fire at all. Per-token wallet
+  exposure still worked, so the feature looked partly alive.
+
+  Verified by inspecting the portable extraction directory before and after,
+  then confirming the failure rate went to zero and `Notable wallet activity`
+  lines resumed.
+
+---
+
 ## v0.2.1
 
 Two fixes to behaviour people had already hit. Both were in the repository for a
