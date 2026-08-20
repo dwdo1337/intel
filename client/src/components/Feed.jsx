@@ -661,9 +661,9 @@ function MsgCard({ event, active, onClick, index = 0 }) {
   const chain = chainSlug(event.token.chain);
   const chainLabel = chainLabelOf(chain, event.token.chain);
   const chainDef = CHAIN_LAUNCHPADS.find(c => c.id === chain);
-  // chainDef still resolves the label; its `color` is deliberately unused.
-  // Four chain accents competing with the one accent is what made every
-  // card read as equally urgent.
+  // Chain colour is identity, not emphasis: it tells you WHAT this is, and
+  // with a handful of chains it works as a legend rather than a highlight.
+  const chainColor = chainDef?.color || 'var(--muted)';
   const address = event.token.address || '';
   // The message a caller actually typed. Previously the CA was STRIPPED out
   // of it -- but 19 of 28 real calls are nothing but the bare CA, so
@@ -714,9 +714,11 @@ function MsgCard({ event, active, onClick, index = 0 }) {
         {event.token.image ? (
           <img className="msg-av-real" src={event.token.image} alt="" onError={e => { e.target.style.display='none'; const fb=e.target.nextSibling; if(fb) fb.style.display='flex'; }} />
         ) : null}
-        {/* Initials sit on a plain raised surface. The generated gradient gave
-            every token without art its own colour, which is a lot of colour. */}
-        <div className="msg-av" style={{ display: event.token.image ? 'none' : 'flex' }}>{initials}</div>
+        {/* Tinted by source, not by token: a flat tile per platform reads as a
+            category, where the old per-token gradient was noise. */}
+        <div className="msg-av"
+             style={{ background: `${color}1f`, color,
+                      display: event.token.image ? 'none' : 'flex' }}>{initials}</div>
         <div className="msg-meta-head">
           <div className="msg-line1">
             <span className="msg-token">{event.token.name || 'Unknown'}</span>
@@ -738,8 +740,9 @@ function MsgCard({ event, active, onClick, index = 0 }) {
             )}
           </div>
           <div className="msg-venue-row">
-            <span className="venue-chip chain">
-              <span className="venue-dot" />
+            <span className="venue-chip chain"
+                  style={{ background: `${chainColor}1c`, color: chainColor }}>
+              <span className="venue-dot" style={{ background: chainColor }} />
               {chainLabel}
             </span>
             {venueLabel && (

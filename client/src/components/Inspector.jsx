@@ -242,9 +242,13 @@ export function Inspector({ event }) {
           <div className="in-list">
             {(event.mentions && event.mentions.length > 0) ? event.mentions.slice().reverse().map((men, i) => (
               <div className="in-item" key={i}>
-                {/* TG and DC are two letters. They do not also need to be two
-                    colours. */}
-                <div className="in-item-avatar">{men.source === 'telegram' ? 'TG' : 'DC'}</div>
+                {/* Telegram blue, Discord blurple -- the two sources are told
+                    apart at a glance instead of by reading two letters. */}
+                <div className="in-item-avatar"
+                     style={men.source === 'telegram'
+                       ? { background: 'rgba(59,130,246,0.16)', color: '#7fb3ff' }
+                       : { background: 'rgba(88,101,242,0.18)', color: '#a5adf8' }}>
+                  {men.source === 'telegram' ? 'TG' : 'DC'}</div>
                 <div className="in-item-body">
                   <div className="in-item-title">{men.chatName || 'Unknown chat'}</div>
                   <div className="in-item-sub">{men.author ? `@${men.author}` : 'unknown author'} · {men.detectedAt ? fmtRelTime(men.detectedAt) : '—'}</div>

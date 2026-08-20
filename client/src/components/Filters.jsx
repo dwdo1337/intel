@@ -240,9 +240,7 @@ export function Filters({ filter, setFilter, onAlertToggle, onAlertFiltersToggle
             const alerts = alertSet.has(c.id);
             return (
               <div key={c.id} className={`fx-chain-wrap ${on ? 'on' : ''}`}
-                   /* Selected state is carried by the `on` class in one accent, not by
-                      each chain's brand colour. Seven chains meant seven accents lit at
-                      once down the left rail. */>
+                   style={on ? { background: `${c.color}1c`, boxShadow: `inset 2px 0 0 ${c.color}` } : undefined}>
                 <button
                   className={`fx-chain ${on ? 'on' : ''}`}
                   onClick={() => toggleChain(c.id)}
@@ -276,9 +274,9 @@ export function Filters({ filter, setFilter, onAlertToggle, onAlertFiltersToggle
           if (!def) return null;
           const pads = lpByChain[chainId] || [];
           return (
-            <div className="fx-lp" key={chainId}>
+            <div className="fx-lp" key={chainId} style={{ borderLeftColor: def.color }}>
               <div className="fx-lp-head">
-                <span className="fx-dot" />
+                <span className="fx-dot" style={{ background: def.color }} />
                 {def.label} launchpads
               </div>
               {pads.length === 0 ? (
@@ -416,7 +414,7 @@ function RangeRow({ label, unit, min, max, onMin, onMax, single = false }) {
 function ChainMark({ chain }) {
   const [failed, setFailed] = useState(false);
   if (!chain.logo || failed) {
-    return <span className="fx-chain-dot" />;
+    return <span className="fx-chain-dot" style={{ background: chain.color }} />;
   }
   return <img className="fx-chain-img" src={chain.logo} alt="" onError={() => setFailed(true)} />;
 }

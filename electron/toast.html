@@ -27,8 +27,8 @@
   --accent-dim:color-mix(in oklab, var(--accent) 14%, transparent);
   --sell:      oklch(0.64 0.125 25);
   --buy:       var(--accent);
-  /* Chain and source identity is a label here too, not a colour. */
-  --info:var(--muted);--dc:var(--muted);--tg:var(--muted);
+  /* Identity colour, matching the deck: chains and sources are a legend. */
+  --info:#3b82f6;--dc:#5865F2;--tg:#3b82f6;
   --radius:8px;--radius-chip:4px;
 }
 *{box-sizing:border-box;margin:0;padding:0}
@@ -160,15 +160,14 @@ html,body{height:100%;overflow:hidden;background:transparent;font-family:'Inter'
    numbers, a 4px grid. A toast is the most interruptive surface in the product,
    so restraint matters more here than anywhere. */
 #toast { border-radius: var(--radius); }
-/* Badges lose their tints: chain, launchpad and source were three coloured
-   rectangles in a row before the token name had been read. */
-.badge, .badge.chain, .badge.lp, .badge.src-tg, .badge.src-dc {
-  background: var(--raise-2) !important;
-  color: var(--muted) !important;
-  border: 0 !important;
-  border-radius: var(--radius-chip);
-  font-weight: 600;
-}
+/* Badges keep their identity colour. The launchpad tag stays neutral -- it is a
+   long tail of names, so colour there would be noise -- but chain and source are
+   a fixed handful and colour makes them scannable. Emphasis colour (the primary
+   button, a positive delta) is what stays scarce. */
+.badge { border: 0; border-radius: var(--radius-chip); font-weight: 650; }
+.badge.lp { background: var(--raise-2); color: var(--muted); }
+.badge.src-tg { background: rgba(59,130,246,0.16); color: #7fb3ff; }
+.badge.src-dc { background: rgba(88,101,242,0.18); color: #a5adf8; }
 /* One panel of numbers with hairline seams, not four outlined cells. */
 .metrics { background: var(--raise); border: 0; border-radius: var(--radius); }
 .metric { border-left: 1px solid var(--line); }
@@ -202,8 +201,9 @@ html,body{height:100%;overflow:hidden;background:transparent;font-family:'Inter'
    thing on this surface worth the colour. */
 .live { border-radius: var(--radius-chip); }
 
-/* A placeholder initial is not a status. */
-.token-img .fallback { color: var(--muted); background: var(--surface3); }
+/* A placeholder initial carries the chain's colour, set inline by the renderer
+   alongside the chain dot. */
+.token-img .fallback { color: var(--muted); background: var(--raise-2); }
 </style>
 </head>
 <body>

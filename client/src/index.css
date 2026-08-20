@@ -56,17 +56,26 @@
      colour, rather than introducing a third hue for a middle state. */
   --warn:      oklch(0.70 0.100 40);
 
-  /* Source and chain identity is carried by LABELS, not colour. These stay
-     defined so nothing referencing them breaks, but they resolve to neutrals --
-     see the chain rules in the design pass below. */
-  --info:      var(--muted);
-  --tg:        var(--muted);
-  --dc:        var(--muted);
-  --chain-sol: var(--muted);
-  --chain-robinhood: var(--muted);
-  --chain-base: var(--muted);
-  --chain-bsc: var(--muted);
-  --chain-eth: var(--muted);
+  /* ── IDENTITY COLOUR ─────────────────────────────────────────────────
+     Chains and sources keep their brand colours, and this is not a relaxing of
+     the one-accent rule -- it is the other half of it.
+
+     Accent colour answers "what MATTERS" and must stay scarce or it stops
+     meaning anything. Identity colour answers "what IS this". There are only
+     ever a handful of chains, they never compete for attention with each other,
+     and colour lets you find the row you want without reading it. Stripping it
+     made every row look identical, which is the definition of a dead list.
+
+     Real brand values; the badges tint them down to ~11% for the background and
+     use the colour itself for the text, which stays legible on these surfaces. */
+  --info:      #3b82f6;
+  --tg:        #3b82f6;                /* Telegram blue */
+  --dc:        #5865F2;                /* Discord blurple */
+  --chain-sol: #9945FF;
+  --chain-robinhood: #00C805;
+  --chain-base: #0052FF;
+  --chain-bsc: #F0B90B;
+  --chain-eth: #627EEA;
 
   /* ── TYPE ────────────────────────────────────────────────────────────
      Two faces, no more. Inter carries the interface; JetBrains Mono carries
@@ -975,24 +984,7 @@ input:focus,textarea:focus{border-color:var(--accent)}
 }
 .badge:hover, .chip:hover, .fx-pill:hover, .venue-chip:hover { background: rgba(255,255,255,0.10); }
 
-/* Chain identity is a LABEL, not a colour. Solana purple, BSC yellow, Base
-   blue and Robinhood green were four accents fighting the one that matters. */
-.badge.chain, .bc-chain, .chain-chip, .venue-chip.launchpad {
-  background: var(--raise-2) !important;
-  color: var(--muted) !important;
-  border: 0 !important;
-}
-.bc-chain.solana, .bc-chain.bsc, .bc-chain.base,
-.bc-chain.ethereum, .bc-chain.robinhood {
-  background: var(--raise-2);
-  color: var(--muted);
-}
-/* Source tags likewise: Telegram blue and Discord purple carried no meaning a
-   word does not carry. */
-.badge.src-tg, .badge.src-dc, .src-tg, .src-dc {
-  background: var(--raise-2) !important;
-  color: var(--muted) !important;
-}
+
 
 /* The selected chip is the exception that proves the rule: it is one of the
    three accented things allowed on screen. */
@@ -1103,29 +1095,9 @@ input:focus, .fx-input:focus { border-color: var(--accent-ring); outline: none; 
 .msg-card > .msg-head { padding-top: var(--s4); }
 .msg-card > .msg-actions { padding-bottom: var(--s4); }
 
-/* ── 11 · CHAIN + SOURCE MARKS ───────────────────────────────────────────
-   The renderer no longer injects a colour per chain (see Feed.jsx), so these
-   carry the identity instead: a monochrome dot and a small uppercase label.
-   Which chain a token is on is a fact, not an alarm. */
-.venue-dot, .fx-dot, .fx-chain-dot, .chain-dot {
-  width: 5px; height: 5px;
-  border-radius: 50%;
-  background: var(--dim);
-  flex: none;
-}
-.venue-chip.chain, .toast-badge.chain, .toast-badge.src {
-  background: var(--raise-2);
-  color: var(--muted);
-  border: 0;
-}
+
 .fx-lp { border-left: 1px solid var(--line); }
-.msg-av, .in-item-avatar {
-  background: var(--surface3);
-  color: var(--muted);
-  border: 0;
-  border-radius: var(--radius);
-  font-weight: 600;
-}
+
 
 /* ── 12 · THE THREE-ACCENT BUDGET ────────────────────────────────────────
    Anything that used to be accent-coloured "for emphasis" and was not a
@@ -1141,21 +1113,7 @@ input:focus, .fx-input:focus { border-color: var(--accent-ring); outline: none; 
   border: 0;
 }
 
-/* Chain rail: selection is the accent, unselected is a plain raised row. */
-.fx-chain-wrap { border-radius: var(--radius-input); overflow: hidden; }
-.fx-chain-wrap:hover { transform: none; background: var(--raise); }
-.fx-chain, .fx-bell {
-  background: var(--surface2);
-  border: 0;
-  color: var(--muted);
-  transition: background var(--ease), color var(--ease);
-}
-.fx-chain-wrap.on .fx-chain,
-.fx-chain-wrap.on .fx-bell { background: var(--accent-dim); color: var(--accent); }
-.fx-chain-wrap.on .fx-chain-name { color: var(--accent); }
-.fx-chain:hover, .fx-bell:hover { background: var(--surface3); color: var(--text); }
-.fx-chain-img { opacity: .55; filter: grayscale(1); transition: opacity var(--ease), filter var(--ease); }
-.fx-chain-wrap.on .fx-chain-img { opacity: 1; filter: grayscale(0.35); }
+
 
 /* ── 13 · CORRECTIONS FROM LOOKING AT IT ─────────────────────────────────
    Everything below was found by rendering the deck and reading it, not by
@@ -1206,20 +1164,8 @@ input:focus, .fx-input:focus { border-color: var(--accent-ring); outline: none; 
 }
 .alpha-good b, .alpha-warn b { color: var(--text); }
 
-/* ── 14 · THE CHAIN RAIL AND THE THREE-ACCENT BUDGET ─────────────────────
-   Seven chains are selected by default, so an accent selected-state meant
-   seven green blocks before a single signal was on screen. Selection is now
-   carried by elevation and text weight; the accent is saved for the primary
-   action, the active tab and a real positive delta. */
-.fx-chain-wrap.on .fx-chain,
-.fx-chain-wrap.on .fx-bell { background: var(--surface3); color: var(--text); }
-.fx-chain-wrap.on .fx-chain-name { color: var(--text); font-weight: 600; }
-.fx-chain-wrap .fx-chain-name { color: var(--dim); }
-/* Brand logos are the same problem as brand colours: they are seven palettes.
-   Desaturated to marks, brought to full only for the row you are pointing at. */
-.fx-chain-img { filter: grayscale(1) brightness(1.6); opacity: .5; }
-.fx-chain-wrap.on .fx-chain-img { opacity: .8; }
-.fx-chain-wrap:hover .fx-chain-img { opacity: 1; }
+
+
 
 /* Token art gets the card's radius at the top corners rather than running
    full-bleed to a hard edge. */
@@ -1250,14 +1196,7 @@ input:focus, .fx-input:focus { border-color: var(--accent-ring); outline: none; 
    and it is a single glyph rather than a field of them. */
 .logo svg { color: var(--accent); }
 
-/* Chain logos: full desaturation in every state. The `.on` rule from the first
-   pass was more specific than the base rule and was quietly re-colouring them. */
-.fx-chain-img,
-.fx-chain-wrap.on .fx-chain-img,
-.fx-chain-wrap:hover .fx-chain-img { filter: grayscale(1) brightness(1.5); }
-.fx-chain-img { opacity: .45; }
-.fx-chain-wrap.on .fx-chain-img { opacity: .75; }
-.fx-chain-wrap:hover .fx-chain-img { opacity: .95; }
+
 
 /* ── 16 · FEWER DRAWN BOXES ──────────────────────────────────────────────
    Panels that were outlined AND filled are now only filled; the fill already
@@ -1287,5 +1226,73 @@ input:focus, .fx-input:focus { border-color: var(--accent-ring); outline: none; 
    the state; the sentence inside it just has to be readable. */
 .fx-alertmatch.on .fx-am-text em { color: var(--text); }
 
-/* Placeholder initials on the deck, for the same reason. */
-.msg-av, .in-item-avatar, .token-fallback { color: var(--muted); }
+
+
+/* ── 18 · IDENTITY COLOUR ────────────────────────────────────────────────
+   The restraint pass removed ALL colour, and the app went flat. That was one
+   rule doing two jobs badly. Splitting it:
+
+     IDENTITY  — chains, sources, launchpad logos. Colour here is a legend. It
+                 answers "what is this", the value set is tiny and fixed, and it
+                 is what lets you find a row without reading it.
+     EMPHASIS  — numbers, buttons, selection. Still scarce. It answers "what
+                 matters", and it means nothing once everything has it.
+
+   So market caps stay white and the primary button stays the one green thing —
+   while Solana is purple again. */
+
+/* Dots inherit the colour the renderer injects; this is only shape. */
+.venue-dot, .fx-dot, .fx-chain-dot, .chain-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  flex: none;
+}
+.fx-chain-dot { width: 14px; height: 14px; }
+
+/* Badges: brand colour at ~11% behind the brand colour itself, no border. Light
+   enough to sit under the numbers, saturated enough to scan. */
+.badge.chain, .venue-chip.chain, .toast-badge.chain, .chain-chip {
+  border: 0;
+  font-weight: 650;
+}
+.badge.src-tg, .src-tg { background: rgba(59,130,246,0.16); color: #7fb3ff; }
+.badge.src-dc, .src-dc { background: rgba(88,101,242,0.18); color: #a5adf8; }
+
+/* The best-calls board keeps its per-chain tints (see best-calls.css) — the
+   section-11 override that flattened them is gone. */
+.bc-chain.solana   { background: rgba(153,69,255,.16); color: #c8a2ff; }
+.bc-chain.bsc      { background: rgba(240,185,11,.16); color: #f0cf6a; }
+.bc-chain.base     { background: rgba(0,82,255,.18);   color: #7fa8ff; }
+.bc-chain.ethereum { background: rgba(98,126,234,.18); color: #9dafee; }
+.bc-chain.robinhood{ background: rgba(0,200,5,.16);    color: #6fe07a; }
+
+/* Launchpad logos in full colour. Desaturating them was the same mistake:
+   a pump.fun mark and a Four.meme mark are identity, not decoration. */
+.fx-chain-img,
+.fx-chain-wrap.on .fx-chain-img,
+.fx-chain-wrap:hover .fx-chain-img { filter: none; }
+.fx-chain-img { opacity: .75; transition: opacity var(--ease); }
+.fx-chain-wrap.on .fx-chain-img,
+.fx-chain-wrap:hover .fx-chain-img { opacity: 1; }
+
+/* Chain rail rows: the selected one is tinted in its OWN colour (injected
+   inline) with an inset marker. Unselected stays a quiet raised row, so the
+   rail reads as a legend rather than seven lit blocks. */
+.fx-chain-wrap { border-radius: var(--radius-input); overflow: hidden; }
+.fx-chain-wrap:hover { transform: none; }
+.fx-chain, .fx-bell {
+  background: var(--surface2);
+  border: 0;
+  color: var(--muted);
+  transition: background var(--ease), color var(--ease);
+}
+.fx-chain-wrap.on .fx-chain-name { color: var(--text); font-weight: 600; }
+.fx-chain-wrap .fx-chain-name { color: var(--muted); }
+.fx-chain:hover, .fx-bell:hover { background: var(--surface3); color: var(--text); }
+
+/* Source-tinted initials tile (colour injected per platform). */
+.msg-av, .in-item-avatar {
+  border: 0;
+  border-radius: var(--radius);
+  font-weight: 700;
+}

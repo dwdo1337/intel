@@ -57,9 +57,10 @@ export function Toasts({ toasts, onClose }) {
                 <span className="toast-symbol">${t.symbol || '—'}</span>
               </div>
               <div className="toast-badges">
-                <span className="toast-badge chain">{t.chainLabel || t.chain || 'Solana'}</span>
+                <span className="toast-badge chain"
+                      style={{ background: chainBadgeColor(t.chain) + '1f', color: chainBadgeColor(t.chain) }}>{t.chainLabel || t.chain || 'Solana'}</span>
                 {t.launchpad && t.launchpad !== 'unknown' && <span className="toast-badge lp">{t.launchpad}</span>}
-                {(() => { const src = sourceBadge(t); return <span className="toast-badge src">{src.label}</span>; })()}
+                {(() => { const src = sourceBadge(t); return <span className="toast-badge src" style={{ background: src.color + '1f', color: src.color }}>{src.label}</span>; })()}
               </div>
               <div className="toast-sender">
                 {t.sender && t.sender !== 'unknown' && <span>@{t.sender}</span>}
