@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Component } from 'react';
 import './best-calls.css';
 
 /**
@@ -15,14 +15,42 @@ import './best-calls.css';
  * 10x" and "you would have nothing left if you held" are both true, and a board
  * that shows only the first one is a board that flatters every rug.
  */
-export function BestCalls({ onPick }) {
+/**
+ * A render error in one panel should cost you that panel, not the app.
+ *
+ * React unmounts the entire tree on an uncaught render error, so a single bad
+ * property reference in this board took the whole deck down to a blank window
+ * -- with the feed, the inspector and every alert going with it. The boundary
+ * keeps the blast radius to the thing that broke, and says what broke.
+ */
+class Boundary extends Component {
+  constructor(props) { super(props); this.state = { error: null }; }
+  static getDerivedStateFromError(error) { return { error }; }
+  componentDidCatch(error, info) { console.error('[best-calls] render failed:', error, info); }
+  render() {
+    if (!this.state.error) return this.props.children;
+    return (
+      <div className="bc-empty">
+        This board hit an error and stopped drawing — the rest of the deck is
+        unaffected. <br />
+        <code style={{ fontSize: 11, opacity: 0.7 }}>{String(this.state.error.message || this.state.error)}</code>
+      </div>
+    );
+  }
+}
+
+export function BestCalls(props) {
+  return <Boundary><BestCallsBoard {...props} /></Boundary>;
+}
+
+function BestCallsBoard({ onPick }) {
   const [by, setBy] = useState('call');
   const [data, setData] = useState(null);
   const [err, setErr] = useState(null);
 
   useEffect(() => {
     let alive = true;
-    setData(null); setErr(null);
+    setErr(null);
     fetch(`/api/best-calls?by=${by}&limit=60`)
       .then(r => (r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))))
       .then(j => { if (alive) setData(j); })
@@ -60,20 +88,26 @@ export function BestCalls({ onPick }) {
       {err && <div className="bc-empty">Could not load: {err}</div>}
       {!err && !data && <div className="bc-empty">Reading peaks…</div>}
 
-      {data && by === 'call' && (
-        data.calls.length === 0
+      {/* Branch on what the DATA IS (`data.by`), never on which tab was
+          clicked (`by`). Those two disagree for exactly one render: clicking a
+          tab sets `by` immediately, while `data` still holds the previous
+          response, and the effect that clears it does not run until after that
+          render. Keying off `by` therefore read `data.groups` on a payload that
+          only had `calls` -- a TypeError, which unmounted the whole tree and
+          left a blank window. The fallbacks below make the mismatch harmless
+          even if the shapes ever change again. */}
+      {data && (data.by === 'call' ? (
+        (data.calls ?? []).length === 0
           ? <div className="bc-empty">
               No measured peaks yet. Run an outcome refresh — until a call has a
               peak it is excluded rather than counted as break-even.
             </div>
           : <CallList calls={data.calls} onPick={onPick} />
-      )}
-
-      {data && by !== 'call' && (
-        data.groups.length === 0
+      ) : (
+        (data.groups ?? []).length === 0
           ? <div className="bc-empty">Nothing measured yet.</div>
-          : <GroupList groups={data.groups} by={by} onPick={onPick} />
-      )}
+          : <GroupList groups={data.groups} by={data.by} onPick={onPick} />
+      ))}
     </div>
   );
 }

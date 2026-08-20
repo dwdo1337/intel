@@ -234,12 +234,6 @@ export function DashboardScreen({ feed, selected, onSelect, onOpenSettings, onOp
     return () => socket.close();
   }, []);
 
-  const totals = useMemo(() => ({
-    total: safeFeed.length,
-    tg: safeFeed.filter(f => f.platform === 'tg').length,
-    dc: safeFeed.filter(f => f.platform === 'dc').length
-  }), [safeFeed]);
-
   const num = v => {
     if (v === '' || v == null) return null;
     const n = Number(String(v).replace(/[^0-9.\-]/g, ''));
@@ -329,12 +323,6 @@ export function DashboardScreen({ feed, selected, onSelect, onOpenSettings, onOp
 
         <div className="search"><input placeholder="Search token, CA, chat, author..." value={filter.search} onChange={e => setFilter(p => ({ ...p, search: e.target.value }))} /></div>
 
-        <div className="top-stats">
-          <span className="live-pulse" title="Live" />
-          <span className="top-stat">TOTAL<b>{totals.total}</b></span>
-          <span className="top-stat">TG<b>{totals.tg}</b></span>
-          <span className="top-stat">DC<b>{totals.dc}</b></span>
-        </div>
 
         <div className="top-icons">
           <button className="top-icon logs-toggle" onClick={() => setLogsOpen(v => !v)} title="System logs">
