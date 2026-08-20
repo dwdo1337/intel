@@ -4,14 +4,101 @@
    Revert: restore index.css.bak-ui-overhaul
    ======================================== */
 :root{
-  --bg:#07080c;--surface:#0c0e14;--surface2:#11131c;--surface3:#181b27;--surface4:#202536;
-  --line:#1d2230;--line2:#2a3043;--line3:#353d53;
-  --text:#f0f2f7;--muted:#7d879b;--dim:#4f5a70;--accent:#4fe3a0;--accent2:#7ff8c2;--accent-dim:rgba(79,227,168,0.14);
-  --buy:#22c55e;--sell:#ef4444;--warn:#f59e0b;--info:#3b82f6;--tg:#3b82f6;--dc:#a855f7;
-  --sans:'Inter',system-ui,sans-serif;--mono:'JetBrains Mono',monospace;
-  --chain-sol:#9945FF;--chain-robinhood:#00C805;--chain-base:#0052FF;--chain-bsc:#F0B90B;--chain-eth:#627EEA;
-  --shadow-sm:0 1px 2px rgba(0,0,0,0.25);--shadow:0 6px 20px rgba(0,0,0,0.35);--shadow-lg:0 14px 40px rgba(0,0,0,0.55);
-  --radius:12px;--radius-lg:16px;
+  /* ── SURFACES ────────────────────────────────────────────────────────
+     A warm-neutral near-black scale, not pure black. Panels separate by
+     ELEVATION rather than by outlines: each step up is lighter, so a card can
+     sit on a panel and read as raised with no border drawn at all. Pure #07080c
+     with 1px outlines everywhere is what made the old deck read as a wireframe.
+
+     One hue (265) across every surface keeps the greys from drifting cold and
+     plasticky the way independent hex values do. */
+  --bg:        oklch(0.16 0.010 265);
+  --surface:   oklch(0.19 0.012 265);
+  --surface2:  oklch(0.21 0.012 265);
+  --surface3:  oklch(0.235 0.012 265);
+  --surface4:  oklch(0.27 0.013 265);
+
+  /* Elevation as a background, used where a border used to be. */
+  --raise:     rgba(255,255,255,0.03);
+  --raise-2:   rgba(255,255,255,0.06);
+
+  /* ── LINES ───────────────────────────────────────────────────────────
+     Hairlines only, and only where a divider is genuinely load-bearing. ~8%
+     white against these surfaces reads as a seam, not a box. */
+  --line:      rgba(255,255,255,0.06);
+  --line2:     rgba(255,255,255,0.09);
+  --line3:     rgba(255,255,255,0.13);
+
+  /* ── TEXT ────────────────────────────────────────────────────────────
+     Values at full strength, labels at roughly half. The old palette ran
+     labels at #7d879b and values at #f0f2f7, which is nearly the same
+     contrast, so nothing led. */
+  --text:      oklch(0.97 0.004 265);
+  --muted:     oklch(0.70 0.012 265);
+  --dim:       oklch(0.54 0.012 265);
+
+  /* ── ACCENT: ONE GREEN ───────────────────────────────────────────────
+     Everything used to glow -- green, purple, orange, yellow and blue all at
+     once -- so nothing could read as important. There is exactly one accent
+     now, and the rule of thumb is at most three accented elements in view. */
+  --accent:     oklch(0.80 0.135 158);
+  --accent2:    oklch(0.86 0.110 158);
+  --accent-ink: oklch(0.20 0.030 158);          /* text ON the accent */
+  --accent-dim: color-mix(in oklab, var(--accent) 14%, transparent);
+  --accent-ring: color-mix(in oklab, var(--accent) 40%, transparent);
+
+  /* The only other colour: negatives. Muted on purpose -- a loss should be
+     legible, not alarming. */
+  --sell:      oklch(0.64 0.125 25);
+  --buy:       var(--accent);
+  /* `warn` survives as a token because risk chips reference it, but it is no
+     longer amber. A warning is a negative and now says so in the one negative
+     colour, rather than introducing a third hue for a middle state. */
+  --warn:      oklch(0.70 0.100 40);
+
+  /* Source and chain identity is carried by LABELS, not colour. These stay
+     defined so nothing referencing them breaks, but they resolve to neutrals --
+     see the chain rules in the design pass below. */
+  --info:      var(--muted);
+  --tg:        var(--muted);
+  --dc:        var(--muted);
+  --chain-sol: var(--muted);
+  --chain-robinhood: var(--muted);
+  --chain-base: var(--muted);
+  --chain-bsc: var(--muted);
+  --chain-eth: var(--muted);
+
+  /* ── TYPE ────────────────────────────────────────────────────────────
+     Two faces, no more. Inter carries the interface; JetBrains Mono carries
+     every number, address and price so columns of figures line up. */
+  --sans:'Inter',system-ui,-apple-system,sans-serif;
+  --mono:'JetBrains Mono','SF Mono',ui-monospace,monospace;
+
+  --fs-label: 11px;      /* uppercase, 0.08em, 500 */
+  --fs-body:  13px;
+  --fs-name:  15px;
+  --fs-hero:  30px;
+  --ls-label: 0.08em;
+
+  /* ── RHYTHM: a 4px grid ──────────────────────────────────────────────── */
+  --s1: 4px;  --s2: 8px;  --s3: 12px; --s4: 16px;
+  --s5: 20px; --s6: 24px; --s7: 32px;
+
+  /* ── RADII ───────────────────────────────────────────────────────────
+     Cards 8, inputs 6, chips 4. Nothing is a pill except the primary action. */
+  --radius:        8px;
+  --radius-lg:     12px;
+  --radius-input:  6px;
+  --radius-chip:   4px;
+
+  /* ── ELEVATION ───────────────────────────────────────────────────────
+     One soft, wide shadow doing the work borders used to do. No coloured
+     shadows anywhere: a glow is not elevation. */
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.30);
+  --shadow:    0 2px 4px rgba(0,0,0,0.22), 0 12px 32px rgba(0,0,0,0.34);
+  --shadow-lg: 0 4px 10px rgba(0,0,0,0.28), 0 28px 70px rgba(0,0,0,0.48);
+
+  --ease: 120ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 *{box-sizing:border-box;margin:0;padding:0}
 /* The app is a fixed-viewport deck, so the height chain must be CAPPED at the
@@ -736,3 +823,469 @@ input:focus,textarea:focus{border-color:var(--accent)}
   margin-top: 9px; font-size: 9px; letter-spacing: .05em;
   text-transform: uppercase; color: #454c5e;
 }
+/* ── Best calls overlay ──────────────────────────────────────────────────
+   A full-height sheet rather than a drawer: the board is a four-column table
+   and the log drawer's strip would wrap every row. */
+.bc-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(4, 5, 8, .72);
+  backdrop-filter: blur(3px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 60;
+}
+.bc-panel {
+  width: min(1040px, 92vw);
+  height: min(760px, 86vh);
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--line2);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-lg);
+}
+.bc-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--line);
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: -.01em;
+}
+.bc-close {
+  width: 26px; height: 26px;
+  border-radius: 7px;
+  border: 1px solid rgba(255,255,255,.10);
+  background: rgba(255,255,255,.05);
+  color: var(--muted);
+  font-size: 15px; line-height: 1;
+  cursor: pointer;
+}
+.bc-close:hover { color: var(--text); background: rgba(255,255,255,.09); }
+.top-icon.on { color: var(--accent); background: var(--accent-dim); }
+
+/* ==========================================================================
+   DESIGN PASS — restraint
+   --------------------------------------------------------------------------
+   Loaded last on purpose. The component stylesheets were written over several
+   rounds and each one reached for its own colour and its own outline; this
+   section is where the whole surface is brought back to one system.
+
+   The brief in one line: a professional terminal, not a neon dashboard. The
+   layout, columns and information are untouched. Only the styling changes.
+
+   Four rules do most of the work:
+     1. Separate by ELEVATION, not by outlines.
+     2. ONE accent. At most three accented things in view.
+     3. Numbers are white; green means an actual positive delta.
+     4. Everything lands on a 4px grid.
+   ========================================================================== */
+
+/* Numbers must line up. Tabular figures everywhere a figure can appear, so a
+   column of market caps does not shuffle horizontally as digits change. */
+.msg-kpis, .kpi, .kpi-value, .num, .metric-value, .fx-input, .bc-mult, .bc-sub,
+.bc-nowmult, .bc-rates, .in-grid, .stat-value, code, .ca, .mono, [class*="-value"],
+[class*="-mcap"], [class*="-price"] {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1, 'zero' 1;
+}
+
+/* ── 1 · ELEVATION INSTEAD OF OUTLINES ───────────────────────────────────
+   The deck drew a 1px box around almost everything. Panels now sit on lighter
+   surfaces and cast one soft shadow; the borders that remain are seams between
+   things, never frames around them. */
+.msg-card {
+  border: 0;
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  transition: background var(--ease), box-shadow var(--ease), transform var(--ease);
+}
+.msg-card:hover {
+  /* "Lifts 3%" -- a background change, not a jump. The old -2px translate made
+     the whole feed twitch as the pointer crossed it. */
+  background: var(--surface2);
+  transform: none;
+  box-shadow: var(--shadow);
+}
+/* The selected card is marked from the INSIDE. A bright outline around the
+   active row was the single loudest element on screen. */
+.msg-card.selected {
+  border: 0;
+  background: var(--surface2);
+  box-shadow: inset 2px 0 0 var(--accent), var(--shadow);
+}
+/* Repeat calls and starred tokens are states, not decorations: no tint, no
+   gradient, just the same inset marker in a quieter weight. */
+.msg-card.followup {
+  border: 0;
+  background: var(--surface);
+  box-shadow: inset 2px 0 0 var(--line3), var(--shadow-sm);
+}
+.msg-card.watched { box-shadow: inset 2px 0 0 var(--accent-dim), var(--shadow-sm); }
+.msg-card.watched.selected,
+.msg-card.followup.selected { box-shadow: inset 2px 0 0 var(--accent), var(--shadow); }
+
+/* ── 2 · THE METRIC GRID IS ONE PANEL ────────────────────────────────────
+   Each figure used to sit in its own bordered cell, which turned four numbers
+   into four boxes. One recessed panel, hairline dividers between cells, and the
+   related figures group visually instead of competing. */
+.msg-kpis {
+  margin-top: var(--s3);
+  padding: var(--s3) 0 var(--s2);
+  border-top: 1px solid var(--line);
+  border-bottom: 0;
+  gap: 0;
+}
+.kpi { border-left: 1px solid var(--line); padding: 0 var(--s3); }
+.kpi:first-child { border-left: 0; padding-left: 0; }
+.kpi-label {
+  font-size: var(--fs-label);
+  font-weight: 500;
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase;
+  color: var(--dim);
+}
+.kpi-value { font-size: var(--fs-name); color: var(--text); font-weight: 600; }
+
+/* ── 3 · NUMBERS ARE WHITE ───────────────────────────────────────────────
+   Green is reserved for a measured positive move. A market cap is not good
+   news, it is a number. */
+.kpi-value, .metric-value, .stat-value { color: var(--text); }
+.kpi-value.up, .metric-value.up, .up { color: var(--accent); }
+.kpi-value.down, .metric-value.down, .down { color: var(--sell); }
+
+/* ── 4 · PILLS AND TAGS: NO FILLS, NO BORDERS ────────────────────────────
+   Every badge used to carry its own tinted background and matching outline, so
+   a card header was six coloured rectangles. One neutral wash, text at 80%. */
+.badge, .chip, .fx-pill, .venue-chip, .bc-chain, .bc-lp, .msg-ticker,
+.pill, .tag, .status-pill {
+  border: 0 !important;
+  background: var(--raise-2);
+  color: color-mix(in oklab, var(--text) 80%, transparent);
+  border-radius: var(--radius-chip);
+  font-size: var(--fs-label);
+  letter-spacing: 0.04em;
+  transition: background var(--ease), color var(--ease);
+}
+.badge:hover, .chip:hover, .fx-pill:hover, .venue-chip:hover { background: rgba(255,255,255,0.10); }
+
+/* Chain identity is a LABEL, not a colour. Solana purple, BSC yellow, Base
+   blue and Robinhood green were four accents fighting the one that matters. */
+.badge.chain, .bc-chain, .chain-chip, .venue-chip.launchpad {
+  background: var(--raise-2) !important;
+  color: var(--muted) !important;
+  border: 0 !important;
+}
+.bc-chain.solana, .bc-chain.bsc, .bc-chain.base,
+.bc-chain.ethereum, .bc-chain.robinhood {
+  background: var(--raise-2);
+  color: var(--muted);
+}
+/* Source tags likewise: Telegram blue and Discord purple carried no meaning a
+   word does not carry. */
+.badge.src-tg, .badge.src-dc, .src-tg, .src-dc {
+  background: var(--raise-2) !important;
+  color: var(--muted) !important;
+}
+
+/* The selected chip is the exception that proves the rule: it is one of the
+   three accented things allowed on screen. */
+.chip.active, .fx-pill.on, .bc-tab.on {
+  background: var(--accent-dim);
+  color: var(--accent);
+  border: 0;
+}
+
+/* ── 5 · BUTTONS ─────────────────────────────────────────────────────────
+   One solid primary with dark text and no glow, flanked by ghosts. */
+.btn, .action-btn, .fx-btn {
+  border-radius: var(--radius-input);
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--muted);
+  transition: background var(--ease), color var(--ease), border-color var(--ease);
+  box-shadow: none;
+}
+.btn:hover, .action-btn:hover, .fx-btn:hover {
+  background: var(--raise-2);
+  color: var(--text);
+  border-color: var(--line2);
+}
+.btn.primary, .action-btn.buy, .btn-primary {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border: 0;
+  font-weight: 650;
+  box-shadow: none;
+}
+.btn.primary:hover, .action-btn.buy:hover, .btn-primary:hover {
+  background: var(--accent2);
+  color: var(--accent-ink);
+}
+.btn.ghost { background: transparent; border: 1px solid var(--line); }
+
+/* ── 6 · INTERACTION ─────────────────────────────────────────────────────
+   A real hover on everything that can be pointed at, and one focus ring. */
+button, .chip, .fx-pill, .top-icon, .bc-row, .msg-card, a { transition: background var(--ease), color var(--ease), border-color var(--ease); }
+button:focus-visible, a:focus-visible, input:focus-visible, .chip:focus-visible {
+  outline: 1px solid var(--accent-ring);
+  outline-offset: 2px;
+}
+input, select, textarea, .fx-input {
+  border-radius: var(--radius-input);
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--text);
+}
+input:focus, .fx-input:focus { border-color: var(--accent-ring); outline: none; }
+
+/* ── 7 · ICONS ───────────────────────────────────────────────────────────
+   Monochrome, 16px, resting at 60%. */
+.top-icon svg, .in-icon svg, .fx-icon svg { width: 16px; height: 16px; }
+.top-icon { color: var(--muted); opacity: 0.75; transition: opacity var(--ease), background var(--ease); }
+.top-icon:hover { opacity: 1; background: var(--raise-2); color: var(--text); }
+
+/* ── 8 · NO GLOW, NO GRADIENT ────────────────────────────────────────────
+   Coloured shadows and tinted gradients were doing the work that contrast and
+   spacing should do. The only gradient left is the barely-there panel sheen
+   below. */
+.msg-card, .msg-card.followup, .in-card, .fx, .feed-col,
+.token-img, .msg-av, .msg-av-real, .bc-panel, .modal {
+  background-image: none;
+}
+[class*="glow"] { display: none !important; }
+.live-pulse, .live-dot { box-shadow: none; }
+
+/* One sheen, and only on the largest panels, so a full-height column does not
+   read as a flat rectangle of one value. */
+.feed-col, .fx, .in-col {
+  background-image: linear-gradient(180deg, rgba(255,255,255,0.014), transparent 220px);
+}
+
+/* Token art: 8px, no glow, no drop shadow. */
+.token-img, .msg-av, .msg-av-real, .in-token-img, .bc-img {
+  border-radius: var(--radius);
+  box-shadow: none;
+  border: 0;
+}
+
+/* ── 9 · TYPE DISCIPLINE ─────────────────────────────────────────────────
+   Uppercase is for labels of three words or fewer. Anything longer is a
+   sentence and gets sentence case, because tracked-out caps at 11px is not
+   something anyone reads. */
+.kpi-label, .metric-label, .fc-key, .in-card-title, .fx-sec-head,
+.bc-firstlabel, .dash-col-head, .feed-title {
+  font-size: var(--fs-label);
+  font-weight: 500;
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase;
+  color: var(--dim);
+}
+.feed-empty-sub, .fx-hint, .bc-cov-note, .msg-none, .in-note {
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--muted);
+}
+
+/* ── 10 · RHYTHM ─────────────────────────────────────────────────────────
+   Panel padding up to 16-20px; everything on the 4px grid. */
+.fx { padding: var(--s4); gap: var(--s2); }
+.feed-col { padding: var(--s5); }
+.in-card { padding: var(--s4); border: 0; background: var(--surface2); border-radius: var(--radius); }
+.dash-col-head { padding: var(--s3) var(--s4); border-bottom: 1px solid var(--line); }
+.msg-card > *:not(.msg-banner) { padding-left: var(--s4); padding-right: var(--s4); }
+.msg-card > .msg-head { padding-top: var(--s4); }
+.msg-card > .msg-actions { padding-bottom: var(--s4); }
+
+/* ── 11 · CHAIN + SOURCE MARKS ───────────────────────────────────────────
+   The renderer no longer injects a colour per chain (see Feed.jsx), so these
+   carry the identity instead: a monochrome dot and a small uppercase label.
+   Which chain a token is on is a fact, not an alarm. */
+.venue-dot, .fx-dot, .fx-chain-dot, .chain-dot {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--dim);
+  flex: none;
+}
+.venue-chip.chain, .toast-badge.chain, .toast-badge.src {
+  background: var(--raise-2);
+  color: var(--muted);
+  border: 0;
+}
+.fx-lp { border-left: 1px solid var(--line); }
+.msg-av, .in-item-avatar {
+  background: var(--surface3);
+  color: var(--muted);
+  border: 0;
+  border-radius: var(--radius);
+  font-weight: 600;
+}
+
+/* ── 12 · THE THREE-ACCENT BUDGET ────────────────────────────────────────
+   Anything that used to be accent-coloured "for emphasis" and was not a
+   measured value or the primary action gives the colour back. What is left
+   that can be green: the primary button, the selected item, and a real
+   positive delta. */
+.msg-ticker, .fc-key-n, .in-card-title, .feed-title, .dash-col-head {
+  color: var(--dim);
+}
+.msg-dexpaid, .venue-chip.repeat, .alpha-dim {
+  background: var(--raise-2);
+  color: var(--muted);
+  border: 0;
+}
+
+/* Chain rail: selection is the accent, unselected is a plain raised row. */
+.fx-chain-wrap { border-radius: var(--radius-input); overflow: hidden; }
+.fx-chain-wrap:hover { transform: none; background: var(--raise); }
+.fx-chain, .fx-bell {
+  background: var(--surface2);
+  border: 0;
+  color: var(--muted);
+  transition: background var(--ease), color var(--ease);
+}
+.fx-chain-wrap.on .fx-chain,
+.fx-chain-wrap.on .fx-bell { background: var(--accent-dim); color: var(--accent); }
+.fx-chain-wrap.on .fx-chain-name { color: var(--accent); }
+.fx-chain:hover, .fx-bell:hover { background: var(--surface3); color: var(--text); }
+.fx-chain-img { opacity: .55; filter: grayscale(1); transition: opacity var(--ease), filter var(--ease); }
+.fx-chain-wrap.on .fx-chain-img { opacity: 1; filter: grayscale(0.35); }
+
+/* ── 13 · CORRECTIONS FROM LOOKING AT IT ─────────────────────────────────
+   Everything below was found by rendering the deck and reading it, not by
+   reasoning about the stylesheet.
+
+   `.fc-key` keeps its own 9px. The label scale above pushed it to 11px, and it
+   lives in a fixed 84px grid column with `white-space: nowrap`, so "SMART
+   MONEY" plus its count overflowed straight across the value beside it. The
+   compact table label was already the right size for the column it sits in. */
+.fc-key { font-size: 9px; letter-spacing: .085em; color: var(--dim); }
+
+/* The hero price is the largest thing in the inspector. Painting it green made
+   it the loudest as well, for a number that is not a delta -- the 24h figure
+   underneath already says which way it went. */
+.in-price { color: var(--text); }
+.in-price.up, .in-price.down { color: var(--text); }
+
+.in-link { color: var(--muted); font-size: 12px; display: block; margin-bottom: 6px; text-decoration: none; }
+.in-link:hover { color: var(--text); }
+
+/* Contract addresses are data, not actions. */
+.in-ca, .msg-message .ca {
+  color: var(--muted);
+  background: var(--surface3);
+  border: 0;
+}
+.in-ca:hover { background: var(--surface4); color: var(--text); }
+.in-kol, .in-load-btn, .badge.followup {
+  background: var(--raise-2);
+  border: 0;
+  color: var(--muted);
+}
+
+/* The alpha row: a wallet holding a token is worth noticing, not worth a
+   tinted gradient panel with its own outline. */
+.alpha-row {
+  background: var(--raise);
+  border: 0;
+  border-radius: var(--radius);
+  padding: var(--s2) var(--s3);
+}
+.alpha-row.alpha-empty { background: var(--raise); }
+.alpha-chip, .alpha-good, .alpha-warn {
+  background: var(--raise-2);
+  border: 0;
+  color: var(--muted);
+  border-radius: var(--radius-chip);
+}
+.alpha-good b, .alpha-warn b { color: var(--text); }
+
+/* ── 14 · THE CHAIN RAIL AND THE THREE-ACCENT BUDGET ─────────────────────
+   Seven chains are selected by default, so an accent selected-state meant
+   seven green blocks before a single signal was on screen. Selection is now
+   carried by elevation and text weight; the accent is saved for the primary
+   action, the active tab and a real positive delta. */
+.fx-chain-wrap.on .fx-chain,
+.fx-chain-wrap.on .fx-bell { background: var(--surface3); color: var(--text); }
+.fx-chain-wrap.on .fx-chain-name { color: var(--text); font-weight: 600; }
+.fx-chain-wrap .fx-chain-name { color: var(--dim); }
+/* Brand logos are the same problem as brand colours: they are seven palettes.
+   Desaturated to marks, brought to full only for the row you are pointing at. */
+.fx-chain-img { filter: grayscale(1) brightness(1.6); opacity: .5; }
+.fx-chain-wrap.on .fx-chain-img { opacity: .8; }
+.fx-chain-wrap:hover .fx-chain-img { opacity: 1; }
+
+/* Token art gets the card's radius at the top corners rather than running
+   full-bleed to a hard edge. */
+.msg-banner { border-radius: var(--radius) var(--radius) 0 0; }
+
+/* ── 15 · THE ACCENT BUDGET, ENFORCED ────────────────────────────────────
+   Audited in the running app: eleven elements were painted in the accent
+   before a single signal arrived -- the wordmark, four icon glyphs, the live
+   pulse, a log badge, a section counter and the selected segment. The rule is
+   at most three, so everything that is not the primary action, the current
+   selection or a measured positive move gives the colour back.
+
+   These selectors are deliberately more specific than the section-11 rules
+   above, which the earlier passes had already out-specified. */
+.top-icon svg, .top-icon:hover svg,
+.msg-source-row svg, .toast-head svg, .in-icon svg { color: inherit; }
+.top-icon:hover { color: var(--text); border-color: var(--line2); background: var(--raise-2); transform: none; }
+
+/* A live indicator only has to be legible, not luminous. */
+.live-pulse { background: var(--muted); box-shadow: none; }
+.logs-badge, .fx-sec-count, .fx-badge {
+  background: var(--raise-2);
+  color: var(--muted);
+  border: 0;
+}
+
+/* The wordmark keeps the accent: it is the one place a brand colour belongs,
+   and it is a single glyph rather than a field of them. */
+.logo svg { color: var(--accent); }
+
+/* Chain logos: full desaturation in every state. The `.on` rule from the first
+   pass was more specific than the base rule and was quietly re-colouring them. */
+.fx-chain-img,
+.fx-chain-wrap.on .fx-chain-img,
+.fx-chain-wrap:hover .fx-chain-img { filter: grayscale(1) brightness(1.5); }
+.fx-chain-img { opacity: .45; }
+.fx-chain-wrap.on .fx-chain-img { opacity: .75; }
+.fx-chain-wrap:hover .fx-chain-img { opacity: .95; }
+
+/* ── 16 · FEWER DRAWN BOXES ──────────────────────────────────────────────
+   Panels that were outlined AND filled are now only filled; the fill already
+   says where the panel ends. Seams between rows stay, because a divider is
+   doing work an outline is not. */
+.in-card, .fx-sec, .fx-lp, .source-card, .modal, .bc-panel,
+.fx-seg, .in-stat, .fx-metric, .sources-card {
+  border: 0;
+}
+.in-stat { background: var(--surface2); }
+.in-stat:hover { background: var(--surface3); }
+
+/* ── 17 · THE LAST THREE ─────────────────────────────────────────────────
+   Re-audited after section 15: the wordmark, the selected segment and the
+   active tab are the three that keep the colour. These were the rest.
+
+   A caller's handle, an emphasised word in a hint, and the toggle's own box do
+   not need to be green. Emphasis is what italics and full-strength text are
+   for; colour here was competing with the numbers. */
+.reply-author { color: var(--muted); }
+.fx-row-label em, .fx-am-text em { color: var(--text); font-style: normal; font-weight: 600; }
+.fx-am-box { border-color: var(--line2); background: var(--raise); }
+.fx-alertmatch.on .fx-am-box { border-color: var(--accent-ring); background: var(--accent-dim); }
+
+/* The "on" state of the alert-match toggle repeats the accent inside its own
+   already-accented box, which is the same colour said twice. The box carries
+   the state; the sentence inside it just has to be readable. */
+.fx-alertmatch.on .fx-am-text em { color: var(--text); }
+
+/* Placeholder initials on the deck, for the same reason. */
+.msg-av, .in-item-avatar, .token-fallback { color: var(--muted); }

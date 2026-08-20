@@ -155,7 +155,7 @@ function TokenCard({ token, onPick }) {
         <div className="showcase-card-banner-overlay" />
         <div className="showcase-card-top">
           <div className="showcase-chain" style={{ borderColor: accent, color: accent }}>
-            <span className="chain-dot" style={{ background: accent }} />
+            <span className="chain-dot" />
             {token.chain}
           </div>
           {token.image ? (

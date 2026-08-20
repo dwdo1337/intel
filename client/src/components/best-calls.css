@@ -1,0 +1,224 @@
+/* ==========================================================================
+   Best calls board
+   --------------------------------------------------------------------------
+   Namespaced `bc-`, self-contained, built only from the tokens already in
+   index.css so it cannot drift from the rest of the deck.
+
+   The layout carries the argument: peak on the left of the pair, current value
+   on the right, always both. A board that shows only how far a call ran is a
+   board that flatters every rug, and one that shows only what it is worth now
+   is the scoreboard this replaced.
+   ========================================================================== */
+
+.bc {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  background: var(--bg);
+}
+
+.bc-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--line);
+  flex: none;
+}
+
+.bc-tabs { display: flex; gap: 4px; }
+
+.bc-tab {
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--muted);
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all .15s;
+}
+.bc-tab:hover { color: var(--text); border-color: var(--line2); }
+.bc-tab.on {
+  background: var(--accent-dim);
+  border-color: rgba(79, 227, 168, .35);
+  color: var(--accent);
+}
+
+/* Coverage is never hidden and never styled to be ignorable. */
+.bc-cov {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.bc-cov-note { color: var(--dim); }
+
+.bc-empty {
+  padding: 32px 20px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+  max-width: 46em;
+}
+
+.bc-list { overflow-y: auto; min-height: 0; flex: 1; }
+
+.bc-row {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) 150px 110px;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--line);
+  cursor: pointer;
+  transition: background .12s;
+}
+.bc-row:hover { background: var(--surface); }
+.bc-row.group { cursor: default; }
+
+.bc-rank {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--dim);
+  text-align: right;
+}
+
+.bc-tok { min-width: 0; }
+
+.bc-sym {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--text);
+  min-width: 0;
+}
+
+.bc-chain, .bc-lp {
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  padding: 2px 5px;
+  border-radius: 4px;
+  flex: none;
+}
+.bc-chain { background: rgba(255,255,255,.05); color: var(--dim); }
+.bc-chain.solana { background: rgba(153,69,255,.14); color: #c8a2ff; }
+.bc-chain.bsc { background: rgba(240,185,11,.14); color: #f0cf6a; }
+.bc-chain.base { background: rgba(0,82,255,.16); color: #7fa8ff; }
+.bc-chain.ethereum { background: rgba(98,126,234,.16); color: #9dafee; }
+.bc-chain.robinhood { background: rgba(0,200,5,.14); color: #6fe07a; }
+.bc-lp { background: rgba(255,255,255,.04); color: var(--muted); }
+
+.bc-who {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bc-run, .bc-now { min-width: 0; }
+
+/* The multiple is the reason this board exists, so it is the biggest thing on
+   the row and everything else is subordinate to it. */
+.bc-mult {
+  font-family: var(--mono);
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -.03em;
+  color: var(--muted);
+  line-height: 1;
+}
+/* Only 5x and up gets colour. At 2x most of the board lit up, which makes the
+   highlight a background rather than a signal. */
+.bc-mult.good { color: var(--accent); }
+.bc-mult.huge {
+  color: var(--accent2);
+  font-size: 27px;
+  text-shadow: 0 0 22px rgba(79,227,168,.45);
+}
+
+.bc-sub {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--dim);
+  margin-top: 3px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.bc-src {
+  padding: 1px 4px;
+  border-radius: 3px;
+  background: rgba(255,255,255,.04);
+  color: var(--muted);
+  cursor: help;
+}
+
+.bc-nowmult {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+/* "dead" is a measured state, not a zero. It is worded, not coloured red and
+   left to imply a number we never took. */
+.bc-nowmult.dead { color: var(--sell); }
+
+.bc-rates { display: flex; gap: 10px; }
+.bc-rates span {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+.bc-rates i {
+  font-style: normal;
+  font-size: 9px;
+  color: var(--dim);
+  margin-left: 2px;
+}
+
+.bc-best { cursor: pointer; }
+.bc-best:hover { color: var(--accent); }
+
+@media (max-width: 860px) {
+  .bc-row { grid-template-columns: 26px minmax(0, 1fr) 110px; }
+  .bc-now { display: none; }
+}
+
+/* ── first-caller line ─────────────────────────────────────────────────── */
+.bc-firstlabel {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--accent);
+  background: var(--accent-dim);
+  padding: 1px 4px;
+  border-radius: 3px;
+  margin-right: 5px;
+}
+.bc-who b { color: var(--text); font-weight: 600; }
+.bc-also {
+  margin-left: 6px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: rgba(255,255,255,.05);
+  color: var(--dim);
+  cursor: help;
+}

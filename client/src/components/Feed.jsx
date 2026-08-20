@@ -2,6 +2,7 @@ import './feed-card.css';
 import { useState, useEffect } from 'react';
 import { fmt } from '../App';
 import { CHAIN_LAUNCHPADS } from './Filters';
+import { CHIPS } from './Filters';
 import { gmgnUrl, gmgnWalletUrl } from '../lib/gmgn';
 
 export function fmtPrice(p) {
@@ -24,7 +25,7 @@ function fmtRelTime(iso) {
   return `${Math.floor(diffSec / 86400)}d ago`;
 }
 
-const CHIPS = ['All', 'Follow-ups'];
+
 
 /** Split text around every occurrence of `address`, so the CA can be
  *  highlighted in place. Case-insensitive because EVM addresses get pasted in
@@ -555,7 +556,8 @@ export function Feed({ events, selected, onSelect, filter, setFilter }) {
           <div className="feed-title">Live feed</div>
           <div className="feed-chips">
             {CHIPS.map(c => (
-              <span key={c} className={`chip ${chip === c ? 'active' : ''}`} onClick={() => setChip(c)}>{c}</span>
+              <span key={c.id} className={`chip ${chip === c.id ? 'active' : ''}`}
+                    onClick={() => setChip(c.id)}>{c.label}</span>
             ))}
           </div>
         </div>
@@ -659,7 +661,9 @@ function MsgCard({ event, active, onClick, index = 0 }) {
   const chain = chainSlug(event.token.chain);
   const chainLabel = chainLabelOf(chain, event.token.chain);
   const chainDef = CHAIN_LAUNCHPADS.find(c => c.id === chain);
-  const chainColor = chainDef?.color || '#4fe3a0';
+  // chainDef still resolves the label; its `color` is deliberately unused.
+  // Four chain accents competing with the one accent is what made every
+  // card read as equally urgent.
   const address = event.token.address || '';
   // The message a caller actually typed. Previously the CA was STRIPPED out
   // of it -- but 19 of 28 real calls are nothing but the bare CA, so
@@ -710,7 +714,9 @@ function MsgCard({ event, active, onClick, index = 0 }) {
         {event.token.image ? (
           <img className="msg-av-real" src={event.token.image} alt="" onError={e => { e.target.style.display='none'; const fb=e.target.nextSibling; if(fb) fb.style.display='flex'; }} />
         ) : null}
-        <div className="msg-av" style={{ background: `linear-gradient(135deg,${color},#000)`, display: event.token.image ? 'none' : 'flex' }}>{initials}</div>
+        {/* Initials sit on a plain raised surface. The generated gradient gave
+            every token without art its own colour, which is a lot of colour. */}
+        <div className="msg-av" style={{ display: event.token.image ? 'none' : 'flex' }}>{initials}</div>
         <div className="msg-meta-head">
           <div className="msg-line1">
             <span className="msg-token">{event.token.name || 'Unknown'}</span>
@@ -732,8 +738,8 @@ function MsgCard({ event, active, onClick, index = 0 }) {
             )}
           </div>
           <div className="msg-venue-row">
-            <span className="venue-chip chain" style={{ background: `${chainColor}1f`, borderColor: `${chainColor}55`, color: chainColor }}>
-              <span className="venue-dot" style={{ background: chainColor }} />
+            <span className="venue-chip chain">
+              <span className="venue-dot" />
               {chainLabel}
             </span>
             {venueLabel && (
@@ -782,6 +788,13 @@ function MsgCard({ event, active, onClick, index = 0 }) {
             ? (bondingCurve ? 'bonding curve · no pair yet' : 'not reported by DEX')
             : m.liveLiq != null && m.liq != null && m.liveLiq !== m.liq
               ? `${m.liveLiq >= m.liq ? '+' : ''}${pctDelta(m.liq, m.liveLiq)} · was $${fmt(m.liq)}`
+              // Where the figure came from, when it did not come from the
+              // provider every other number on this card came from. A bonding
+              // curve's real depth and an AMM pool's are different
+              // measurements, and a row that shows one while implying the other
+              // is the kind of quiet wrongness this app exists not to do.
+              : m.liqSource === 'pumpfun-curve' ? 'bonding curve reserves'
+              : m.liqSource === 'gmgn-pool' ? 'pool reserves · GMGN'
               : `${chainLabel} pair`}
           tone={m.liveLiq != null && m.liq != null && m.liveLiq !== m.liq
             ? (m.liveLiq >= m.liq ? 'up' : 'down') : null}

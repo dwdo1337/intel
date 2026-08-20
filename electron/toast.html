@@ -6,9 +6,30 @@
 <title>Intel. Signal Toast</title>
 <style>
 :root{
-  --bg:#08090d;--surface:rgba(16,19,27,0.92);--line:rgba(255,255,255,0.09);
-  --text:#f0f2f7;--muted:#6b7588;--accent:#4fe3a0;--accent2:#9fe8c3;
-  --buy:#22c55e;--sell:#ef4444;--info:#3b82f6;--dc:#a855f7;--tg:#3b82f6;
+  /* Same system as the deck (client/src/index.css). A notification is the same
+     product arriving on top of another window, so it cannot be a different
+     palette -- the toast used to be colder and greener than the app it came
+     from, which is exactly how a notification starts feeling like an ad. */
+  --bg:        oklch(0.16 0.010 265);
+  --surface:   oklch(0.19 0.012 265 / 0.96);
+  --surface2:  oklch(0.21 0.012 265);
+  --surface3:  oklch(0.235 0.012 265);
+  --raise:     rgba(255,255,255,0.03);
+  --raise-2:   rgba(255,255,255,0.06);
+  --line:      rgba(255,255,255,0.06);
+  --line2:     rgba(255,255,255,0.09);
+  --text:      oklch(0.97 0.004 265);
+  --muted:     oklch(0.70 0.012 265);
+  --dim:       oklch(0.54 0.012 265);
+  --accent:    oklch(0.80 0.135 158);
+  --accent2:   oklch(0.86 0.110 158);
+  --accent-ink:oklch(0.20 0.030 158);
+  --accent-dim:color-mix(in oklab, var(--accent) 14%, transparent);
+  --sell:      oklch(0.64 0.125 25);
+  --buy:       var(--accent);
+  /* Chain and source identity is a label here too, not a colour. */
+  --info:var(--muted);--dc:var(--muted);--tg:var(--muted);
+  --radius:8px;--radius-chip:4px;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;overflow:hidden;background:transparent;font-family:'Inter',system-ui,sans-serif}
@@ -133,9 +154,153 @@ html,body{height:100%;overflow:hidden;background:transparent;font-family:'Inter'
 .btn.disabled{opacity:.4;cursor:not-allowed;pointer-events:none}
 .close{width:26px;height:26px;flex-shrink:0;border-radius:7px;border:1px solid rgba(255,255,255,0.10);background:rgba(255,255,255,0.05);color:#9aa4ba;font-size:15px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background .14s,color .14s,border-color .14s;padding:0}
 .close:hover{background:rgba(239,68,68,0.16);border-color:rgba(239,68,68,0.45);color:#ff9c9c}
+
+/* ── DESIGN PASS ─────────────────────────────────────────────────────────
+   The same four rules as the deck: elevation over outlines, one accent, white
+   numbers, a 4px grid. A toast is the most interruptive surface in the product,
+   so restraint matters more here than anywhere. */
+#toast { border-radius: var(--radius); }
+/* Badges lose their tints: chain, launchpad and source were three coloured
+   rectangles in a row before the token name had been read. */
+.badge, .badge.chain, .badge.lp, .badge.src-tg, .badge.src-dc {
+  background: var(--raise-2) !important;
+  color: var(--muted) !important;
+  border: 0 !important;
+  border-radius: var(--radius-chip);
+  font-weight: 600;
+}
+/* One panel of numbers with hairline seams, not four outlined cells. */
+.metrics { background: var(--raise); border: 0; border-radius: var(--radius); }
+.metric { border-left: 1px solid var(--line); }
+.metric:first-child { border-left: 0; }
+.metric-value { color: var(--text); font-variant-numeric: tabular-nums; }
+.metric-value.up { color: var(--accent); }
+.metric-value.down { color: var(--sell); }
+.metric-label { color: var(--dim); letter-spacing: .06em; }
+/* Primary action solid, dark text, no glow; the other two are ghosts. */
+.btn.primary { background: var(--accent); color: var(--accent-ink); border: 0; box-shadow: none; }
+.btn.ghost { background: transparent; border: 1px solid var(--line); color: var(--muted); }
+.btn.ghost:hover { background: var(--raise-2); color: var(--text); }
+.token-img, .token-img img { border-radius: var(--radius); box-shadow: none; }
+.glow { display: none; }
+.ca, .copy-btn { color: var(--muted); }
+.copy-btn { background: var(--raise-2); border: 0; border-radius: var(--radius-chip); }
+
+/* The status pill was amber for a repeat call and purple for a watchlist
+   event -- two more hues on a surface that is meant to have one. It is also
+   saying the same thing as the reason pill at the foot of a note, so it steps
+   back to a neutral mark and lets that one carry the colour. */
+.live.recall-mode, .live.watch-mode {
+  background: var(--raise-2);
+  border: 0;
+  color: var(--muted);
+  border-radius: var(--radius-chip);
+  font-weight: 700;
+}
+.live.recall-mode .live-dot, .live.watch-mode .live-dot { background: var(--dim); }
+/* The default "NEW SIGNAL" pill stays solid accent: a first sighting is the one
+   thing on this surface worth the colour. */
+.live { border-radius: var(--radius-chip); }
+
+/* A placeholder initial is not a status. */
+.token-img .fallback { color: var(--muted); background: var(--surface3); }
 </style>
 </head>
 <body>
+<style>
+/* ── WATCH NOTE ─────────────────────────────────────────────────────────
+   The compact tier. A new call is time-sensitive and earns the full card; "a
+   token you starred was mentioned again" does not, and giving both the same
+   footprint is how a useful alert becomes the one you switch off.
+
+   Everything cut here is cut because a note is a GLANCE. You are not deciding
+   whether to buy from a note -- you already know this token, that is why it is
+   starred. You are deciding whether to go and look. So: no artwork, no metric
+   grid, no contract row, no buttons. Identity, cause, consequence.
+
+   The card is never rebuilt for this. It hides sections of the real toast, so a
+   note cannot drift away from the thing it is a smaller version of. */
+/* Cut the furniture, not the facts. Artwork, the contract row and the buy
+   buttons go: you already know this token, that is why it is starred, so a note
+   is deciding whether to go and LOOK -- not deciding whether to buy from the
+   toast. The numbers stay, because a note with no numbers says only "something
+   happened", which is not worth an interruption. */
+#toast.note .banner,
+#toast.note .token-img,
+#toast.note .metrics-2,
+#toast.note .footer,
+#toast.note .wallets,
+#toast.note .ca-row,
+#toast.note .actions,
+#toast.note .callerrec,
+#toast.note .recall { display: none !important; }
+
+#toast.note .inner { padding-bottom: 12px; }
+#toast.note .main { gap: 0; }
+#toast.note .title { font-size: 15px; }
+#toast.note .sender { margin-top: 2px; }
+#toast.note .badges { margin-top: 4px; }
+
+/* Metrics stay, at note scale: the same four figures, about two thirds the
+   size, no labels competing with them. */
+#toast.note .metrics {
+  margin-top: 8px;
+  padding: 6px 0;
+  gap: 0;
+}
+#toast.note .metrics .metric-label { font-size: 8px; letter-spacing: .06em; }
+#toast.note .metrics .metric-value { font-size: 12px; }
+
+/* An empty message row is deleted, not filled with an apology. "No message
+   text with this call" is a sentence explaining that there is no sentence --
+   pure furniture on a toast whose whole job is to be glanceable. On the full
+   signal card the placeholder still earns its place, because there the row
+   holds the card's height steady. */
+#toast.note .msg-row.empty { display: none !important; }
+
+/* When there IS something to read, it is the reason the note exists, so it is
+   highlighted rather than greyed into the background. */
+#toast.note .msg-row {
+  margin-top: 8px;
+  border-left: 2px solid var(--note-accent, #4fe3a0);
+  background: rgba(255,255,255,.04);
+  border-radius: 0 6px 6px 0;
+  padding: 6px 8px;
+}
+#toast.note .msg-text { font-size: 12px; color: #e6e9f2; }
+
+/* One line of consequence: what it is worth now, versus when you starred it. */
+#toast.note .noteline {
+  display: flex; align-items: baseline; gap: 8px;
+  margin-top: 8px; padding-top: 8px;
+  border-top: 1px solid var(--line, #1d2230);
+  font-family: var(--mono, monospace);
+}
+#toast.note .noteline .nl-mc { font-size: 15px; font-weight: 700; color: #f0f2f7; }
+#toast.note .noteline .nl-delta { font-size: 12px; font-weight: 600; }
+#toast.note .noteline .nl-delta.up { color: #4fe3a0; }
+#toast.note .noteline .nl-delta.down { color: #ef4444; }
+#toast.note .noteline .nl-note {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  margin-left: auto;
+  padding: 2px 7px;
+  border-radius: 4px;
+  color: var(--note-accent, #4fe3a0);
+  background: color-mix(in srgb, var(--note-accent, #4fe3a0) 16%, transparent);
+}
+
+/* Per-kind accent, so the reason reads before the words do. */
+#toast.note .accent-line { background: var(--note-accent, #4fe3a0) !important; }
+#toast.note.k-mention { --note-accent: #4fe3a0; }
+#toast.note.k-refresh { --note-accent: #3b82f6; }
+#toast.note.k-wallet  { --note-accent: #f59e0b; }
+#toast.note.k-wallet .live { background: rgba(245,158,11,.16) !important; color: #f5b642 !important; }
+#toast.note.k-refresh .live { background: rgba(59,130,246,.16) !important; color: #7fb3ff !important; }
+</style>
+
 <div id="toast">
   <div class="glow"></div>
   <div class="accent-line"></div>
@@ -211,6 +376,11 @@ html,body{height:100%;overflow:hidden;background:transparent;font-family:'Inter'
     </div>
     <div class="msg-row" id="msgRow" style="display:none">
       <div class="msg-text" id="msgText"></div>
+    </div>
+    <div class="noteline" id="noteLine" style="display:none">
+      <span class="nl-mc" id="nlMc">—</span>
+      <span class="nl-delta" id="nlDelta"></span>
+      <span class="nl-note" id="nlNote"></span>
     </div>
     <div class="ca-row">
       <div class="ca" id="ca">0x...</div>
@@ -317,7 +487,63 @@ function wireActions(data){
   if (caEl) { caEl.textContent = shortCA(data.ca); caEl.dataset.full = data.ca || ''; }
 }
 
+/**
+ * Compact tier for watchlist events.
+ *
+ * Driven by `alert_tier` from the server rather than inferred from
+ * `alert_kind`, so what counts as an interruption stays one decision in one
+ * place instead of a string test repeated in the renderer.
+ */
+function applyTier(data){
+  const el = document.getElementById('toast');
+  const kind = String(data.alert_kind || '');
+  const isNote = data.alert_tier === 'note';
+
+  el.classList.toggle('note', isNote);
+  el.classList.toggle('k-mention', isNote && kind === 'watchlist-mention');
+  el.classList.toggle('k-refresh', isNote && kind === 'watchlist-refresh');
+  el.classList.toggle('k-wallet',  isNote && kind === 'watchlist-wallet');
+
+  const line = document.getElementById('noteLine');
+  if (!line) return;
+  if (!isNote) { line.style.display = 'none'; return; }
+
+  const mc = data.mcap_usd;
+  document.getElementById('nlMc').textContent = mc == null ? 'mcap unknown' : fmtUSD(mc);
+
+  // Measured against the market cap at the moment you STARRED it, not at the
+  // original call -- a watch note answers "what has happened since I said I
+  // cared", which is a different question from "how did this call do".
+  const base = data.watched_mcap_usd;
+  const d = document.getElementById('nlDelta');
+  if (base > 0 && mc > 0) {
+    const pct = ((mc / base) - 1) * 100;
+    d.textContent = (pct >= 0 ? '+' : '') + pct.toFixed(0) + '% since starred';
+    d.className = 'nl-delta ' + (pct >= 0 ? 'up' : 'down');
+  } else {
+    // No baseline is not 0%. Say nothing rather than imply it has not moved.
+    d.textContent = '';
+    d.className = 'nl-delta';
+  }
+
+  // Coalesced repeats are counted, not stacked. Three rooms calling the same
+  // starred token in a minute is one piece of news -- that it is spreading.
+  const reps = Number(data.note_repeats || 1);
+  const what = kind === 'watchlist-refresh' ? 'rescanned'
+    : kind === 'watchlist-wallet' ? 'smart money'
+    : 'called again';
+  const noteEl = document.getElementById('nlNote');
+  noteEl.textContent = reps > 1 ? `${what} ×${reps}` : what;
+  // The reason is the headline of a note, so it is a pill in the kind's own
+  // colour rather than grey text at the end of a row.
+  noteEl.className = 'nl-note k-' + (
+    kind === 'watchlist-refresh' ? 'refresh'
+    : kind === 'watchlist-wallet' ? 'wallet' : 'mention');
+  line.style.display = 'flex';
+}
+
 function renderDisplay(data){
+  applyTier(data);
   document.getElementById('tokenName').textContent = data.token_name || 'Unknown Token';
   document.getElementById('tokenSymbol').textContent = data.token_symbol ? '$' + data.token_symbol : '';
   const chainBadge = document.getElementById('chainBadge');
@@ -458,13 +684,20 @@ function renderDisplay(data){
   // re-scanned, must never be mistaken for a fresh discovery -- the label is
   // the only thing distinguishing them, and acting on a re-alert as if it were
   // a new call is a real way to lose money.
+  // The star already says "watchlist"; repeating the word cost enough width
+  // that "SMART MONEY IN" wrapped onto a second line and dragged the brand
+  // text with it. The reason is what matters here, so the reason gets the room.
   if (String(data.alert_kind || '').startsWith('watchlist')) {
     if (pillEl) pillEl.classList.add('watch-mode');
     if (pillTextEl) {
       pillTextEl.textContent =
-        data.alert_kind === 'watchlist-refresh' ? '\u2605 WATCHLIST \u00b7 RESCANNED'
-        : data.alert_kind === 'watchlist-wallet' ? '\u2605 WATCHLIST \u00b7 SMART MONEY IN'
-        : '\u2605 WATCHLIST \u00b7 CALLED ' + count + '\u00d7';
+        data.alert_kind === 'watchlist-refresh' ? '\u2605 RESCANNED'
+        : data.alert_kind === 'watchlist-wallet' ? '\u2605 SMART MONEY IN'
+        : (count > 1
+          ? '\u2605 CALLED ' + count + '\u00d7'
+          // "CALLED 1x" is not a count, it is a first mention wearing the
+          // costume of one. Only quote a number when there is one to quote.
+          : '\u2605 CALLED AGAIN');
     }
   } else if (count > 1) {
     const pill = pillEl;
@@ -571,9 +804,18 @@ function renderDisplay(data){
     // instead of showing a blank -- the row is always present now, so the
     // toast never changes height depending on what someone typed.
     const withoutCa = ca ? raw.split(ca).join('').trim() : raw;
+    // `empty` is a CLASS, not a decision about whether to render. The full
+    // signal card still shows the placeholder -- it keeps the card's height
+    // stable and says which of "no text" and "CA only" happened. A watch note
+    // hides the row entirely via that class, because a line explaining that
+    // there is no line is exactly the furniture a glanceable toast should not
+    // carry.
+    msgRow.classList.remove('empty');
     if (!raw) {
+      msgRow.classList.add('empty');
       msgText.innerHTML = '<span class="msg-none">No message text with this call</span>';
     } else if (!withoutCa) {
+      msgRow.classList.add('empty');
       msgText.innerHTML = '<span class="msg-none">Contract address only — no message text</span>';
     } else {
       // Highlight the contract address inside the original message so the eye

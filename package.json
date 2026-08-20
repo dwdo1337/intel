@@ -1,6 +1,6 @@
 {
   "name": "intel-command-deck",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "Standalone memecoin signal command deck for Telegram, Discord and DEX data.",
   "author": "intel.",
   "type": "module",

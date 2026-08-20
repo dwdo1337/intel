@@ -13,7 +13,12 @@ import { NewMessage } from 'telegram/events/index.js';
 import { Api } from 'telegram';
 import { HitStorePersistence } from './persistence.js';
 import { fetchSafety, isSolanaAddress, fetchImageFromMetadata } from './safety.js';
-import { configureGmgn, isGmgnConfigured, fetchGmgnSecurity, fetchGmgnDevHistory, extractTokenExtrasFromDevHistory, fetchGmgnTokenInfo, fetchGmgnTokenWallets, gmgnHolderChain, WALLET_PAGE } from './gmgn.js';
+import { configureGmgn, isGmgnConfigured, fetchGmgnSecurity, fetchGmgnDevHistory, extractTokenExtrasFromDevHistory, fetchGmgnTokenInfo, fetchGmgnTokenWallets, gmgnHolderChain, WALLET_PAGE,
+         fetchGmgnPool, fetchGmgnKline } from './gmgn.js';
+import { plausibleHolderCount, resolveHolderCount } from './plausibility.js';
+import { higherPeak, klineResolution, peakFromCandles, peakMultiple, minutesToPeak, KLINE_PAGE } from './peak.js';
+import { resolveLiquidity, gmgnPoolChain } from './liquidity.js';
+import { fetchPumpFunCoin, athMarketCapUsd, isPumpFunMint } from './pumpfun.js';
 import { startKolWatcher, getKolActivity, kolWatcherStatus } from './kol.js';
 import { startFlowWatcher, getFlow, flowWatcherStatus } from './flow.js';
 import { passesAlertFilters, sanitizeThresholds } from './alert-filter.js';
@@ -157,6 +162,25 @@ function isGenuineFollowup(hit, mention, ignoredBots) {
   return true;
 }
 
+/**
+ * Record a market cap as the token's peak if it beats what we hold.
+ *
+ * Called wherever a fresh market cap already exists, so it costs nothing: the
+ * scan, a manual refresh, the outcome sweep. Free and exact for anything we
+ * happened to look at, and blind to everything between those moments -- which is
+ * what the candle backfill in fillPeak() is for.
+ */
+function notePeak(hit, mcap, at, source = 'observed') {
+  if (!hit) return false;
+  const r = higherPeak(hit.peak_mcap_usd, hit.peak_at, hit.peak_source,
+                       mcap, at || new Date().toISOString(), source);
+  if (!r.changed) return false;
+  hit.peak_mcap_usd = r.value;
+  hit.peak_at = r.at;
+  hit.peak_source = r.source;
+  return true;
+}
+
 function upsertHit(ca, chain, partial, mention) {
   let hit = HITS.get(ca);
   const now = mention.detected_at || new Date().toISOString();
@@ -180,6 +204,18 @@ function upsertHit(ca, chain, partial, mention) {
       // Live readings, only set by an explicit user refresh.
       live_mcap_usd: null, live_liquidity_usd: null, live_volume_24h_usd: null,
       live_price_usd: null, refreshed_at: null,
+      // HIGH-WATER MARK. The furthest this token ever got after the call, which
+      // is the only number that describes what the call was worth. Everything
+      // else here is a point in time and a memecoin's whole life is a spike: a
+      // token called at $10,587 that touched $21,018 and fell back to $2,166 was
+      // being scored 0.20x -- a loss -- for a call that was a 2x.
+      peak_mcap_usd: null, peak_at: null, peak_source: null, peak_checked_at: null,
+      // Baseline for watch notes -- see the star endpoint.
+      watched_mcap_usd: null,
+      // Which provider the liquidity figure came from. A bonding curve's real
+      // depth and an AMM pool's are different measurements and the card has to
+      // be able to say which one it is showing.
+      liquidity_source: null,
       // Safety fields (RugCheck, Solana only). null == unknown, never "safe".
       rugged: null, dev_wallet: null, insider_holder_count: null,
       graph_insiders_detected: null, total_lp_providers: null,
@@ -218,13 +254,22 @@ function upsertHit(ca, chain, partial, mention) {
   // Freeze the full snapshot the first time we have real numbers. Later
   // enrichments must NOT move these -- the card is meant to show what was
   // true when the call fired, not a silently drifting live value.
-  if (hit.scan_at == null && hit.mcap_usd != null) {
-    hit.scan_mcap_usd = hit.mcap_usd;
-    hit.scan_liquidity_usd = hit.liquidity_usd;
-    hit.scan_volume_24h_usd = hit.volume_24h_usd;
-    hit.scan_price_usd = hit.price_usd;
-    hit.scan_at = new Date().toISOString();
-  }
+  //
+  // Frozen PER FIELD, not all at once. The gate used to be `mcap != null` for
+  // the whole block, and `scan_at` was set in the same breath -- so a token
+  // whose market cap arrived before its liquidity had liquidity frozen at null
+  // FOREVER, because the block could never run again. Measured on the live
+  // store: 33 tokens with a known liquidity and a permanently blank snapshot of
+  // it. Each field is now captured the first time that field exists, which
+  // keeps the "never overwritten" guarantee intact while closing the hole.
+  if (hit.scan_mcap_usd == null && hit.mcap_usd != null) hit.scan_mcap_usd = hit.mcap_usd;
+  if (hit.scan_liquidity_usd == null && hit.liquidity_usd != null) hit.scan_liquidity_usd = hit.liquidity_usd;
+  if (hit.scan_volume_24h_usd == null && hit.volume_24h_usd != null) hit.scan_volume_24h_usd = hit.volume_24h_usd;
+  if (hit.scan_price_usd == null && hit.price_usd != null) hit.scan_price_usd = hit.price_usd;
+  // scan_at still marks the market-cap moment, because that is what the
+  // "at time of call" label on the card refers to.
+  if (hit.scan_at == null && hit.mcap_usd != null) hit.scan_at = new Date().toISOString();
+  notePeak(hit, hit.mcap_usd);
   // Compute multiplier against the latest mcap.
   if (hit.entry_mcap_usd != null && hit.mcap_usd != null && hit.entry_mcap_usd > 0) {
     hit.multiplier = hit.mcap_usd / hit.entry_mcap_usd;
@@ -308,6 +353,57 @@ function extractCAs(text, hintChain) {
  * deploy to Uniswap. Guessing a launchpad from a shared dexId would invent
  * a fact. Those stay null (= unknown) and their filter pills stay disabled.
  */
+/**
+ * Launchpad-operated AMMs, keyed by DexScreener dexId.
+ *
+ * Only entries where the dexId belongs to the launchpad ITSELF. Generic AMMs
+ * (uniswap, pancakeswap, raydium, orca, meteora...) are absent on purpose --
+ * they carry no launchpad information.
+ *
+ * Module scope, not a local, because /api/launchpads publishes it. This map is
+ * the single definition of "a launchpad this app can detect", so a filter chip
+ * exists exactly when detection exists.
+ *
+ * `chains` is which chains each dexId is real on, used only for grouping the
+ * published list. Detection itself never consults it -- a dexId match is proof
+ * enough on its own.
+ */
+const DEX_TO_LAUNCHPAD = {
+  // Solana
+  pumpswap: 'pump.fun',
+  pumpfun: 'pump.fun',
+  launchlab: 'Raydium LaunchLab',
+  moonshot: 'Moonshot',
+  bags: 'Bags',
+  jupiterstudio: 'Jupiter Studio',
+  // BSC / BNB Chain -- dexIds verified against live DexScreener data.
+  // 'flapsh' is Flap (flap.sh), NOT Flapstock (a Robinhood-chain platform).
+  flapsh: 'Flap',
+  flap: 'Flap',
+  fourmeme: 'Four.meme',
+  'four-meme': 'Four.meme',
+  grafun: 'GraFun',
+  bakeryswap: 'BakerySwap',
+  // Base / Ethereum
+  clanker: 'Clanker',
+  zora: 'Zora',
+};
+
+const DEX_CHAINS = {
+  pumpswap: ['solana'], pumpfun: ['solana'], launchlab: ['solana'],
+  moonshot: ['solana'], bags: ['solana'], jupiterstudio: ['solana'],
+  flapsh: ['bsc', 'robinhood'], flap: ['bsc'], fourmeme: ['bsc'],
+  'four-meme': ['bsc'], grafun: ['bsc'], bakeryswap: ['bsc'],
+  clanker: ['base', 'ethereum'], zora: ['base'],
+};
+
+// The two Solana routes that are not dexId-based -- a mint suffix is proof of
+// its launchpad on its own. Listed here so they reach the published chips too.
+const SUFFIX_LAUNCHPADS = [
+  { chain: 'solana', label: 'pump.fun' },
+  { chain: 'solana', label: 'letsbonk.fun' },
+];
+
 function detectLaunchpad(ca, chainId, dexId, allPairs) {
   const chain = (chainId || '').toLowerCase();
   const dex = (dexId || '').toLowerCase();
@@ -320,29 +416,6 @@ function detectLaunchpad(ca, chainId, dexId, allPairs) {
   }
 
   // ── route 2: launchpad-operated AMMs, keyed by DexScreener dexId ─────
-  // Only entries where the dexId belongs to the launchpad ITSELF. Generic
-  // AMMs (uniswap, pancakeswap, raydium, orca, meteora...) are absent on
-  // purpose -- they carry no launchpad information.
-  const DEX_TO_LAUNCHPAD = {
-    // Solana
-    pumpswap: 'pump.fun',
-    pumpfun: 'pump.fun',
-    launchlab: 'Raydium LaunchLab',
-    moonshot: 'Moonshot',
-    bags: 'Bags',
-    jupiterstudio: 'Jupiter Studio',
-    // BSC / BNB Chain -- dexIds verified against live DexScreener data.
-    // 'flapsh' is Flap (flap.sh), NOT Flapstock (a Robinhood-chain platform).
-    flapsh: 'Flap',
-    flap: 'Flap',
-    fourmeme: 'Four.meme',
-    'four-meme': 'Four.meme',
-    grafun: 'GraFun',
-    bakeryswap: 'BakerySwap',
-    // Base / Ethereum
-    clanker: 'Clanker',
-    zora: 'Zora',
-  };
   if (DEX_TO_LAUNCHPAD[dex]) return DEX_TO_LAUNCHPAD[dex];
 
   // The pair handed in is the DEEPEST one, which for a graduated token is
@@ -617,7 +690,9 @@ async function enrichSafetyAsync(ca, chain, { force = false } = {}) {
       if (early && early.image_url) {
         hit.image_url = early.image_url;
         if (!hit.header_url && early.header_url) hit.header_url = early.header_url;
-        if (hit.holder_count == null && early.holder_count != null) hit.holder_count = early.holder_count;
+        if (hit.holder_count == null && early.holder_count != null) {
+          hit.holder_count = plausibleHolderCount(early.holder_count, hit.mcap_usd);
+        }
         log('enrichment', 'Artwork attached', { ca, symbol: hit.token_symbol });
         io.emit('ca_update', hit);
         persist();
@@ -706,6 +781,41 @@ async function enrichSafetyAsync(ca, chain, { force = false } = {}) {
     log('error', 'GMGN security threw', { ca, error: e.message });
   }
 
+  // ---- 2b. Liquidity, when DexScreener had none -----------------------
+  // Verified against the live API: DexScreener returns NO `liquidity` object for
+  // a bonding-curve pair -- 212 of 245 blank rows on a real store were exactly
+  // this, while price, volume and the pair label all arrived normally. So this
+  // is a second source, not a retry.
+  //
+  // The figure is always the quote side of the pool doubled, whatever the
+  // provider, so the column means one thing on every row. See liquidity.js for
+  // why GMGN's own `liquidity` field is not used directly.
+  if (force || hit.liquidity_usd == null) {
+    try {
+      const pool = gmgnPoolChain(chainName)
+        ? await fetchGmgnPool(ca, chainName, log, { force })
+        : null;
+      // pump.fun only, keyless, and only worth asking when nothing else answered.
+      const curve = (!pool && isPumpFunMint(ca)) ? await fetchPumpFunCoin(ca, log) : null;
+
+      const liq = resolveLiquidity({ dexscreener: hit.liquidity_usd, pool, curve });
+      if (liq && liq.value !== hit.liquidity_usd) {
+        hit.liquidity_usd = liq.value;
+        hit.liquidity_source = liq.source;
+        // Same first-arrival rule the scan snapshot uses: capture it once, then
+        // never overwrite it.
+        if (hit.scan_liquidity_usd == null) hit.scan_liquidity_usd = liq.value;
+        log('enrichment', 'Liquidity resolved', {
+          ca, chain: chainName, usd: Math.round(liq.value), source: liq.source,
+        });
+        io.emit('ca_update', hit);
+        persist();
+      }
+    } catch (e) {
+      log('error', 'Liquidity resolution threw', { ca, error: e.message });
+    }
+  }
+
   // ---- 3. Token metadata: the only image source that covers EVM --------
   // Only called when something is actually missing, so a token DexScreener
   // already gave us artwork for costs nothing. Holder count is gap-filled
@@ -723,8 +833,21 @@ async function enrichSafetyAsync(ca, chain, { force = false } = {}) {
         let changed = false;
         if (needsImage && info.image_url) { hit.image_url = info.image_url; changed = true; }
         if (!hit.header_url && info.header_url) { hit.header_url = info.header_url; changed = true; }
-        if (needsHolders && info.holder_count != null && hit.holder_count !== info.holder_count) {
-          hit.holder_count = info.holder_count; changed = true;
+        // Bounded before it is stored. GMGN's `token info` is the only holder
+        // source on EVM -- RugCheck is Solana-only -- so on bsc/base/robinhood
+        // nothing else would catch an impossible number. One did get through:
+        // 622,770 holders on a $39k cap. See server/plausibility.js.
+        if (needsHolders) {
+          const before = hit.holder_count;
+          const r = resolveHolderCount(before, info.holder_count, hit.mcap_usd, { force });
+          if (r.changed) {
+            hit.holder_count = r.value; changed = true;
+            if (r.value == null) {
+              log('enrichment', 'Implausible holder count dropped', {
+                ca, chain: chainName, was: before, rejected: info.holder_count, mcap: hit.mcap_usd,
+              });
+            }
+          }
         }
         if ((force || hit.image_dup_count == null) && info.image_dup_count != null) {
           hit.image_dup_count = info.image_dup_count;
@@ -1169,7 +1292,10 @@ async function backfillRestored() {
       if (info) {
         if (!hit.image_url && info.image_url) { hit.image_url = info.image_url; changed = true; }
         if (!hit.header_url && info.header_url) { hit.header_url = info.header_url; changed = true; }
-        if (hit.holder_count == null && info.holder_count != null) { hit.holder_count = info.holder_count; changed = true; }
+        if (hit.holder_count == null && info.holder_count != null) {
+          const holders = plausibleHolderCount(info.holder_count, hit.mcap_usd);
+          if (holders != null) { hit.holder_count = holders; changed = true; }
+        }
       }
       // Same last resort as the live path: if no provider has the artwork,
       // read the token's own published metadata. Solana tokens only, since
@@ -1816,8 +1942,26 @@ function chainNotifyAllowed(chain) {
  * enabled -- looking at a range is not the same as agreeing to be interrupted
  * by it, which is the same reason the pill and the bell are separate controls.
  */
-function shouldNotify(hit) {
+/**
+ * Starring a token is an instruction about THAT token, and it outranks a range.
+ *
+ * The metric gate exists to narrow a firehose of tokens you have never seen. A
+ * token on your watchlist is the opposite of that: you already picked it out by
+ * hand. Leaving it behind the gate meant a market-cap max of 6,000 silenced a
+ * starred token the moment it ran past 6,000 -- the exact event you starred it
+ * for, suppressed by a filter written about strangers.
+ *
+ * The chain gate still applies, and the asymmetry is deliberate. Muting a chain
+ * is a statement about how you are willing to be interrupted at all; "tell me
+ * more about this one" is not "override the channels I switched off".
+ */
+function isWatchlistKind(kind) {
+  return typeof kind === 'string' && kind.startsWith('watchlist');
+}
+
+function shouldNotify(hit, kind) {
   if (!chainNotifyAllowed(hit && hit.chain)) return false;
+  if (isWatchlistKind(kind)) return true;
   return passesAlertFilters(hit, config.filters && config.filters.alert_filters);
 }
 
@@ -1829,15 +1973,24 @@ function shouldNotify(hit) {
  *   new                -- first time this CA has been seen
  *   watchlist-mention  -- a token you starred was called again
  *   watchlist-refresh  -- a token you starred was re-scanned
+ *   watchlist-wallet   -- smart money bought a token you starred
  *
  * The chain filter still applies to every kind. Starring a token says "tell me
- * more about this one", not "override the chains I muted".
+ * more about this one", not "override the chains I muted". The METRIC filters
+ * are bypassed for watchlist kinds -- see shouldNotify.
  */
 function emitAlert(hit, kind, trigger) {
   io.emit('ca', {
     ...hit,
     // The whole hit, not just the chain -- the metric gate needs the numbers.
-    _notify: shouldNotify(hit),
+    // The kind matters too: watchlist events bypass the metric gate.
+    _notify: shouldNotify(hit, kind),
+    // Weight, not just reason. 'signal' raises the full card; 'note' raises the
+    // compact watch strip. A new call is time-sensitive and earns the
+    // interruption; "a token you starred was mentioned again" does not, and
+    // giving both the same footprint is how a useful alert becomes one that gets
+    // switched off.
+    _alert_tier: isWatchlistKind(kind) ? 'note' : 'signal',
     _alert_kind: kind,
     // The event that caused THIS alert (a new mention, say). Underscored and
     // never persisted -- it describes the alert, not the token.
@@ -1959,6 +2112,12 @@ app.post('/api/watch/:ca', (req, res) => {
   // one click and the state can still be set precisely by anything else.
   hit.watched = typeof req.body?.watched === 'boolean' ? req.body.watched : !hit.watched;
   hit.watched_at = hit.watched ? new Date().toISOString() : null;
+  // The market cap AT THE MOMENT YOU STARRED IT. A watch note answers "what has
+  // happened since I said I cared about this", which is a different question
+  // from "how did this call do" -- the second is measured from entry_mcap_usd
+  // and would be the wrong baseline here. Cleared on unstar so a re-star starts
+  // a fresh measurement rather than silently reusing a stale one.
+  hit.watched_mcap_usd = hit.watched ? (hit.live_mcap_usd ?? hit.mcap_usd ?? null) : null;
   persist();
   io.emit('ca_update', hit);
   log('signal', hit.watched ? 'Added to watchlist' : 'Removed from watchlist', {
@@ -1983,6 +2142,9 @@ app.post('/api/refresh/:ca', async (req, res) => {
       return res.json({ ok: false, error: 'DexScreener has no pair for this token right now' });
     }
     hit.live_mcap_usd = fresh.mcap_usd;
+    // A refresh is a free look at the market cap, so it feeds the high-water
+    // mark. Without this the peak would only ever know about scan time.
+    notePeak(hit, fresh.mcap_usd);
     hit.live_liquidity_usd = fresh.liquidity_usd;
     hit.live_volume_24h_usd = fresh.volume_24h_usd;
     hit.live_price_usd = fresh.price_usd;
@@ -2043,6 +2205,133 @@ app.post('/api/refresh/:ca', async (req, res) => {
   }
 });
 
+/**
+ * Reconstruct how far a call actually ran, from candles.
+ *
+ * The high-water mark in notePeak() only knows what we happened to look at, and
+ * we look rarely -- a token scanned once and never refreshed has a "peak" equal
+ * to its call. Candles do not care whether anyone was watching.
+ *
+ * REFERENCE POINT. The peak market cap is scaled off the (price, mcap) pair
+ * frozen at scan, because we do not store supply. Both readings describe the
+ * same token, so their ratio needs none.
+ *
+ * pump.fun's `ath_market_cap` is ALL-TIME, so it is only usable when its
+ * timestamp falls after the call -- otherwise it would credit a call with a run
+ * that happened before it. That test is why the timestamp is fetched at all.
+ *
+ * Fail-open at every step: no candles, no reference price, an unsupported chain
+ * or a provider outage all leave the peak exactly as it was.
+ */
+async function fillPeak(hit) {
+  if (!hit || !hit.ca) return false;
+
+  const refPrice = hit.scan_price_usd ?? hit.price_usd;
+  const refMcap = hit.scan_mcap_usd ?? hit.mcap_usd;
+  const calledAt = hit.scan_at || (hit.mentions && hit.mentions[0] && hit.mentions[0].detected_at);
+  if (!refPrice || !refMcap || !calledAt) return false;
+
+  const fromTs = Math.floor(Date.parse(calledAt) / 1000);
+  const toTs = Math.floor(Date.now() / 1000);
+  if (!Number.isFinite(fromTs) || toTs <= fromTs) return false;
+
+  let changed = false;
+
+  try {
+    const resolution = klineResolution(fromTs, toTs);
+    const candles = await fetchGmgnKline(hit.ca, hit.chain, log, { fromTs, toTs, resolution });
+
+    // A full page back means the provider hit its cap and served only the most
+    // RECENT candles, dropping the start of the window -- silently, with no
+    // error. klineResolution picks a resolution that fits precisely to stop this
+    // happening, so reaching the cap means the window outran even daily candles
+    // (~90 days). The peak is then a floor, not a measurement, and saying so
+    // beats recording a partial run as a complete one.
+    if (candles && candles.length >= KLINE_PAGE) {
+      log('enrichment', 'Kline window truncated at the page cap', {
+        ca: hit.ca, chain: hit.chain, resolution, candles: candles.length,
+        note: 'peak covers only the most recent candles',
+      });
+    }
+
+    const peak = peakFromCandles(candles, refPrice, refMcap);
+    if (peak) changed = notePeak(hit, peak.mcap, peak.at || new Date().toISOString(), 'kline') || changed;
+  } catch (e) {
+    log('error', 'Kline peak lookup threw', { ca: hit.ca, error: e.message });
+  }
+
+  // Free, keyless cross-check. Only counts when the high happened AFTER the
+  // call -- an all-time high from before it says nothing about this call.
+  if (isPumpFunMint(hit.ca)) {
+    try {
+      const coin = await fetchPumpFunCoin(hit.ca, log);
+      const ath = athMarketCapUsd(coin);
+      const at = coin && coin.ath_market_cap_timestamp
+        ? new Date(Number(coin.ath_market_cap_timestamp)).toISOString() : null;
+      if (ath && at && Date.parse(at) >= Date.parse(calledAt)) {
+        changed = notePeak(hit, ath, at, 'pumpfun') || changed;
+      }
+    } catch (e) {
+      log('error', 'pump.fun peak lookup threw', { ca: hit.ca, error: e.message });
+    }
+  }
+
+  hit.peak_checked_at = new Date().toISOString();
+  return changed;
+}
+
+/**
+ * Every launchpad the app can actually detect, grouped by chain.
+ *
+ * WHY THIS IS SERVED RATHER THAN HARD-CODED IN THE RENDERER
+ *
+ * The UI carried its own hand-written list and the two drifted in both
+ * directions at once. Measured against a live 500-signal store:
+ *
+ *   - Five entries (hood.fun, Openfair, NOXA Fun, RobinPad, PONS) had NEVER been
+ *     detected. They were shown greyed with a "soon" tag -- an honest label on a
+ *     chip that could only ever produce an empty feed.
+ *   - Two launchpads the backend detects perfectly well, StonkFun and Meteora,
+ *     had no chip at all, so their tokens could not be filtered for.
+ *
+ * Publishing the detection map removes both failure modes by construction: a
+ * chip exists exactly when detection exists, so "soon" has nothing left to
+ * describe. `observed` is unioned in so anything detected by a route other than
+ * the dexId map still gets a chip rather than being invisible.
+ */
+app.get('/api/launchpads', (req, res) => {
+  const byChain = new Map();
+  const add = (chain, label) => {
+    const c = String(chain || '').toLowerCase();
+    if (!c || !label) return;
+    if (!byChain.has(c)) byChain.set(c, new Map());
+    const m = byChain.get(c);
+    // Casing is inconsistent in the store (`Pump.Fun` x384 vs `pump.fun` x28)
+    // because providers name it differently, and the feed filter already
+    // lowercases both sides. The id is the lowercased form so it is stable; the
+    // first label seen wins, so detection's own spelling stays canonical.
+    const id = String(label).toLowerCase();
+    if (!m.has(id)) m.set(id, { id, label: String(label) });
+  };
+
+  for (const [dex, label] of Object.entries(DEX_TO_LAUNCHPAD)) {
+    for (const chain of (DEX_CHAINS[dex] || [])) add(chain, label);
+  }
+  for (const s of SUFFIX_LAUNCHPADS) add(s.chain, s.label);
+  for (const hit of HITS.values()) {
+    if (hit && hit.launchpad) add(hit.chain, hit.launchpad);
+  }
+
+  const chains = [...byChain.entries()]
+    .map(([chain, m]) => ({
+      chain,
+      launchpads: [...m.values()].sort((a, b) => a.label.localeCompare(b.label)),
+    }))
+    .sort((a, b) => a.chain.localeCompare(b.chain));
+
+  res.json({ chains });
+});
+
 // ── CALLER TRACK RECORD ────────────────────────────────────────────────
 //
 // "Did this person's calls go anywhere?" — the one question the store could
@@ -2068,8 +2357,13 @@ app.post('/api/outcomes/refresh', async (req, res) => {
   if (outcomeRun) return res.json({ ok: false, error: 'already running', progress: outcomeRun });
 
   const targets = [...HITS.values()].filter(h => h && h.ca && h.entry_mcap_usd > 0);
-  outcomeRun = { total: targets.length, done: 0, updated: 0, startedAt: new Date().toISOString() };
-  res.json({ ok: true, started: true, tokens: targets.length });
+  // `peaks` is opt-out rather than opt-in: a sweep that refreshes outcomes and
+  // leaves the peaks stale rebuilds exactly the scoreboard this work exists to
+  // replace. It can be switched off for a fast price-only pass.
+  const withPeaks = req.body?.peaks !== false;
+  outcomeRun = { total: targets.length, done: 0, updated: 0, peaks: 0,
+                 withPeaks, startedAt: new Date().toISOString() };
+  res.json({ ok: true, started: true, tokens: targets.length, peaks: withPeaks });
 
   log('system', 'Outcome refresh started', { tokens: targets.length });
   for (const hit of targets) {
@@ -2078,6 +2372,7 @@ app.post('/api/outcomes/refresh', async (req, res) => {
       if (fresh && fresh.mcap_usd != null) {
         hit.live_mcap_usd = fresh.mcap_usd;
         hit.live_price_usd = fresh.price_usd;
+        notePeak(hit, fresh.mcap_usd);
         hit.outcome_at = new Date().toISOString();
         // The multiplier that the track record is built on. Measured against
         // the market cap at first detection, which is why that value is frozen.
@@ -2094,13 +2389,26 @@ app.post('/api/outcomes/refresh', async (req, res) => {
     } catch (e) {
       log('error', 'Outcome refresh failed for a token', { ca: hit.ca, error: e.message });
     }
+    // Peak backfill AFTER the price update, so the high-water mark has already
+    // seen the current value and the candles only have to beat a real number.
+    // Every call inside goes through the shared GMGN queue at BACKGROUND
+    // priority, so a signal arriving mid-sweep still gets its artwork first.
+    if (withPeaks) {
+      try {
+        if (await fillPeak(hit)) outcomeRun.peaks++;
+      } catch (e) {
+        log('error', 'Peak backfill failed for a token', { ca: hit.ca, error: e.message });
+      }
+    }
     outcomeRun.done++;
     // DexScreener is free but not a punching bag.
     await new Promise(r => setTimeout(r, 220));
   }
   persist();
-  log('system', 'Outcome refresh complete', { updated: outcomeRun.updated, of: outcomeRun.total });
-  io.emit('outcomes_done', { updated: outcomeRun.updated, total: outcomeRun.total });
+  log('system', 'Outcome refresh complete', {
+    updated: outcomeRun.updated, peaks: outcomeRun.peaks, of: outcomeRun.total });
+  io.emit('outcomes_done', {
+    updated: outcomeRun.updated, peaks: outcomeRun.peaks, total: outcomeRun.total });
   outcomeRun = null;
 });
 
@@ -2131,11 +2439,29 @@ app.get('/api/callers', (req, res) => {
       seen.add(key);
 
       if (!byAuthor.has(key)) {
-        byAuthor.set(key, { author, calls: 0, scored: 0, dead: 0, mults: [], best: null, chats: new Set() });
+        byAuthor.set(key, { author, calls: 0, scored: 0, dead: 0, mults: [], best: null,
+                            peakMults: [], bestPeak: null, chats: new Set() });
       }
       const rec = byAuthor.get(key);
       rec.calls++;
       if (m.chatName || m.chat_name) rec.chats.add(m.chatName || m.chat_name);
+
+      // PEAK is scored independently of the current value, and a dead token
+      // still has one. A rug that ran 10x first was a 10x call and a 0x hold;
+      // folding those into one number loses the only thing worth knowing about
+      // the caller. So the two records are kept side by side.
+      const pMult = peakMultiple(hit.peak_mcap_usd, hit.entry_mcap_usd);
+      if (pMult != null) {
+        rec.peakMults.push(pMult);
+        if (!rec.bestPeak || pMult > rec.bestPeak.mult) {
+          rec.bestPeak = {
+            mult: pMult, symbol: hit.token_symbol, ca: hit.ca,
+            entryMcap: hit.entry_mcap_usd, peakMcap: hit.peak_mcap_usd,
+            peakSource: hit.peak_source,
+            minutesToPeak: minutesToPeak(hit.scan_at, hit.peak_at),
+          };
+        }
+      }
 
       if (hit.outcome_dead) { rec.scored++; rec.dead++; rec.mults.push(0); continue; }
       const mult = (hit.entry_mcap_usd > 0 && hit.live_mcap_usd > 0)
@@ -2170,6 +2496,17 @@ app.get('/api/callers', (req, res) => {
     rugRate: r.mults.length ? r.mults.filter(x => x <= 0.2).length / r.mults.length : null,
     dead: r.dead,
     best: r.best,
+    // ── how far their calls RAN, regardless of where they ended ──────────
+    // `peakScored` is its own coverage number because a call can have a peak
+    // without a current outcome and the reverse, so reusing `scored` here would
+    // quietly mis-state which of the two the median was taken over.
+    peakScored: r.peakMults.length,
+    peakMedianMult: median(r.peakMults),
+    // The share that ever doubled. 2x is the threshold because 1x is "it did
+    // not move", and a win rate that counts +0.1% as a win is not a win rate.
+    peakWinRate: r.peakMults.length
+      ? r.peakMults.filter(x => x >= 2).length / r.peakMults.length : null,
+    bestPeak: r.bestPeak,
     chats: [...r.chats].slice(0, 4),
   })).sort((a, b) => (b.medianMult ?? -1) - (a.medianMult ?? -1) || b.scored - a.scored);
 
@@ -2188,6 +2525,162 @@ app.get('/api/callers', (req, res) => {
     },
   });
 });
+
+// ── BEST CALLS ─────────────────────────────────────────────────────────
+//
+// The board that answers "which rooms actually produce runners". Ranked by how
+// far a call RAN, not by what it is worth now, because those are different
+// questions and only the first one is about the call.
+//
+// A token appears once per distinct caller, the same rule the feed's "called Nx"
+// uses -- otherwise one person posting a CA three times would fill three rows of
+// the leaderboard with the same trade.
+//
+// Query: ?limit=50&min=2&by=call|room|caller
+app.get('/api/best-calls', (req, res) => {
+  const ignored = (config.filters && config.filters.ignored_authors) || [];
+  const limit = Math.min(500, Math.max(1, Number(req.query.limit) || 50));
+  const min = Number(req.query.min) > 0 ? Number(req.query.min) : 0;
+  const by = ['call', 'room', 'caller'].includes(req.query.by) ? req.query.by : 'call';
+
+  const calls = [];
+  const grouped = [];
+  let measured = 0;
+
+  for (const hit of HITS.values()) {
+    if (!hit || !Array.isArray(hit.mentions)) continue;
+    const mult = peakMultiple(hit.peak_mcap_usd, hit.entry_mcap_usd);
+    // No measured peak means EXCLUDED, never 1.00x. A board padded with
+    // unmeasured calls scored as break-even is a board that says nothing.
+    if (mult == null) continue;
+    measured++;
+    if (mult < min) continue;
+
+    // ONE ROW PER TOKEN, credited to whoever called it FIRST.
+    //
+    // This used to emit a row per distinct caller, so a token four people
+    // called filled four rows of the leaderboard with the same trade -- the
+    // board read as if it had more winners than it did, and the same 20x
+    // appeared twice at the top. A leaderboard of calls should have one entry
+    // per call.
+    //
+    // First rather than best-known: finding it is the thing worth crediting,
+    // and everyone after the first had the benefit of the first. The others are
+    // still counted, as `alsoCalled`, so the spread is visible without giving
+    // each of them their own row.
+    const callers = [];
+    const seen = new Set();
+    for (const m of hit.mentions) {
+      const author = (m.author || '').trim();
+      if (!author || isEchoBot(author, ignored)) continue;
+      const key = author.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      callers.push(m);
+    }
+    if (callers.length) {
+      // Earliest by detection time, not by array order -- mentions are appended
+      // as they arrive but a backfill or a restore can put them out of sequence.
+      const first = callers.reduce((a, b) =>
+        (Date.parse(b.detected_at || 0) || 0) < (Date.parse(a.detected_at || 0) || 0) ? b : a);
+      const author = (first.author || '').trim();
+      const m = first;
+      const rooms = new Set(callers.map(c => c.chat_name).filter(Boolean));
+
+      calls.push({
+        ca: hit.ca,
+        symbol: hit.token_symbol || null,
+        name: hit.token_name || null,
+        chain: hit.chain,
+        image: hit.image_url || null,
+        launchpad: hit.launchpad || null,
+        caller: author,
+        source: m.source || null,
+        room: m.chat_name || null,
+        calledAt: m.detected_at || hit.scan_at || null,
+        // How far it spread beyond the first caller. Shown as "+N more" rather
+        // than as extra rows.
+        alsoCalled: callers.length - 1,
+        roomCount: rooms.size,
+        entryMcap: hit.entry_mcap_usd,
+        peakMcap: hit.peak_mcap_usd,
+        peakMult: mult,
+        peakAt: hit.peak_at,
+        // How the peak was established. An observed high-water mark and a
+        // reconstruction from candles are different qualities of evidence.
+        peakSource: hit.peak_source,
+        minutesToPeak: minutesToPeak(m.detected_at || hit.scan_at, hit.peak_at),
+        // What it is worth NOW, so a runner that round-tripped cannot be
+        // mistaken for one that held. Both facts, side by side, always.
+        nowMcap: hit.live_mcap_usd ?? null,
+        nowMult: peakMultiple(hit.live_mcap_usd, hit.entry_mcap_usd),
+        dead: !!hit.outcome_dead,
+      });
+    }
+
+    // Grouped views still count EVERY room and caller that called it. A room
+    // recommending a runner is a real signal even when it was not first, and
+    // collapsing that would under-credit rooms that consistently pick well
+    // without being fastest.
+    for (const m of callers) {
+      grouped.push({ hit, mention: m, mult });
+    }
+  }
+
+  calls.sort((a, b) => b.peakMult - a.peakMult);
+
+  if (by === 'call') {
+    return res.json({ by, calls: calls.slice(0, limit), coverage: coverageNote(measured) });
+  }
+
+  // Grouped: same arithmetic as the caller table, applied to whichever bucket
+  // was asked for. Median leads for the same reason it does there -- one 40x
+  // would otherwise crown whichever room got lucky once.
+  const groups = new Map();
+  const byCa = new Map(calls.map(c => [c.ca, c]));
+  for (const g0 of grouped) {
+    const key = by === 'room'
+      ? (g0.mention.chat_name || 'unknown')
+      : (g0.mention.author || '').trim();
+    if (!key) continue;
+    if (!groups.has(key)) groups.set(key, { key, calls: 0, mults: [], best: null, chains: new Set() });
+    const g = groups.get(key);
+    g.calls++;
+    g.mults.push(g0.mult);
+    g.chains.add(g0.hit.chain);
+    const row = byCa.get(g0.hit.ca);
+    if (row && (!g.best || g0.mult > g.best.peakMult)) g.best = row;
+  }
+
+  const med = a => {
+    const s = [...a].sort((x, y) => x - y), i = Math.floor(s.length / 2);
+    return s.length ? (s.length % 2 ? s[i] : (s[i - 1] + s[i]) / 2) : null;
+  };
+
+  const rows = [...groups.values()].map(g => ({
+    key: g.key,
+    calls: g.calls,
+    medianPeakMult: med(g.mults),
+    bestPeakMult: Math.max(...g.mults),
+    // Share that at least doubled -- the only "hit rate" that means anything
+    // when the median call on any of these rooms is a loss.
+    hitRate2x: g.mults.filter(x => x >= 2).length / g.mults.length,
+    hitRate10x: g.mults.filter(x => x >= 10).length / g.mults.length,
+    chains: [...g.chains],
+    best: g.best,
+  })).sort((a, b) => (b.medianPeakMult ?? -1) - (a.medianPeakMult ?? -1) || b.calls - a.calls);
+
+  res.json({ by, groups: rows.slice(0, limit), coverage: coverageNote(measured) });
+});
+
+function coverageNote(measured) {
+  return {
+    tokens: HITS.size,
+    withPeak: measured,
+    pct: HITS.size ? measured / HITS.size : 0,
+    note: 'Only calls with a measured peak appear. Run an outcome refresh to raise coverage.',
+  };
+}
 
 // ── SOURCE MANAGEMENT ROUTES ──────────────────────────────────────────
 
@@ -2300,6 +2793,17 @@ app.get('/api/react-feed', (req, res) => {
         scanAt: d.scan_at,
         // Present ONLY after an explicit refresh, so a first-time call can
         // never display a "since call" delta against itself.
+        // PEAK: the furthest it ever got after the call. Shown alongside the
+        // current value, never instead of it -- "it ran 10x" and "it is worth
+        // nothing now" are both true and the card has to be able to say both.
+        peakMcap: d.peak_mcap_usd,
+        peakAt: d.peak_at,
+        peakSource: d.peak_source,
+        peakMult: peakMultiple(d.peak_mcap_usd, d.entry_mcap_usd),
+        minutesToPeak: minutesToPeak(d.scan_at, d.peak_at),
+        // Which provider the liquidity came from, so a bonding curve's real
+        // depth is never silently presented as an AMM pool's.
+        liqSource: d.liquidity_source,
         liveMcap: d.live_mcap_usd,
         liveLiq: d.live_liquidity_usd,
         liveVol: d.live_volume_24h_usd,

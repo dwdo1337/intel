@@ -198,7 +198,6 @@
   transition: border-color .15s ease, background .15s ease;
 }
 .fx-chain:hover { border-color: var(--line3); }
-.fx-chain.soon { opacity: 0.72; }
 
 /* ── per-chain alert switch ───────────────────────────────────────────
    Separate from the pill on purpose: the pill decides what the FEED shows,
@@ -258,17 +257,6 @@
   flex: 0 0 8px;
   border-radius: 50%;
   display: block;
-}
-.fx-soon {
-  flex: 0 0 auto;
-  font-size: 8px;
-  font-weight: 500;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: var(--warn);
-  background: rgba(245, 158, 11, 0.12);
-  border-radius: 3px;
-  padding: 1px 4px;
 }
 
 /* ── launchpads (only for selected chains) ──────────────────────── */
@@ -461,13 +449,3 @@
 /* A launchpad that exists but can't be detected (deploys to a shared AMM,
    so DexScreener's dexId can't distinguish it). Marked per-pill rather than
    per-chain, because detectability varies WITHIN a chain. */
-.fx-pill.soon { opacity: .5; }
-.fx-pill-soon {
-  margin-left: 5px;
-  font-size: 7.5px;
-  font-weight: 500;
-  letter-spacing: .05em;
-  text-transform: uppercase;
-  color: var(--warn);
-  vertical-align: middle;
-}

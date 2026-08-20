@@ -1,7 +1,12 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import './filters.css';
 
-const CHIPS = [
+// The feed tabs. Exported because Feed.jsx used to keep its OWN list --
+// ['All', 'Follow-ups'] -- so the Watchlist tab existed in the left rail and
+// simply did not exist above the feed, which is where you actually look for it.
+// Feed even carried a written empty-state for the Watchlist tab that nothing
+// could reach. One list, one place.
+export const CHIPS = [
   { id: 'All', label: 'All signals' },
   // "Follow-ups" = several DIFFERENT people called it. "Watchlist" = tokens
   // YOU starred. Two unrelated ideas that both got called "following", so the
@@ -10,61 +15,27 @@ const CHIPS = [
   { id: 'Watchlist', label: 'Watchlist' },
 ];
 
-// Real, researched chain -> launchpad map. `detectable: true` means the
-// backend actually has working detection today (Solana mint-suffix only).
-// Everything else is correctly-branded real information that is NOT yet
-// wired to backend detection. The "soon" tag is a factual status, not a
-// design flourish -- it stays until real detection ships for that chain.
+// Chain identity: colour, label, logo. That is ALL this holds now.
+//
+// It used to carry a hand-written launchpad list per chain, and that list drifted
+// away from reality in both directions at once. Measured against a live
+// 500-signal store: five entries (hood.fun, Openfair, NOXA Fun, RobinPad, PONS)
+// had never been detected once and were shown greyed with a "soon" tag -- an
+// honest label on a chip that could only ever produce an empty feed -- while
+// StonkFun and Meteora were being detected fine and had no chip at all, so their
+// tokens could not be filtered for.
+//
+// The launchpads now come from GET /api/launchpads, which publishes the server's
+// own detection map. A chip therefore exists exactly when detection exists,
+// which is why there is no longer anything for "soon" to describe.
 const CHAIN_LAUNCHPADS = [
-  {
-    id: 'solana', label: 'Solana', color: '#9945FF', launchpadsDetectable: true,
-    logo: 'https://dd.dexscreener.com/ds-data/chains/solana.png',
-    launchpads: [
-      { id: 'pump.fun', label: 'pump.fun', ok: true },
-      { id: 'letsbonk.fun', label: 'letsbonk.fun', ok: true },
-      { id: 'bags', label: 'Bags', ok: true },
-      { id: 'moonshot', label: 'Moonshot', ok: true },
-      { id: 'jupiter studio', label: 'Jupiter Studio', ok: true },
-      { id: 'raydium launchlab', label: 'Raydium LaunchLab', ok: true },
-    ],
-  },
-  {
-    id: 'robinhood', label: 'Robinhood', color: '#00C805', launchpadsDetectable: false,
-    logo: 'https://dd.dexscreener.com/ds-data/chains/robinhood.png',
-    launchpads: [
-      { id: 'hood.fun', label: 'hood.fun' },
-      { id: 'openfair', label: 'Openfair' },
-      { id: 'noxa', label: 'NOXA Fun' },
-      { id: 'robinpad', label: 'RobinPad' },
-      { id: 'flapstock', label: 'Flapstock', ok: true },
-      { id: 'pons', label: 'PONS' },
-    ],
-  },
-  {
-    id: 'base', label: 'Base', color: '#0052FF', launchpadsDetectable: false,
-    logo: 'https://dd.dexscreener.com/ds-data/chains/base.png',
-    launchpads: [
-      { id: 'clanker', label: 'Clanker', ok: true },
-      { id: 'zora', label: 'Zora', ok: true },
-    ],
-  },
-  {
-    id: 'bsc', label: 'BSC', color: '#F0B90B', launchpadsDetectable: false,
-    logo: 'https://dd.dexscreener.com/ds-data/chains/bsc.png',
-    launchpads: [
-      { id: 'four.meme', label: 'Four.meme', ok: true },
-      { id: 'flap', label: 'Flap', ok: true },
-      { id: 'grafun', label: 'GraFun', ok: true },
-      { id: 'bakeryswap', label: 'BakerySwap', ok: true },
-    ],
-  },
-  {
-    id: 'ethereum', label: 'ETH', color: '#627EEA', launchpadsDetectable: false,
-    logo: 'https://dd.dexscreener.com/ds-data/chains/ethereum.png',
-    launchpads: [{ id: 'clanker', label: 'Clanker', ok: true }],
-  },
-  { id: 'stable', label: 'Stable', color: '#2fd6c8', launchpadsDetectable: false, logo: 'https://icons.llamao.fi/icons/chains/rsz_stable.jpg', launchpads: [] },
-  { id: 'arc', label: 'Arc', color: '#8a8a8a', launchpadsDetectable: false, logo: 'https://icons.llamao.fi/icons/chains/rsz_arc.jpg', launchpads: [] },
+  { id: 'solana', label: 'Solana', color: '#9945FF', logo: 'https://dd.dexscreener.com/ds-data/chains/solana.png' },
+  { id: 'robinhood', label: 'Robinhood', color: '#00C805', logo: 'https://dd.dexscreener.com/ds-data/chains/robinhood.png' },
+  { id: 'base', label: 'Base', color: '#0052FF', logo: 'https://dd.dexscreener.com/ds-data/chains/base.png' },
+  { id: 'bsc', label: 'BSC', color: '#F0B90B', logo: 'https://dd.dexscreener.com/ds-data/chains/bsc.png' },
+  { id: 'ethereum', label: 'ETH', color: '#627EEA', logo: 'https://dd.dexscreener.com/ds-data/chains/ethereum.png' },
+  { id: 'stable', label: 'Stable', color: '#2fd6c8', logo: 'https://icons.llamao.fi/icons/chains/rsz_stable.jpg' },
+  { id: 'arc', label: 'Arc', color: '#8a8a8a', logo: 'https://icons.llamao.fi/icons/chains/rsz_arc.jpg' },
 ];
 
 export { CHAIN_LAUNCHPADS };
@@ -110,6 +81,47 @@ export function Filters({ filter, setFilter, onAlertToggle, onAlertFiltersToggle
   // `chains` above -- see the note at the chain pills.
   const alertSet = filter.alertChains || new Set();
   const lpSet = filter.launchpads || new Set(); // composite keys "chainId:lpId"
+
+  // The launchpads the BACKEND can actually detect, keyed by chain. Fetched
+  // rather than hard-coded so a chip can never exist for something detection
+  // cannot produce -- which is what the old "soon" tag was apologising for.
+  const [lpByChain, setLpByChain] = useState({});
+  useEffect(() => {
+    let alive = true;
+    let timer = null;
+
+    // RETRIES, because a single attempt on mount is not enough.
+    //
+    // The renderer routinely starts before the backend does -- electron/main.cjs
+    // says so itself ("backend did not respond in time; window will retry on
+    // did-fail-load"). Observed live: the window mounted first, this fetch
+    // failed, and every launchpad section read "No launchpad detected on this
+    // chain yet" for the rest of the session even though the API was serving a
+    // full list seconds later. Failing quiet is right; failing quiet FOREVER is
+    // not, because the result is indistinguishable from having no launchpads.
+    const attempt = (n) => {
+      if (!alive) return;
+      fetch('/api/launchpads')
+        .then(r => (r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))))
+        .then(j => {
+          if (!alive) return;
+          if (!j || !Array.isArray(j.chains) || j.chains.length === 0) throw new Error('empty');
+          const map = {};
+          for (const c of j.chains) map[c.chain] = c.launchpads || [];
+          setLpByChain(map);
+        })
+        .catch(() => {
+          // Backs off to 5s and keeps going. The cost of one small request a
+          // few times a minute is nothing next to the filter being silently
+          // dead, and it stops the moment a list arrives.
+          if (!alive) return;
+          timer = setTimeout(() => attempt(n + 1), Math.min(5000, 600 * (n + 1)));
+        });
+    };
+    attempt(0);
+
+    return () => { alive = false; if (timer) clearTimeout(timer); };
+  }, []);
 
   const toggleSection = id => setOpen(p => ({ ...p, [id]: !p[id] }));
 
@@ -228,7 +240,9 @@ export function Filters({ filter, setFilter, onAlertToggle, onAlertFiltersToggle
             const alerts = alertSet.has(c.id);
             return (
               <div key={c.id} className={`fx-chain-wrap ${on ? 'on' : ''}`}
-                   style={on ? { borderColor: c.color, background: `${c.color}1a` } : undefined}>
+                   /* Selected state is carried by the `on` class in one accent, not by
+                      each chain's brand colour. Seven chains meant seven accents lit at
+                      once down the left rail. */>
                 <button
                   className={`fx-chain ${on ? 'on' : ''}`}
                   onClick={() => toggleChain(c.id)}
@@ -260,26 +274,28 @@ export function Filters({ filter, setFilter, onAlertToggle, onAlertFiltersToggle
         {[...chainSet].map(chainId => {
           const def = CHAIN_LAUNCHPADS.find(c => c.id === chainId);
           if (!def) return null;
+          const pads = lpByChain[chainId] || [];
           return (
-            <div className="fx-lp" key={chainId} style={{ borderLeftColor: def.color }}>
+            <div className="fx-lp" key={chainId}>
               <div className="fx-lp-head">
-                <span className="fx-dot" style={{ background: def.color }} />
+                <span className="fx-dot" />
                 {def.label} launchpads
               </div>
-              {def.launchpads.length === 0 ? (
-                <div className="fx-lp-empty">No dedicated launchpad on this chain yet</div>
+              {pads.length === 0 ? (
+                <div className="fx-lp-empty">No launchpad detected on this chain yet</div>
               ) : (
                 <div className="fx-lp-pills">
-                  {def.launchpads.map(lp => {
+                  {/* Every pill here is detectable by definition -- the server
+                      only publishes what it can actually recognise -- so there
+                      is no disabled state and no "soon". */}
+                  {pads.map(lp => {
                     const key = `${chainId}:${lp.id}`;
                     return (
                       <button
                         key={key}
-                        disabled={!lp.ok}
-                        title={lp.ok ? undefined : 'Real launchpad, but it deploys to a shared AMM so DexScreener cannot tell it apart from others on this chain'}
-                        className={`fx-pill ${lpSet.has(key) ? 'on' : ''} ${lp.ok ? '' : 'soon'}`}
+                        className={`fx-pill ${lpSet.has(key) ? 'on' : ''}`}
                         onClick={() => toggleLp(chainId, lp.id)}
-                      >{lp.label}{!lp.ok && <span className="fx-pill-soon">soon</span>}</button>
+                      >{lp.label}</button>
                     );
                   })}
                 </div>
@@ -400,7 +416,7 @@ function RangeRow({ label, unit, min, max, onMin, onMax, single = false }) {
 function ChainMark({ chain }) {
   const [failed, setFailed] = useState(false);
   if (!chain.logo || failed) {
-    return <span className="fx-chain-dot" style={{ background: chain.color }} />;
+    return <span className="fx-chain-dot" />;
   }
   return <img className="fx-chain-img" src={chain.logo} alt="" onError={() => setFailed(true)} />;
 }

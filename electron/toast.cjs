@@ -27,6 +27,7 @@ const MARGIN_X = 18;
 const MARGIN_Y = 18;
 const GAP_Y = 14;
 const DISPLAY_MS = 14000;
+const NOTE_DISPLAY_MS = 6000;
 const MAX_VISIBLE = 4;
 
 const toastQueue = [];
@@ -132,8 +133,14 @@ function createToastWindow(data) {
     }, 18);
   });
 
-  // Auto close after DISPLAY_MS unless user is hovering (handled in renderer).
-  let closeTimer = setTimeout(() => closeToast(win), DISPLAY_MS);
+  // Auto close unless the user is hovering (handled in renderer).
+  //
+  // A watch note is a glance -- "the token you starred was mentioned again" is
+  // read in about a second and needs no decision. Holding it on screen as long
+  // as a fresh call is what makes a stack of them feel like spam, and a feature
+  // that feels like spam gets switched off, taking the useful alerts with it.
+  const dwellMs = data.alert_tier === 'note' ? NOTE_DISPLAY_MS : DISPLAY_MS;
+  let closeTimer = setTimeout(() => closeToast(win), dwellMs);
 
   function remove() {
     clearTimeout(closeTimer);
@@ -294,9 +301,43 @@ function showToast(data) {
     // Arrives shortly after the toast opens, via updateToast.
     caller_record: data.caller_record || null,
     alert_kind: data.alert_kind || 'new',
+    // Defaulted HERE rather than in main.cjs, because normalize only runs when
+    // a toast is created -- see the note on alert_kind there.
+    alert_tier: data.alert_tier || 'signal',
     watched: !!data.watched,
+    watched_mcap_usd: data.watched_mcap_usd ?? null,
     trigger: data.trigger || null,
   };
+
+  // COALESCE NOTES.
+  //
+  // A watchlist token being called in three rooms inside a minute is one piece
+  // of news -- "it is spreading" -- not three. Opening a window per mention is
+  // how a genuinely useful alert turns into the one you switch off, taking the
+  // new-call alerts with it.
+  //
+  // Only notes coalesce. Two different NEW calls are two different tokens to
+  // look at and must never be merged; the match is on `ca`, so this can only
+  // ever fold repeats of the same token together anyway.
+  if (normalized.alert_tier === 'note') {
+    const open = activeToasts.find(e =>
+      e && e.data && e.data.ca === normalized.ca && e.data.alert_tier === 'note'
+      && e.win && !e.win.isDestroyed());
+    if (open) {
+      open.data.note_repeats = (open.data.note_repeats || 1) + 1;
+      // Take the newer event's cause: the latest caller and room are what the
+      // note is now reporting, and its kind may have changed too (a mention
+      // arriving on top of a rescan).
+      open.data.alert_kind = normalized.alert_kind;
+      open.data.author = normalized.author;
+      open.data.chat_name = normalized.chat_name;
+      if (normalized.mcap_usd != null) open.data.mcap_usd = normalized.mcap_usd;
+      if (open.win.ready) {
+        try { open.win.webContents.send('toast-data', open.data); } catch (_) {}
+      }
+      return;
+    }
+  }
 
   if (activeToasts.length >= calcMaxVisible()) {
     toastQueue.push(normalized);

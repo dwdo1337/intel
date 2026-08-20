@@ -38,10 +38,17 @@ export function Inspector({ event }) {
   // that simply has not been enriched yet still shows its fields as pending.
   const SAFETY_CHAINS = ['solana', 'sol', 'bsc', 'base'];
   const noSafetyProvider = !SAFETY_CHAINS.includes(String(chainName).toLowerCase());
-  // Same distinction for the launchpad: it is read from RugCheck, so only
-  // Solana can be identified. Elsewhere a blank is "we cannot look here", not
-  // "we looked and failed".
-  const launchpadsDetectable = isSol;
+  // Same distinction for the launchpad -- but the reason given here was wrong.
+  // Launchpad identification does NOT come from RugCheck. It comes from
+  // detectLaunchpad(), which reads DexScreener's dexId, plus the Solana mint
+  // suffix. That works on four chains, not one: BSC resolves Four.meme, Flap,
+  // GraFun and BakerySwap, and Base/Ethereum resolve Clanker and Zora -- all
+  // present in the live store. Calling those "not detectable" told the user we
+  // had not looked when we had looked and found nothing.
+  //
+  // Mirrors the chains GET /api/launchpads publishes at least one launchpad for.
+  const launchpadsDetectable =
+    ['solana', 'bsc', 'base', 'ethereum', 'robinhood'].includes(String(chainName).toLowerCase());
   const address = event.token.address || '';
   const banner = event.token.banner;
   const image = event.token.image;
@@ -101,11 +108,10 @@ export function Inspector({ event }) {
         <div className="in-card">
           <div className="in-card-title">Recent data</div>
           <div className="in-grid">
-            {/* "unknown" implied we looked and could not tell. On every chain
-                but Solana we cannot look at all: launchpad identification comes
-                from RugCheck, which is Solana-only. 121 of 122 Robinhood tokens
-                read "unknown" for that reason alone -- the same phantom-unknown
-                the safety fields already had. Say which it is. */}
+            {/* "unknown" implies we looked and could not tell, so it is only
+                shown on chains where we CAN look. See launchpadsDetectable
+                above: detection is dexId-based and covers four chains, not just
+                Solana as this note used to claim. */}
             <Stat
               label="Launchpad"
               value={event.launchpad || (launchpadsDetectable ? 'unknown' : 'not detectable on ' + chainName)}
@@ -198,10 +204,10 @@ export function Inspector({ event }) {
         <div className="in-card">
           <div className="in-card-title">Links</div>
           <div className="in-list">
-            {event.links?.twitter && <a href={event.links.twitter} target="_blank" rel="noreferrer" style={{ color: 'var(--accent)', fontSize: 12, display: 'block', marginBottom: 6 }}>Twitter / X <IconArrow/></a>}
-            {event.links?.website && <a href={event.links.website} target="_blank" rel="noreferrer" style={{ color: 'var(--accent)', fontSize: 12, display: 'block', marginBottom: 6 }}>Website <IconArrow/></a>}
-            {event.links?.telegram && <a href={event.links.telegram} target="_blank" rel="noreferrer" style={{ color: 'var(--accent)', fontSize: 12, display: 'block', marginBottom: 6 }}>Telegram <IconArrow/></a>}
-            {event.links?.pair && <a href={event.links.pair} target="_blank" rel="noreferrer" style={{ color: 'var(--accent)', fontSize: 12, display: 'block', marginBottom: 6 }}>DexScreener <IconArrow/></a>}
+            {event.links?.twitter && <a href={event.links.twitter} target="_blank" rel="noreferrer" className="in-link">Twitter / X <IconArrow/></a>}
+            {event.links?.website && <a href={event.links.website} target="_blank" rel="noreferrer" className="in-link">Website <IconArrow/></a>}
+            {event.links?.telegram && <a href={event.links.telegram} target="_blank" rel="noreferrer" className="in-link">Telegram <IconArrow/></a>}
+            {event.links?.pair && <a href={event.links.pair} target="_blank" rel="noreferrer" className="in-link">DexScreener <IconArrow/></a>}
             {!event.links?.twitter && !event.links?.website && !event.links?.telegram && !event.links?.pair && <div style={{ color: 'var(--muted)', fontSize: 12 }}>No social links available.</div>}
           </div>
         </div>
@@ -236,7 +242,9 @@ export function Inspector({ event }) {
           <div className="in-list">
             {(event.mentions && event.mentions.length > 0) ? event.mentions.slice().reverse().map((men, i) => (
               <div className="in-item" key={i}>
-                <div className="in-item-avatar" style={{ background: men.source === 'telegram' ? '#3b82f6' : '#a855f7' }}>{men.source === 'telegram' ? 'TG' : 'DC'}</div>
+                {/* TG and DC are two letters. They do not also need to be two
+                    colours. */}
+                <div className="in-item-avatar">{men.source === 'telegram' ? 'TG' : 'DC'}</div>
                 <div className="in-item-body">
                   <div className="in-item-title">{men.chatName || 'Unknown chat'}</div>
                   <div className="in-item-sub">{men.author ? `@${men.author}` : 'unknown author'} · {men.detectedAt ? fmtRelTime(men.detectedAt) : '—'}</div>
@@ -368,9 +376,11 @@ function shortCa(addr) {
 }
 
 function Stat({ label, value, sign, accent }) {
+  // Colour marks a DIRECTION, not a category. `accent` used to paint any
+  // "interesting" field green -- the launchpad name, a revoked mint -- so the
+  // inspector had a dozen green values and none of them meant up.
   let color = 'var(--text)';
-  if (accent) color = 'var(--accent)';
-  else if (sign === 'buy') color = 'var(--buy)';
+  if (sign === 'buy') color = 'var(--buy)';
   else if (sign === 'sell') color = 'var(--sell)';
   else if (sign === 'warn') color = 'var(--warn)';
   return (

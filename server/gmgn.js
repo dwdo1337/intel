@@ -723,3 +723,84 @@ export function extractTokenExtrasFromDevHistory(devHistory, ca) {
     cto_flag: match.ctoFlag,
   };
 }
+
+/**
+ * Liquidity pool for one token.
+ *
+ * The reason this exists: DexScreener returns no `liquidity` object at all for a
+ * bonding-curve pair, which on a live store was 212 of the 245 tokens showing a
+ * blank Liquidity figure. `token pool` answers for every chain GMGN covers,
+ * bonding curves included -- verified on both a pump.fun curve and a uniswap v3
+ * pool on robinhood.
+ *
+ * Returns the RAW payload. Turning reserves into a number is a decision about
+ * what liquidity means, and that decision lives in liquidity.js where it can be
+ * tested without a network.
+ *
+ * BACKGROUND priority: nothing is waiting on this the way someone waits on
+ * artwork, and the queue is shared with the KOL watcher.
+ */
+export async function fetchGmgnPool(ca, chain, log, { force = false } = {}) {
+  // gmgnInfoChain, NOT gmgnChain. CHAIN_MAP is the SECURITY map and is narrow on
+  // purpose -- widening it would start firing safety lookups on chains whose
+  // safety data has never been verified. That reasoning does not apply to a
+  // liquidity pool, which is a market-data reading with nothing to get wrong.
+  //
+  // Using the narrow map here made this function return null for ethereum,
+  // robinhood, arc and stable without a single log line: verified against live
+  // tokens, including USDT, which unquestionably has a pool. Four of seven
+  // chains silently had no liquidity source at all.
+  const c = gmgnInfoChain(chain);
+  if (!c || !_apiKey) return null;
+
+  const key = `pool:${c}:${ca}`;
+  if (!force) {
+    const cached = cacheGet(key);
+    if (cached !== undefined) return cached;
+  }
+
+  const j = await runCli(['token', 'pool', '--chain', c, '--address', ca], log, GMGN_PRIORITY.BACKGROUND);
+  if (isTransient(j)) return null;                       // do not cache a non-answer
+  if (!j || typeof j !== 'object') { cacheSet(key, null); return null; }
+
+  cacheSet(key, j);
+  return j;
+}
+
+/**
+ * Candles for one token over one window.
+ *
+ * This is how a call's PEAK is recovered. The scoreboard used to score a call by
+ * what the token is worth now, so a token called at $10,587 that touched $21,018
+ * and fell to $2,166 was recorded as a 0.20x loss. The per-candle `high` is the
+ * run that actually happened, whether or not anyone was watching at the time.
+ *
+ * `resolution` is chosen by the caller from the window length (see
+ * peak.js/klineResolution) rather than fixed: a three-week window at 1m is
+ * ~30,000 candles, and a provider that truncates that would hand back the peak of
+ * whichever slice arrived -- a wrong answer wearing the shape of a right one.
+ *
+ * Never cached. A window ending "now" is a different question every time it is
+ * asked, and caching it would pin the peak to whenever it was first fetched.
+ *
+ * @returns {Array|null} [{ time: msEpoch, open, close, high, low, volume }]
+ */
+export async function fetchGmgnKline(ca, chain, log, { fromTs, toTs, resolution = '1h' } = {}) {
+  // Same reasoning as fetchGmgnPool: candles are market data, not a safety
+  // claim, so they use the wider map. The narrow one silently excluded
+  // ethereum, robinhood, arc and stable.
+  const c = gmgnInfoChain(chain);
+  if (!c || !_apiKey) return null;
+  if (!Number.isFinite(Number(fromTs)) || !Number.isFinite(Number(toTs))) return null;
+
+  const j = await runCli([
+    'market', 'kline', '--chain', c, '--address', ca,
+    '--resolution', String(resolution),
+    '--from', String(Math.floor(Number(fromTs))),
+    '--to', String(Math.floor(Number(toTs))),
+  ], log, GMGN_PRIORITY.BACKGROUND);
+
+  if (isTransient(j) || !j) return null;
+  const list = Array.isArray(j) ? j : (Array.isArray(j.list) ? j.list : null);
+  return list && list.length ? list : null;
+}

@@ -242,7 +242,17 @@ function toastPayload(hit) {
     // repeat-call label. The default belongs in `showToast`'s normalize, which
     // only runs when the toast is created.
     alert_kind: hit._alert_kind || null,
+    // WEIGHT, as opposed to reason. 'signal' is a new call and earns the full
+    // card; 'note' is a watchlist event -- worth telling you, not worth the same
+    // footprint as a fresh discovery. Null for the same reason alert_kind is:
+    // this function also builds the `ca_update` payload, and updateToast merges
+    // non-null values, so a default here would overwrite the real tier ~200ms
+    // after the toast opened.
+    alert_tier: hit._alert_tier || null,
     watched: !!hit.watched,
+    // What it was worth when you starred it, so a note can say what has changed
+    // since. Null until starred, and null is shown as no delta rather than 0%.
+    watched_mcap_usd: hit.watched_mcap_usd ?? null,
     // The mention that triggered a watchlist re-alert: who just called it,
     // where, and what they said. Null on every other kind, so the merge in
     // updateToast leaves it alone.

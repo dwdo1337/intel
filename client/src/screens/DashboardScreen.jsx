@@ -5,6 +5,7 @@ import { Filters, CHAIN_LAUNCHPADS } from '../components/Filters';
 import { Feed } from '../components/Feed';
 import { Inspector } from '../components/Inspector';
 import { LogsPanel } from '../components/LogsPanel';
+import { BestCalls } from '../components/BestCalls';
 import { fmt } from '../App';
 
 const FILTER_STORAGE_KEY = 'intel.filters.v1';
@@ -136,6 +137,7 @@ function pushAlertFilters(enabled, thresholds) {
 export function DashboardScreen({ feed, selected, onSelect, onOpenSettings, onOpenSources, onOpenHistory, showcase }) {
   const [filter, setFilter] = useState(() => loadFilter());
   const [logsOpen, setLogsOpen] = useState(false);
+  const [bestOpen, setBestOpen] = useState(false);
   const [logCount, setLogCount] = useState(0);
 
   // Persist filters on every change so thresholds and chain picks survive
@@ -339,6 +341,11 @@ export function DashboardScreen({ feed, selected, onSelect, onOpenSettings, onOp
             <IconLogs />
             {logCount > 0 && <span className="logs-badge">{logCount > 99 ? '99+' : logCount}</span>}
           </button>
+          <button
+            className={`top-icon${bestOpen ? ' on' : ''}`}
+            onClick={() => setBestOpen(v => !v)}
+            title="Best calls — how far each call actually ran, and which rooms produce runners"
+          ><IconTrophy/></button>
           <button className="top-icon" onClick={onOpenHistory} title="Notification history"><IconBell/></button>
           <button className="top-icon" onClick={onOpenSources} title="Choose which groups to watch"><IconGroups/></button>
           <button className="top-icon" onClick={onOpenSettings} title="Connect Telegram / Discord"><IconGear/></button>
@@ -372,7 +379,34 @@ export function DashboardScreen({ feed, selected, onSelect, onOpenSettings, onOp
         <Inspector event={selectedVisible} />
       </div>
       {logsOpen && <div className="logs-drawer"><LogsPanel /></div>}
+
+      {/* Full-height overlay rather than a drawer: the board is a table with
+          four columns of numbers and squeezing it into the log drawer's strip
+          would make every row wrap. */}
+      {bestOpen && (
+        <div className="bc-overlay" onClick={e => { if (e.target === e.currentTarget) setBestOpen(false); }}>
+          <div className="bc-panel">
+            <div className="bc-panel-head">
+              <span>Best calls</span>
+              <button className="bc-close" onClick={() => setBestOpen(false)}>&times;</button>
+            </div>
+            {/* The feed's event id IS the contract address (server payload:
+                `id: d.ca`), so a row can select its token directly. */}
+            <BestCalls onPick={ca => { setBestOpen(false); onSelect(ca); }} />
+          </div>
+        </div>
+      )}
     </div>
+  );
+}
+
+function IconTrophy() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+         strokeLinecap="round" strokeLinejoin="round" width="18" height="18">
+      <path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4Z" />
+      <path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3" />
+    </svg>
   );
 }
 
