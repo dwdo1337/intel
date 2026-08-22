@@ -222,3 +222,29 @@
   color: var(--dim);
   cursor: help;
 }
+
+/* ── redaction toggle ───────────────────────────────────────────────────
+   Deliberately always visible and always stating which mode you are in. A
+   privacy control you have to go looking for is one you forget to turn on. */
+.bc-redact {
+  margin-left: auto;
+  margin-right: 10px;
+  padding: 4px 10px;
+  border-radius: var(--radius-chip);
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--dim);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all var(--ease);
+}
+.bc-redact:hover { color: var(--text); border-color: var(--line2); }
+.bc-redact.on {
+  background: var(--accent-dim);
+  border-color: transparent;
+  color: var(--accent);
+}

@@ -43,8 +43,44 @@ export function BestCalls(props) {
   return <Boundary><BestCallsBoard {...props} /></Boundary>;
 }
 
+/**
+ * REDACTED MODE.
+ *
+ * This board is the most screenshot-worthy thing in the app and the most
+ * dangerous: every row names a real person and a real room. The project has
+ * leaked real handles four times, once into a public repository, and each time
+ * it was because a capture was taken in a hurry and checked afterwards.
+ *
+ * So the redaction is a switch in the product rather than a discipline in the
+ * person. Turn it on and the board is safe to screenshot, full stop.
+ *
+ * The mapping is DETERMINISTIC and stable within a session: the same handle is
+ * always the same label, so "+5 more" and the by-caller ranking still make
+ * sense and the board stays readable as a board. It is a display-layer mask
+ * only -- nothing is sent anywhere, and clicking a row still opens the real
+ * token.
+ */
+function redactor() {
+  const seen = new Map();
+  const label = (prefix) => (raw) => {
+    if (!raw) return raw;
+    const key = prefix + String(raw).toLowerCase();
+    if (!seen.has(key)) seen.set(key, seen.size + 1);
+    // Numbered per KIND, so callers and rooms have their own sequences.
+    let n = 0;
+    for (const k of seen.keys()) { if (k.startsWith(prefix)) n++; if (k === key) break; }
+    return prefix === 'c' ? `caller ${n}` : `room ${n}`;
+  };
+  return { caller: label('c'), room: label('r') };
+}
+
 function BestCallsBoard({ onPick }) {
   const [by, setBy] = useState('call');
+  // Persisted, because the whole point is that you can leave it on while
+  // recording and never think about it again.
+  const [redact, setRedact] = useState(
+    () => localStorage.getItem('bc-redact') === '1');
+  useEffect(() => { localStorage.setItem('bc-redact', redact ? '1' : '0'); }, [redact]);
   const [data, setData] = useState(null);
   const [err, setErr] = useState(null);
 
@@ -73,6 +109,14 @@ function BestCallsBoard({ onPick }) {
         {/* Coverage is stated, always. A leaderboard built on 20 of 500 tokens
             is not a leaderboard, and the only thing worse than not knowing that
             is not being told. */}
+        <button
+          className={`bc-redact${redact ? ' on' : ''}`}
+          onClick={() => setRedact(v => !v)}
+          title={redact
+            ? 'Handles and rooms are masked — safe to screenshot. Click to show real names.'
+            : 'Real handles and rooms are visible. Click to mask them before screenshotting.'}
+        >{redact ? 'redacted' : 'real names'}</button>
+
         {cov && (
           <div className="bc-cov">
             {cov.withPeak} of {cov.tokens} measured
@@ -102,11 +146,11 @@ function BestCallsBoard({ onPick }) {
               No measured peaks yet. Run an outcome refresh — until a call has a
               peak it is excluded rather than counted as break-even.
             </div>
-          : <CallList calls={data.calls} onPick={onPick} />
+          : <CallList calls={data.calls} onPick={onPick} redact={redact} />
       ) : (
         (data.groups ?? []).length === 0
           ? <div className="bc-empty">Nothing measured yet.</div>
-          : <GroupList groups={data.groups} by={data.by} onPick={onPick} />
+          : <GroupList groups={data.groups} by={data.by} onPick={onPick} redact={redact} />
       ))}
     </div>
   );
@@ -137,7 +181,8 @@ const fmtMins = m => {
 const HIGHLIGHT_AT = 5;
 const tone = m => (m == null ? '' : m >= 10 ? ' huge' : m >= HIGHLIGHT_AT ? ' good' : '');
 
-function CallList({ calls, onPick }) {
+function CallList({ calls, onPick, redact }) {
+  const mask = redactor();
   return (
     <div className="bc-list">
       {calls.map((c, i) => {
@@ -156,8 +201,8 @@ function CallList({ calls, onPick }) {
                   of the first call. The rest are counted, not listed. */}
               <div className="bc-who">
                 <span className="bc-firstlabel">first</span>
-                <b>@{c.caller}</b>
-                {c.room ? <> · {c.room}</> : null}
+                <b>{redact ? mask.caller(c.caller) : '@' + c.caller}</b>
+                {c.room ? <> · {redact ? mask.room(c.room) : c.room}</> : null}
                 {c.alsoCalled > 0 && (
                   <span className="bc-also" title={`Called by ${c.alsoCalled} more across ${c.roomCount} room${c.roomCount === 1 ? '' : 's'}`}>
                     +{c.alsoCalled} more
@@ -196,14 +241,18 @@ function CallList({ calls, onPick }) {
   );
 }
 
-function GroupList({ groups, by, onPick }) {
+function GroupList({ groups, by, onPick, redact }) {
+  const mask = redactor();
   return (
     <div className="bc-list">
       {groups.map((g, i) => (
         <div className="bc-row group" key={g.key + i}>
           <div className="bc-rank">{i + 1}</div>
           <div className="bc-tok">
-            <div className="bc-sym">{by === 'room' ? g.key : '@' + g.key}</div>
+            <div className="bc-sym">{
+              redact ? (by === 'room' ? mask.room(g.key) : mask.caller(g.key))
+                     : (by === 'room' ? g.key : '@' + g.key)
+            }</div>
             <div className="bc-who">
               {g.calls} scored call{g.calls === 1 ? '' : 's'} · {g.chains.join(', ')}
             </div>
