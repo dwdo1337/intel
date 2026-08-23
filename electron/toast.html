@@ -485,6 +485,17 @@ function wireActions(data){
 
   const caEl = document.getElementById('ca');
   if (caEl) { caEl.textContent = shortCA(data.ca); caEl.dataset.full = data.ca || ''; }
+
+  // Clicking the body opens this token in the deck, so the identity has to be
+  // readable from the DOM at click time. A NOTE hides the #ca element entirely
+  // (see the .note rules below), so reading dataset.full from there would work
+  // for a signal and silently do nothing for exactly the tier this matters most
+  // for -- a watch note is a glance whose whole purpose is "go look at it".
+  const root = document.getElementById('toast');
+  if (root) {
+    root.dataset.ca = data.ca || '';
+    root.dataset.chain = data.chain || '';
+  }
 }
 
 /**
@@ -927,8 +938,23 @@ function closeToast(){
   t.classList.add('closing');
   setTimeout(() => electron.sendToastAction({ action: 'close' }), 260);
 }
+/**
+ * Raise the app AND open the token this toast is about.
+ *
+ * Focusing alone was not enough. A watch note says "a token you starred was
+ * called again"; the only useful next move is to look at it, and landing on
+ * whatever the deck happened to be showing meant hunting for it by hand -- the
+ * one action the alert exists to save you.
+ *
+ * The CA rides along and the main process forwards it to the deck. An absent
+ * `ca` still focuses, so an older toast payload degrades to the previous
+ * behaviour rather than doing nothing at all.
+ */
 function focusApp(){
-  electron.sendToastAction({ action: 'focus-app' });
+  const root = document.getElementById('toast');
+  const ca = root && root.dataset ? root.dataset.ca : '';
+  const chain = root && root.dataset ? root.dataset.chain : '';
+  electron.sendToastAction({ action: 'focus-app', ca: ca || null, chain: chain || null });
 }
 
 /**

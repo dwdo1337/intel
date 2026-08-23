@@ -26,14 +26,24 @@ export const CHIPS = [
 // tokens could not be filtered for.
 //
 // The launchpads now come from GET /api/launchpads, which publishes the server's
-// own detection map. A chip therefore exists exactly when detection exists,
-// which is why there is no longer anything for "soon" to describe.
+// own detection map, so a FILTERABLE chip exists exactly when detection exists.
+//
+// That change was originally made by deleting every launchpad carrying a "soon"
+// tag, which took the Robinhood chain from six launchpads to one. The tag was
+// the problem, not the launchpads. The server now also publishes the real ones
+// it cannot detect, flagged `detectable: false`, and they render as reference
+// rather than as a filter -- no "soon", and no timeline implied.
 const CHAIN_LAUNCHPADS = [
   { id: 'solana', label: 'Solana', color: '#9945FF', logo: 'https://dd.dexscreener.com/ds-data/chains/solana.png' },
   { id: 'robinhood', label: 'Robinhood', color: '#00C805', logo: 'https://dd.dexscreener.com/ds-data/chains/robinhood.png' },
   { id: 'base', label: 'Base', color: '#0052FF', logo: 'https://dd.dexscreener.com/ds-data/chains/base.png' },
   { id: 'bsc', label: 'BSC', color: '#F0B90B', logo: 'https://dd.dexscreener.com/ds-data/chains/bsc.png' },
   { id: 'ethereum', label: 'ETH', color: '#627EEA', logo: 'https://dd.dexscreener.com/ds-data/chains/ethereum.png' },
+  // Added because 5 stored tokens were arriving on hyperevm with no pill at
+  // all -- detected and priced, but impossible to filter for OR to mute, which
+  // is the same gap unichain still has. Add a chain here when it starts
+  // producing real volume.
+  { id: 'hyperevm', label: 'HyperEVM', color: '#97fce4', logo: 'https://icons.llamao.fi/icons/chains/rsz_hyperliquid.jpg' },
   { id: 'stable', label: 'Stable', color: '#2fd6c8', logo: 'https://icons.llamao.fi/icons/chains/rsz_stable.jpg' },
   { id: 'arc', label: 'Arc', color: '#8a8a8a', logo: 'https://icons.llamao.fi/icons/chains/rsz_arc.jpg' },
 ];
@@ -82,9 +92,14 @@ export function Filters({ filter, setFilter, onAlertToggle, onAlertFiltersToggle
   const alertSet = filter.alertChains || new Set();
   const lpSet = filter.launchpads || new Set(); // composite keys "chainId:lpId"
 
-  // The launchpads the BACKEND can actually detect, keyed by chain. Fetched
-  // rather than hard-coded so a chip can never exist for something detection
+  // The launchpads the backend knows about, keyed by chain. Fetched rather than
+  // hard-coded so a FILTERABLE chip can never exist for something detection
   // cannot produce -- which is what the old "soon" tag was apologising for.
+  //
+  // Each entry carries `detectable`. The list also includes launchpads that are
+  // real on the chain but cannot be detected from pair data; those render as
+  // reference below, because deleting them is how this information was lost
+  // when the "soon" tag was removed.
   const [lpByChain, setLpByChain] = useState({});
   useEffect(() => {
     let alive = true;
@@ -273,20 +288,22 @@ export function Filters({ filter, setFilter, onAlertToggle, onAlertFiltersToggle
           const def = CHAIN_LAUNCHPADS.find(c => c.id === chainId);
           if (!def) return null;
           const pads = lpByChain[chainId] || [];
+          // `detectable` is published per launchpad by /api/launchpads. Older
+          // servers omit it entirely, and an absent flag must mean "filterable"
+          // rather than silently disabling every chip -- hence !== false.
+          const live = pads.filter(lp => lp.detectable !== false);
+          const dark = pads.filter(lp => lp.detectable === false);
           return (
             <div className="fx-lp" key={chainId} style={{ borderLeftColor: def.color }}>
               <div className="fx-lp-head">
                 <span className="fx-dot" style={{ background: def.color }} />
                 {def.label} launchpads
               </div>
-              {pads.length === 0 ? (
+              {live.length === 0 ? (
                 <div className="fx-lp-empty">No launchpad detected on this chain yet</div>
               ) : (
                 <div className="fx-lp-pills">
-                  {/* Every pill here is detectable by definition -- the server
-                      only publishes what it can actually recognise -- so there
-                      is no disabled state and no "soon". */}
-                  {pads.map(lp => {
+                  {live.map(lp => {
                     const key = `${chainId}:${lp.id}`;
                     return (
                       <button
@@ -297,6 +314,34 @@ export function Filters({ filter, setFilter, onAlertToggle, onAlertFiltersToggle
                     );
                   })}
                 </div>
+              )}
+              {/* REFERENCE, NOT A FILTER.
+                  These launchpads are real and are on this chain, but they
+                  deploy onto a shared AMM, so nothing in the pair data
+                  identifies them and detection cannot be written today.
+
+                  They are shown because deleting them is how the information
+                  was lost the first time: they carried a "soon" tag, the tag
+                  was removed by removing the rows, and a chain's whole
+                  launchpad list went with it. They are NOT clickable -- a chip
+                  that can only ever return an empty feed is worse than no chip
+                  -- and they say nothing about when, because "soon" was a
+                  promise the app could not keep. */}
+              {dark.length > 0 && (
+                <>
+                  <div className="fx-lp-pills fx-lp-dark">
+                    {dark.map(lp => (
+                      <span
+                        key={`${chainId}:${lp.id}`}
+                        className="fx-pill fx-pill-dark"
+                        title={`${lp.label} launches on a shared AMM, so this app cannot tell its tokens apart from any other token on that AMM. Listed for reference; not filterable.`}
+                      >{lp.label}</span>
+                    ))}
+                  </div>
+                  <div className="fx-lp-note">
+                    Also on this chain · not identifiable from pair data, so not filterable
+                  </div>
+                </>
               )}
             </div>
           );

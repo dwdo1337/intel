@@ -28,6 +28,22 @@ export default function App() {
   const [toasts, setToasts] = useState([]);
   const [history, setHistory] = useState([]);
   const [showHistory, setShowHistory] = useState(false);
+  // A request from a clicked toast to open one token in the deck. Carries a
+  // nonce because clicking the SAME token twice must re-open it -- with only a
+  // ca, the second click sets identical state, React re-renders nothing, and
+  // the deck sits there looking broken.
+  const [openReq, setOpenReq] = useState(null);
+
+  // Clicking a toast -- a watch note especially -- should land on that token,
+  // not merely raise the window. The main process sends the ca over
+  // `open-token`, re-exposed by electron/preload.cjs.
+  useEffect(() => {
+    const api = window.electronAPI;
+    if (!api || typeof api.onOpenToken !== 'function') return;   // browser dev
+    return api.onOpenToken(({ ca }) => {
+      if (ca) setOpenReq({ ca, n: Date.now() });
+    });
+  }, []);
 
   const loadFeed = async (keepSelection = true) => {
     try {
@@ -89,6 +105,7 @@ export default function App() {
           onOpenSettings={() => setShowSettings(true)}
           onOpenSources={() => setShowSources(true)}
           onOpenHistory={() => setShowHistory(true)}
+          openReq={openReq}
           showcase={null}
         />
       )}

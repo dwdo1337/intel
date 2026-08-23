@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { io } from 'socket.io-client';
 import { Logo } from '../components/Logo';
 import { Filters, CHAIN_LAUNCHPADS } from '../components/Filters';
@@ -45,16 +45,54 @@ const BLANK_FILTER = () => ({
 
 // Sets don't survive JSON, so they persist as arrays and rehydrate here.
 // Any failure falls back to defaults rather than leaving a broken state.
+/**
+ * Chains this build knows about, as of the last time the filter was saved.
+ *
+ * Without this, ADDING a chain pill hides that chain's tokens instead of
+ * revealing them. `filter.chains` is a whitelist -- an unlisted chain fails
+ * `chains.has(evChain)` and never reaches the feed -- and a saved selection
+ * written before the chain existed cannot contain it. So the pill appears
+ * switched off, and the tokens it was added to expose stay invisible.
+ *
+ * A blind union of the saved set with every known chain would fix that and
+ * break something worse: a chain the user deliberately switched OFF is also
+ * absent from the saved set, and would be switched back on behind them.
+ *
+ * The two cases are only distinguishable by remembering which chains had ever
+ * been offered. A chain that is new to this BUILD was never a choice the user
+ * made, so it is selected; a known chain that is absent was deselected on
+ * purpose, so it is left alone.
+ */
+const KNOWN_CHAINS_KEY = FILTER_STORAGE_KEY + ':known-chains';
+
 function loadFilter() {
   const base = BLANK_FILTER();
   try {
     const raw = localStorage.getItem(FILTER_STORAGE_KEY);
     if (!raw) return base;
     const saved = JSON.parse(raw);
+    const chains = Array.isArray(saved.chains) ? new Set(saved.chains) : base.chains;
+
+    // Adopt chains this build added since the filter was last written.
+    let known;
+    try { known = new Set(JSON.parse(localStorage.getItem(KNOWN_CHAINS_KEY) || 'null') || []); }
+    catch { known = new Set(); }
+    // First run after this migration ships: nothing was recorded, so seed from
+    // the chains the PREVIOUS build actually offered. Inferring the seed from
+    // `saved.chains` instead would be wrong -- a deselected chain is missing
+    // from that set too, so every chain the user had switched off would read as
+    // "new" and be switched back on. This list is a historical fact, not a
+    // guess, which is the only reason the distinction can be made at all.
+    if (known.size === 0) {
+      known = new Set(['solana', 'robinhood', 'base', 'bsc', 'ethereum', 'stable', 'arc']);
+    }
+    for (const id of ALL_CHAIN_IDS()) if (!known.has(id)) chains.add(id);
+    try { localStorage.setItem(KNOWN_CHAINS_KEY, JSON.stringify([...ALL_CHAIN_IDS()])); } catch { /* ignore */ }
+
     return {
       ...base,
       ...saved,
-      chains: Array.isArray(saved.chains) ? new Set(saved.chains) : base.chains,
+      chains,
       alertChains: Array.isArray(saved.alertChains) ? new Set(saved.alertChains) : base.alertChains,
       launchpads: Array.isArray(saved.launchpads) ? new Set(saved.launchpads) : new Set(),
     };
@@ -134,7 +172,7 @@ function pushAlertFilters(enabled, thresholds) {
   }).catch(() => {});
 }
 
-export function DashboardScreen({ feed, selected, onSelect, onOpenSettings, onOpenSources, onOpenHistory, showcase }) {
+export function DashboardScreen({ feed, selected, onSelect, onOpenSettings, onOpenSources, onOpenHistory, openReq, showcase }) {
   const [filter, setFilter] = useState(() => loadFilter());
   const [logsOpen, setLogsOpen] = useState(false);
   const [bestOpen, setBestOpen] = useState(false);
@@ -312,6 +350,54 @@ export function DashboardScreen({ feed, selected, onSelect, onOpenSettings, onOp
       onSelect(filtered.length ? filtered[0].id : null);
     }
   }, [selected, selectedVisible, filtered, onSelect]);
+
+  // OPEN THE TOKEN A CLICKED TOAST ASKED FOR.
+  //
+  // This has to fight the effect directly above it. That one enforces "the
+  // inspector only ever shows a token the feed is actually listing", which is
+  // right -- but it means asking for a token the current filter hides would
+  // snap straight to filtered[0] instead, and the click would look broken.
+  //
+  // So the filter is cleared first when, and only when, it is what is hiding
+  // the token. Clearing it unconditionally would throw away a filter setup
+  // every time a toast was clicked, and leaving it alone would make the
+  // feature fail exactly when it is most useful -- a watch note firing for a
+  // starred token that ran past your market-cap ceiling is the case the
+  // watchlist bypass exists for, and by construction that token is outside
+  // the filter. Metric thresholds are part of the reset for the same reason.
+  const openN = openReq && openReq.n;
+  // Which request has already been acted on. A ref, not state, so marking one
+  // handled does not itself trigger another render pass.
+  const handledOpen = useRef(null);
+  useEffect(() => {
+    if (!openReq || !openReq.ca || handledOpen.current === openN) return;
+    const want = String(openReq.ca).toLowerCase();
+    const match = safeFeed.find(ev => String(ev.id).toLowerCase() === want);
+    // Not in the feed YET. This effect re-runs when the feed changes, so a
+    // toast clicked before the deck has loaded its feed -- or one naming a
+    // token that arrives a moment later -- is honoured when it turns up,
+    // rather than being dropped on the one render where it was not there.
+    if (!match) return;
+    handledOpen.current = openN;
+    if (!filtered.some(ev => ev.id === match.id)) {
+      // Reset what the FEED shows, and nothing else. `alertChains` and
+      // `alertFiltersOn` describe how you agreed to be interrupted, are owned
+      // by the backend, and are only ever meant to change on an explicit
+      // toggle. A blanket BLANK_FILTER() here would quietly re-arm every muted
+      // chain in localStorage -- the exact coupling between looking and being
+      // notified that the pill and the bell were split apart to end.
+      setFilter(f => ({
+        ...BLANK_FILTER(),
+        alertChains: f.alertChains,
+        alertFiltersOn: f.alertFiltersOn,
+      }));
+    }
+    onSelect(match.id);
+    // `filtered` is deliberately NOT a dependency: it changes on the very
+    // reset this effect performs, and re-running would fight itself. The
+    // handled-nonce guard is what makes depending on safeFeed safe.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openN, safeFeed]);
 
   return (
     <div className="screen active">

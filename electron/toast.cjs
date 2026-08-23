@@ -352,7 +352,7 @@ function processQueue() {
   }
 }
 
-function focusMainWindow() {
+function focusMainWindow(ca, chain) {
   // Previously compared against an undefined `win` binding, which threw a
   // ReferenceError and silently swallowed every "focus app" toast click.
   for (const w of BrowserWindow.getAllWindows()) {
@@ -361,6 +361,17 @@ function focusMainWindow() {
       if (w.isMinimized()) w.restore();
       w.show();
       w.focus();
+      // Then tell the deck WHICH token to open. Sent after show/focus so the
+      // window is already visible when the selection lands, and guarded on a
+      // CA so a toast that sends none just focuses, as it always did.
+      //
+      // This goes over a named channel that preload.cjs re-exposes. It cannot
+      // be a bare webContents.send: contextIsolation is on, so a channel with
+      // no bridge entry arrives nowhere -- the same dead-IPC failure that left
+      // toasts unable to update at all until the bridge was fixed.
+      if (ca && !w.webContents.isDestroyed()) {
+        w.webContents.send('open-token', { ca: String(ca), chain: chain ? String(chain) : null });
+      }
       return;
     }
   }
@@ -377,7 +388,7 @@ ipcMain.on('toast-action', (event, payload) => {
     const { clipboard } = require('electron');
     clipboard.writeText(payload.ca);
   } else if (payload.action === 'focus-app') {
-    focusMainWindow();
+    focusMainWindow(payload.ca, payload.chain);
   } else if (payload.action === 'open-url') {
     // Opened here rather than by the renderer, so a toast button cannot
     // silently fail if the window-open handler is not reached. http(s) only:

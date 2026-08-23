@@ -47,8 +47,20 @@ export function Inspector({ event }) {
   // had not looked when we had looked and found nothing.
   //
   // Mirrors the chains GET /api/launchpads publishes at least one launchpad for.
-  const launchpadsDetectable =
-    ['solana', 'bsc', 'base', 'ethereum', 'robinhood'].includes(String(chainName).toLowerCase());
+  //
+  // THIS LIST HAS ALREADY DRIFTED ONCE. Adding `noxa` to the server's detection
+  // map made monad, hyperevm and megaeth detectable, and this list did not know
+  // -- so a HyperEVM token said "not detectable on hyperevm" about a launchpad
+  // the server can and does resolve. That is the exact error the note above
+  // describes, one chain over: claiming we did not look when we looked.
+  //
+  // The server is the source of truth. If this drifts a second time, stop
+  // patching the list and derive it from /api/launchpads, the way Filters.jsx
+  // already does.
+  const launchpadsDetectable = [
+    'solana', 'bsc', 'base', 'ethereum', 'robinhood',
+    'monad', 'hyperevm', 'megaeth',
+  ].includes(String(chainName).toLowerCase());
   const address = event.token.address || '';
   const banner = event.token.banner;
   const image = event.token.image;

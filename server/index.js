@@ -387,6 +387,14 @@ const DEX_TO_LAUNCHPAD = {
   // Base / Ethereum
   clanker: 'Clanker',
   zora: 'Zora',
+  // Solana, added after the "soon" removal lost the Robinhood block. Meteora's
+  // DYNAMIC BONDING CURVE is a launchpad rail; plain `meteora` is the AMM it
+  // graduates to and stays out, same rule as pumpfun vs pumpswap.
+  meteoradbc: 'Meteora DBC',
+  // Verified live on DexScreener as a dexId on monad, hyperevm and megaeth --
+  // NOT on robinhood, where `NOXA` is only ever a base token in a robinswap
+  // pool. The old hand-written list had it filed under Robinhood.
+  noxa: 'NOXA',
 };
 
 const DEX_CHAINS = {
@@ -394,7 +402,8 @@ const DEX_CHAINS = {
   moonshot: ['solana'], bags: ['solana'], jupiterstudio: ['solana'],
   flapsh: ['bsc', 'robinhood'], flap: ['bsc'], fourmeme: ['bsc'],
   'four-meme': ['bsc'], grafun: ['bsc'], bakeryswap: ['bsc'],
-  clanker: ['base', 'ethereum'], zora: ['base'],
+  clanker: ['base', 'ethereum'], zora: ['base', 'solana'],
+  meteoradbc: ['solana'], noxa: ['monad', 'hyperevm', 'megaeth'],
 };
 
 // The two Solana routes that are not dexId-based -- a mint suffix is proof of
@@ -403,6 +412,81 @@ const SUFFIX_LAUNCHPADS = [
   { chain: 'solana', label: 'pump.fun' },
   { chain: 'solana', label: 'letsbonk.fun' },
 ];
+
+/**
+ * Real launchpads this app CANNOT detect yet.
+ *
+ * These were hand-researched, shown with a "soon" tag, and then deleted
+ * outright when the tag was removed -- the label went, and the information went
+ * with it. They are published with `detectable: false` so the UI can show what
+ * exists on a chain without pretending the chip is a working filter. No
+ * timeline is implied: this is a status, not a promise, which is exactly what
+ * "soon" got wrong.
+ *
+ * Each was re-checked against the DexScreener search API before being restored:
+ *
+ *   - hood.fun, Openfair, RobinPad, Flapstock -- return ZERO pairs. They deploy
+ *     onto shared AMMs (the Robinhood chain reports dexId `uniswap`), so there
+ *     is no dexId that identifies them and detection cannot be written today.
+ *   - NOXA Fun -- filed under Robinhood in the old list and that was WRONG.
+ *     `noxa` is a live dexId on monad/hyperevm/megaeth and is now in
+ *     DEX_TO_LAUNCHPAD above. On Robinhood, NOXA is only a base token.
+ *
+ * DELIBERATELY ABSENT -- do not "restore" these from the old file:
+ *
+ *   - PONS is a TOKEN, not a launchpad. It trades as the base token across
+ *     flapsh, giga, ramses, robinswap and `up` on the Robinhood chain. So is
+ *     HOOD. The original research misread both.
+ *   - `up` was investigated as a launchpad candidate and rejected: it is
+ *     Robinhood-exclusive with no version label, which looks right, but its
+ *     pairs carry no pairCreatedAt and are never a token's FIRST pair (PONS
+ *     traded on uniswap long before its `up` pools existed). It is an
+ *     alternative venue, not a bonding curve.
+ */
+const KNOWN_UNDETECTED = [
+  { chain: 'robinhood', label: 'hood.fun' },
+  { chain: 'robinhood', label: 'Openfair' },
+  { chain: 'robinhood', label: 'RobinPad' },
+  { chain: 'robinhood', label: 'Flapstock' },
+];
+
+/**
+ * One spelling per launchpad, decided at WRITE time.
+ *
+ * The store holds `Pump.Fun` x391 next to `pump.fun` x16, and `Lets Bonk` next
+ * to `letsbonk.fun`, because three sources name the same launchpad three ways:
+ * this file's own detection, RugCheck (safety.js), and GMGN. Nothing was wrong
+ * downstream -- the feed filter lowercases both sides -- but the same launchpad
+ * appearing twice in any grouping is a bug waiting for the first consumer that
+ * forgets to lowercase, and /api/best-calls already groups by name.
+ *
+ * The app's own spelling wins, because it is the one the filter chips publish.
+ * A name this app does not know is passed through UNCHANGED rather than
+ * title-cased or lowercased into a guess -- an unrecognised launchpad is
+ * information, and mangling it would lose the only record that it exists.
+ *
+ * Deliberately NOT retroactive. Rewriting 400+ stored records to tidy their
+ * casing risks the only real dataset for a purely cosmetic gain.
+ */
+const LAUNCHPAD_CANONICAL = (() => {
+  const m = new Map();
+  for (const label of Object.values(DEX_TO_LAUNCHPAD)) m.set(label.toLowerCase(), label);
+  for (const s of SUFFIX_LAUNCHPADS) m.set(s.label.toLowerCase(), s.label);
+  for (const k of KNOWN_UNDETECTED) m.set(k.label.toLowerCase(), k.label);
+  // Spellings seen in the wild from providers that do not match a canonical
+  // label by lowercasing alone. Left explicit so the mapping is auditable.
+  m.set('lets bonk', 'letsbonk.fun');
+  m.set('letsbonk', 'letsbonk.fun');
+  m.set('pumpfun', 'pump.fun');
+  m.set('four meme', 'Four.meme');
+  m.set('fourmeme', 'Four.meme');
+  return m;
+})();
+
+function canonicalLaunchpad(name) {
+  if (!name || typeof name !== 'string') return name || null;
+  return LAUNCHPAD_CANONICAL.get(name.trim().toLowerCase()) || name;
+}
 
 function detectLaunchpad(ca, chainId, dexId, allPairs) {
   const chain = (chainId || '').toLowerCase();
@@ -498,7 +582,7 @@ async function enrichDexscreener(ca) {
       telegram_url: (p.info?.socials || []).find(s => s.type === 'telegram')?.url || null,
       buys_24h: p.txns?.h24?.buys ?? null,
       sells_24h: p.txns?.h24?.sells ?? null,
-      launchpad: detectLaunchpad(ca, p.chainId, p.dexId, pairs),
+      launchpad: canonicalLaunchpad(detectLaunchpad(ca, p.chainId, p.dexId, pairs)),
     };
   } catch (e) {
     log('enrichment', 'dexscreener enrich failed for ' + ca, { error: e.message });
@@ -712,6 +796,9 @@ async function enrichSafetyAsync(ca, chain, { force = false } = {}) {
         // it exists; RugCheck's token-metadata image fills the gap for the
         // many pump.fun launches DexScreener has no picture for.
         const { image_url: metadataImage, metadata_uri: metadataUri, ...safetyFields } = safety;
+        // RugCheck spells it `Pump.Fun`; detection spells it `pump.fun`. This
+        // is the write that put both spellings in the store.
+        if (safetyFields.launchpad) safetyFields.launchpad = canonicalLaunchpad(safetyFields.launchpad);
         Object.assign(hit, safetyFields);
         if (metadataUri) hit._metadata_uri = metadataUri;
         if (!hit.image_url && metadataImage) {
@@ -2161,7 +2248,7 @@ app.post('/api/refresh/:ca', async (req, res) => {
     // showing its original name forever.
     if (fresh.token_name) hit.token_name = fresh.token_name;
     if (fresh.token_symbol) hit.token_symbol = fresh.token_symbol;
-    if (fresh.launchpad) hit.launchpad = fresh.launchpad;
+    if (fresh.launchpad) hit.launchpad = canonicalLaunchpad(fresh.launchpad);
     if (fresh.dex) hit.dex = fresh.dex;
     if (fresh.pair_url) hit.pair_url = fresh.pair_url;
     if (fresh.pair_label) hit.pair_label = fresh.pair_label;
@@ -2294,14 +2381,21 @@ async function fillPeak(hit) {
  *   - Two launchpads the backend detects perfectly well, StonkFun and Meteora,
  *     had no chip at all, so their tokens could not be filtered for.
  *
- * Publishing the detection map removes both failure modes by construction: a
- * chip exists exactly when detection exists, so "soon" has nothing left to
- * describe. `observed` is unioned in so anything detected by a route other than
- * the dexId map still gets a chip rather than being invisible.
+ * Publishing the detection map removes the second failure mode by
+ * construction: a detectable chip exists exactly when detection exists, and
+ * `observed` is unioned in so anything found by a route other than the dexId
+ * map still gets a chip rather than being invisible.
+ *
+ * The FIRST failure mode was then over-corrected. Removing the "soon" tag was
+ * done by deleting the five rows that carried it, which threw away real
+ * researched information about what exists on the Robinhood chain -- the label
+ * was the problem, not the launchpads. They are back, from KNOWN_UNDETECTED,
+ * published with `detectable: false`; the UI renders them as reference rather
+ * than as a filter that can only return an empty feed.
  */
 app.get('/api/launchpads', (req, res) => {
   const byChain = new Map();
-  const add = (chain, label) => {
+  const add = (chain, label, detectable) => {
     const c = String(chain || '').toLowerCase();
     if (!c || !label) return;
     if (!byChain.has(c)) byChain.set(c, new Map());
@@ -2311,21 +2405,38 @@ app.get('/api/launchpads', (req, res) => {
     // lowercases both sides. The id is the lowercased form so it is stable; the
     // first label seen wins, so detection's own spelling stays canonical.
     const id = String(label).toLowerCase();
-    if (!m.has(id)) m.set(id, { id, label: String(label) });
+    if (!m.has(id)) { m.set(id, { id, label: String(label), detectable: !!detectable }); return; }
+    // Detectable always wins over not-detectable, whichever order they arrive
+    // in. A name that appears in BOTH lists is one we have since learned to
+    // detect, and it must not be rendered as a dead chip because
+    // KNOWN_UNDETECTED still carries a stale copy of it.
+    if (detectable) m.get(id).detectable = true;
   };
 
   for (const [dex, label] of Object.entries(DEX_TO_LAUNCHPAD)) {
-    for (const chain of (DEX_CHAINS[dex] || [])) add(chain, label);
+    for (const chain of (DEX_CHAINS[dex] || [])) add(chain, label, true);
   }
-  for (const s of SUFFIX_LAUNCHPADS) add(s.chain, s.label);
+  for (const s of SUFFIX_LAUNCHPADS) add(s.chain, s.label, true);
   for (const hit of HITS.values()) {
-    if (hit && hit.launchpad) add(hit.chain, hit.launchpad);
+    // Canonicalised on the way OUT as well as on the way in. The write-time
+    // fix only applies to new records, and the store still holds the old
+    // spellings -- `Lets Bonk` next to `letsbonk.fun` published as two separate
+    // chips for the same launchpad, because the id is only a lowercase of the
+    // label and those two do not collide. Normalising here fixes the display
+    // without rewriting 400+ stored records.
+    if (hit && hit.launchpad) add(hit.chain, canonicalLaunchpad(hit.launchpad), true);
   }
+  for (const k of KNOWN_UNDETECTED) add(k.chain, k.label, false);
 
   const chains = [...byChain.entries()]
     .map(([chain, m]) => ({
       chain,
-      launchpads: [...m.values()].sort((a, b) => a.label.localeCompare(b.label)),
+      // Detectable first, then alphabetical within each group -- the UI renders
+      // them in this order and the working chips should come first.
+      launchpads: [...m.values()].sort((a, b) =>
+        (a.detectable === b.detectable)
+          ? a.label.localeCompare(b.label)
+          : (a.detectable ? -1 : 1)),
     }))
     .sort((a, b) => a.chain.localeCompare(b.chain));
 

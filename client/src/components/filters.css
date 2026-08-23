@@ -298,6 +298,26 @@
 }
 .fx-pill:disabled { opacity: 0.4; cursor: not-allowed; }
 
+/* Launchpads that exist on the chain but cannot be detected from pair data.
+   Reference, not a control -- so they are rendered as a <span>, get a dashed
+   border to read as "not the same kind of thing as the pills above", and take
+   no hover or selected state. Deliberately quiet: this is context you can
+   read, not an action you can take. */
+.fx-lp-dark { margin-top: 5px; }
+.fx-pill-dark {
+  border-style: dashed;
+  border-color: var(--line2);
+  background: transparent;
+  color: var(--dim);
+  cursor: default;
+}
+.fx-lp-note {
+  font-size: 10px;
+  color: var(--dim);
+  font-style: italic;
+  margin-top: 4px;
+}
+
 /* ── metric rows ────────────────────────────────────────────────── */
 .fx-rows { display: flex; flex-direction: column; margin-top: 4px; }
 
