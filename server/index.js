@@ -1634,23 +1634,130 @@ let tgLoginState = null;
 // the contradiction that gave it away). This flag tracks actual authorization.
 let tgAuthorized = false;
 
+/**
+ * Keep Telegram alive across a dropped connection.
+ *
+ * MEASURED FAILURE, 2026-08-26. At 08:53:54 the network blipped. The log shows
+ * GramJS reporting `[connection closed]` / `Connection closed while receiving
+ * data`, and Discord in the same second reporting `disconnected (code 1006),
+ * reconnecting in 5s`. Discord came back. Telegram did not, and stayed dead for
+ * thirteen hours -- 803 stored mentions from Telegram, the last one at 08:38.
+ *
+ * There were two separate faults and the second one hid the first:
+ *
+ *   1. Nothing reconnected Telegram. `connectionRetries: 5` is GramJS's own
+ *      internal retry for a single request; it does not resurrect a handler
+ *      whose connection has gone.
+ *   2. `tgAuthorized` was set true once and never cleared, so /api/source/status
+ *      kept answering `connected: true` at a time when nothing could arrive.
+ *      The UI said everything was fine, which is why the outage was invisible
+ *      until someone noticed that only Discord signals were landing.
+ *
+ * Fault 2 is the one worth remembering. A source that fails LOUDLY costs an
+ * evening; a source that fails while still reporting itself healthy costs
+ * however long it takes someone to doubt the status line.
+ */
+let tgShouldRun = false;
+let tgAttempts = 0;
+let tgWatchdog = null;
+
 async function startTelegramIfSessionExists() {
   const session = config.telegram?.session;
   if (!session) { log('system', 'Telegram skipped: no GramJS session saved yet'); return; }
-  await connectTelegramWithSession(session);
+  tgShouldRun = true;
+  try {
+    await connectTelegramWithSession(session);
+  } catch (e) {
+    // A boot with no network must not be permanent. This was previously called
+    // without a catch and without an await, so a failure here became an
+    // unhandled rejection and Telegram simply never started -- with the status
+    // endpoint reporting `connected: false` and nothing ever changing it.
+    log('error', 'Telegram initial connect failed', { error: e && e.message });
+    scheduleTelegramReconnect('initial connect failed');
+  }
 }
+
+/** Tear the current client down so a reconnect starts from a clean socket. */
+async function dropTelegramClient() {
+  tgAuthorized = false;
+  const old = tgClient;
+  tgClient = null;
+  if (!old) return;
+  try { await old.destroy(); } catch { /* already gone */ }
+}
+
+function scheduleTelegramReconnect(why) {
+  if (!tgShouldRun) return;
+  tgAttempts += 1;
+  // Same shape as Discord's backoff: 5s doubling to a 5-minute ceiling, so a
+  // sustained outage costs a handful of log lines rather than hundreds.
+  const delay = Math.min(5000 * 2 ** (tgAttempts - 1), 5 * 60 * 1000);
+  if (tgAttempts <= 3 || tgAttempts % 10 === 0) {
+    log('system', `Telegram disconnected (${why}), reconnecting in ${Math.round(delay / 1000)}s`, { attempt: tgAttempts });
+  }
+  setTimeout(async () => {
+    if (!tgShouldRun) return;
+    try {
+      await dropTelegramClient();
+      await connectTelegramWithSession(config.telegram.session);
+    } catch (e) {
+      scheduleTelegramReconnect(e && e.message ? e.message : 'reconnect failed');
+    }
+  }, delay);
+}
+
+/**
+ * Poll the socket, because a silent death does not raise an event.
+ *
+ * The 08:53 outage produced no callback this code could have hooked -- GramJS
+ * logged the closure through its own logger and the handler simply stopped
+ * being called. Waiting for an event that may never come is what allowed
+ * thirteen hours of silence, so liveness is checked rather than assumed.
+ */
+function startTelegramWatchdog() {
+  if (tgWatchdog) clearInterval(tgWatchdog);
+  tgWatchdog = setInterval(() => {
+    if (!tgShouldRun || !tgClient || !tgAuthorized) return;
+    // `connected` is `this._sender && this._sender.isConnected()`, so it is
+    // UNDEFINED when the sender is gone entirely -- not false. Checking
+    // `=== false` would sail straight past the worst case. Anything not truthy
+    // is a dead socket here, because the watchdog only runs once a connection
+    // has already succeeded.
+    if (!tgClient.connected) {
+      tgAuthorized = false;
+      scheduleTelegramReconnect('socket closed');
+    }
+  }, 30_000);
+  // Never hold the process open for the sake of a health check.
+  if (tgWatchdog.unref) tgWatchdog.unref();
+}
+
 async function connectTelegramWithSession(sessionStr) {
   tgClient = new TelegramClient(new StringSession(sessionStr), Number(config.telegram.api_id), config.telegram.api_hash, { connectionRetries: 5 });
   await tgClient.connect();
   attachTelegramHandler();
   tgAuthorized = true;
-  log('system', 'Telegram connected using saved session');
+  const wasRetrying = tgAttempts > 0;
+  tgAttempts = 0;
+  startTelegramWatchdog();
+  log('system', wasRetrying ? 'Telegram reconnected' : 'Telegram connected using saved session');
 }
 function attachTelegramHandler() {
-  const monitored = new Set((config.telegram.monitored_chats || []).map(String));
   tgClient.addEventHandler(async (event) => {
     const msg = event.message;
     const chatId = String(msg.chatId || msg.peerId?.channelId || msg.peerId?.chatId || '');
+    // READ THE LIST PER MESSAGE, not once into a closure.
+    //
+    // This used to be captured when the handler was attached, which meant
+    // picking chats in Settings did nothing until the app was restarted. The
+    // save worked, the config on disk was right, the UI showed the new
+    // selection -- and the running handler kept filtering against the list it
+    // had memorised at connect time. Adding a chat looked exactly like the
+    // chat not working.
+    //
+    // Discord never had this bug because discordWatches() reads config on
+    // every message. Telegram now does the same.
+    const monitored = new Set((config.telegram.monitored_chats || []).map(String));
     if (monitored.size && !monitored.has(chatId)) return;
     const chatTitle = await tgChatTitle(msg, chatId);
     const sender = await msg.getSender().catch(() => null);
@@ -1689,7 +1796,9 @@ function attachTelegramHandler() {
       });
     }
   }, new NewMessage({}));
-  log('signal', 'Telegram listening', { chats: monitored.size });
+  log('signal', 'Telegram listening', {
+    chats: (config.telegram.monitored_chats || []).length || 'all',
+  });
 }
 
 app.post('/api/telegram/login/start', async (req, res) => {
@@ -1723,6 +1832,11 @@ app.post('/api/telegram/login/code', async (req, res) => {
     saveConfig(config);
     tgLoginState = null;
     tgAuthorized = true;
+    // Arm the same supervision a session-restored connect gets. Without these
+    // two lines a FRESHLY logged-in user has no watchdog and no reconnect --
+    // the one path that never restarts the app is the one that needs it most.
+    tgShouldRun = true;
+    startTelegramWatchdog();
     res.json({ ok: true, step: 'logged_in' });
     attachTelegramHandler();
   } catch (e) { res.status(400).json({ ok: false, error: e.message }); }
@@ -1738,6 +1852,11 @@ app.post('/api/telegram/login/password', async (req, res) => {
     saveConfig(config);
     tgLoginState = null;
     tgAuthorized = true;
+    // Arm the same supervision a session-restored connect gets. Without these
+    // two lines a FRESHLY logged-in user has no watchdog and no reconnect --
+    // the one path that never restarts the app is the one that needs it most.
+    tgShouldRun = true;
+    startTelegramWatchdog();
     res.json({ ok: true, step: 'logged_in' });
     attachTelegramHandler();
   } catch (e) { res.status(400).json({ ok: false, error: e.message }); }
@@ -1844,6 +1963,12 @@ app.get('/api/source/status', (req, res) => {
   const tg = config.telegram || {}, dc = config.discord || {};
   res.json({
     telegram: { connected: tgAuthorized, session: !!tg.session, chats: (tg.monitored_chats || []).length,
+      // Retry state, so a dropped connection reads as "coming back" rather than
+      // as a bare false the user has to interpret. `connected: true` used to be
+      // permanent -- it was set once and never cleared -- which is how a
+      // thirteen-hour outage stayed invisible behind a healthy-looking status.
+      reconnecting: !tgAuthorized && tgShouldRun && tgAttempts > 0,
+      retryAttempt: tgAttempts,
       // Echoed back so the connect form can prefill on a return visit.
       // api_hash is deliberately NOT echoed -- it is a secret; the client
       // only needs to know whether one is already stored.
