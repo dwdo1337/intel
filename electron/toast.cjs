@@ -103,8 +103,27 @@ function createToastWindow(data) {
   win.setIgnoreMouseEvents(false);
   win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
 
-  const file = `file://${path.join(__dirname, 'toast.html').replace(/\\/g, '/')}`;
-  win.loadURL(file + '#' + encodeURIComponent(JSON.stringify(data)));
+  // loadFile, NOT a hand-built file:// URL.
+  //
+  // The old form was `file://` + `C:/Users/...`, which is malformed: with only
+  // two slashes, `C:` is parsed as the URL's HOST and the drive letter is lost.
+  // Chromium usually recovers, but "usually" is doing real work in that
+  // sentence -- and a document whose URL mis-parses can render as PLAIN TEXT,
+  // which is a window full of raw CSS sitting over whatever the user was doing.
+  // loadFile builds the URL itself and handles Windows and asar paths properly.
+  //
+  // The payload still rides in the hash, which is what toast.html reads on
+  // load; loadFile takes it as an option instead of by string concatenation.
+  win.loadFile(path.join(__dirname, 'toast.html'), {
+    hash: encodeURIComponent(JSON.stringify(data)),
+  }).catch(err => {
+    // A toast that cannot load its own document must not linger as an empty or
+    // unstyled window. This fires when the app's own files have been removed
+    // from under it -- the portable build extracts to %TEMP%, and that
+    // extraction does get cleaned while the app is still running.
+    console.error('[toast] failed to load toast.html:', err && err.message);
+    try { if (!win.isDestroyed()) win.destroy(); } catch (_) {}
+  });
 
   win.webContents.once('dom-ready', () => {
     // Send the LIVE entry, not the `data` this function was called with.
