@@ -37,6 +37,7 @@
     "appId": "com.intel.commanddeck",
     "productName": "intel. Command Deck",
     "npmRebuild": false,
+    "afterPack": "build/afterPack.cjs",
     "directories": {
       "output": "dist-electron"
     },
