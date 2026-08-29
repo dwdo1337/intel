@@ -25,10 +25,10 @@ A single genuine call produces, within seconds:
 
 | Message | Author | Should it count? |
 | --- | --- | --- |
-| `EPXWa7...x2nJBY` | @dxM4M4 (human) | **yes — the actual call** |
+| `EPXWa7...x2nJBY` | @degenmike (human) | **yes — the actual call** |
 | Same CA + chart | Rick (bot) | no — an echo |
 | Same CA + stats | Phanes (bot) | no — an echo |
-| Same CA in 4 other groups | @dxM4M4 again | no — one opinion, not five |
+| Same CA in 4 other groups | @degenmike again | no — one opinion, not five |
 
 Counted naively, that one call reads as "called 7×" — so *every* token looks
 hot and the number means nothing. Removing that illusion is the core of the
