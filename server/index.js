@@ -2778,13 +2778,34 @@ app.get('/api/best-calls', (req, res) => {
   const limit = Math.min(500, Math.max(1, Number(req.query.limit) || 50));
   const min = Number(req.query.min) > 0 ? Number(req.query.min) : 0;
   const by = ['call', 'room', 'caller'].includes(req.query.by) ? req.query.by : 'call';
+  // WHERE a call came from is now filterable and sortable. A board you cannot
+  // narrow is a board you cannot read: every row looked alike, and there was no
+  // way to ask "just Telegram" or "only this room".
+  const srcFilter = ['telegram', 'discord'].includes(req.query.source) ? req.query.source : null;
+  const chainFilter = (req.query.chain || '').trim().toLowerCase() || null;
+  const roomFilter = (req.query.room || '').trim().toLowerCase() || null;
+  // WHEN, as a window in hours. A leaderboard with no time bound silently
+  // becomes an all-time board, where a 75x from three months ago outranks
+  // everything that happened this week and the board stops describing now.
+  const sinceHours = Number(req.query.since) > 0 ? Number(req.query.since) : null;
+  const sinceTs = sinceHours ? Date.now() - sinceHours * 3600 * 1000 : null;
+  const SORTS = {
+    peak:   (a, b) => b.peakMult - a.peakMult,
+    now:    (a, b) => (b.nowMult ?? -1) - (a.nowMult ?? -1),
+    recent: (a, b) => (Date.parse(b.calledAt || 0) || 0) - (Date.parse(a.calledAt || 0) || 0),
+    fast:   (a, b) => (a.minutesToPeak ?? Infinity) - (b.minutesToPeak ?? Infinity),
+    spread: (a, b) => (b.roomCount - a.roomCount) || (b.alsoCalled - a.alsoCalled),
+  };
+  const sortKey = SORTS[req.query.sort] ? req.query.sort : 'peak';
 
   const calls = [];
   const grouped = [];
+  const sourceTally = new Map();
   let measured = 0;
 
   for (const hit of HITS.values()) {
     if (!hit || !Array.isArray(hit.mentions)) continue;
+    if (chainFilter && String(hit.chain || '').toLowerCase() !== chainFilter) continue;
     const mult = peakMultiple(hit.peak_mcap_usd, hit.entry_mcap_usd);
     // No measured peak means EXCLUDED, never 1.00x. A board padded with
     // unmeasured calls scored as break-even is a board that says nothing.
@@ -2814,14 +2835,34 @@ app.get('/api/best-calls', (req, res) => {
       seen.add(key);
       callers.push(m);
     }
-    if (callers.length) {
+    // Narrow to the requested source/room BEFORE picking who was first.
+    // Filtering after would credit the global first caller and then hide the
+    // row when they happened to be on the other platform.
+    // Room filter applies to both; the SOURCE filter deliberately does not
+    // apply to `unscopedBySource`, which is what the source facet is counted
+    // from. Counting the facet after its own filter made the other platform's
+    // button vanish the moment you picked one, so switching from Discord to
+    // Telegram meant clearing first -- a control that deletes itself.
+    const roomOk = m => (!roomFilter || String(m.chat_name || '').toLowerCase().includes(roomFilter));
+    // Window is judged on the MENTION, so "last 24h" means somebody called it
+    // in the last 24h -- not that a months-old token happens to still exist.
+    const timeOk = m => (!sinceTs || (Date.parse(m.detected_at || 0) || 0) >= sinceTs);
+    const unscopedBySource = callers.filter(m => roomOk(m) && timeOk(m));
+    const scoped = unscopedBySource.filter(m => !srcFilter || (m.source || '') === srcFilter);
+    if (unscopedBySource.length) {
+      for (const v of new Set(unscopedBySource.map(c => c.source).filter(Boolean))) {
+        sourceTally.set(v, (sourceTally.get(v) || 0) + 1);
+      }
+    }
+    if (scoped.length) {
       // Earliest by detection time, not by array order -- mentions are appended
       // as they arrive but a backfill or a restore can put them out of sequence.
-      const first = callers.reduce((a, b) =>
+      const first = scoped.reduce((a, b) =>
         (Date.parse(b.detected_at || 0) || 0) < (Date.parse(a.detected_at || 0) || 0) ? b : a);
       const author = (first.author || '').trim();
       const m = first;
-      const rooms = new Set(callers.map(c => c.chat_name).filter(Boolean));
+      const rooms = new Set(scoped.map(c => c.chat_name).filter(Boolean));
+      const sources = [...new Set(scoped.map(c => c.source).filter(Boolean))];
 
       calls.push({
         ca: hit.ca,
@@ -2836,7 +2877,10 @@ app.get('/api/best-calls', (req, res) => {
         calledAt: m.detected_at || hit.scan_at || null,
         // How far it spread beyond the first caller. Shown as "+N more" rather
         // than as extra rows.
-        alsoCalled: callers.length - 1,
+        alsoCalled: scoped.length - 1,
+        // Every platform this token was called on, so a row that spread from
+        // Telegram to Discord says so rather than showing only the first.
+        sources,
         roomCount: rooms.size,
         entryMcap: hit.entry_mcap_usd,
         peakMcap: hit.peak_mcap_usd,
@@ -2858,15 +2902,20 @@ app.get('/api/best-calls', (req, res) => {
     // recommending a runner is a real signal even when it was not first, and
     // collapsing that would under-credit rooms that consistently pick well
     // without being fastest.
-    for (const m of callers) {
+    for (const m of scoped) {
       grouped.push({ hit, mention: m, mult });
     }
   }
 
-  calls.sort((a, b) => b.peakMult - a.peakMult);
+  calls.sort(SORTS[sortKey]);
 
   if (by === 'call') {
-    return res.json({ by, calls: calls.slice(0, limit), coverage: coverageNote(measured) });
+    return res.json({
+      by, sort: sortKey, calls: calls.slice(0, limit), coverage: coverageNote(measured),
+      // What the board could be narrowed to, counted from the rows that
+      // survived the filters -- so the UI never offers a room with nothing in it.
+      facets: buildFacets(calls, sourceTally),
+    });
   }
 
   // Grouped: same arithmetic as the caller table, applied to whichever bucket
@@ -2879,11 +2928,12 @@ app.get('/api/best-calls', (req, res) => {
       ? (g0.mention.chat_name || 'unknown')
       : (g0.mention.author || '').trim();
     if (!key) continue;
-    if (!groups.has(key)) groups.set(key, { key, calls: 0, mults: [], best: null, chains: new Set() });
+    if (!groups.has(key)) groups.set(key, { key, calls: 0, mults: [], best: null, chains: new Set(), sources: new Set() });
     const g = groups.get(key);
     g.calls++;
     g.mults.push(g0.mult);
     g.chains.add(g0.hit.chain);
+    if (g0.mention.source) g.sources.add(g0.mention.source);
     const row = byCa.get(g0.hit.ca);
     if (row && (!g.best || g0.mult > g.best.peakMult)) g.best = row;
   }
@@ -2903,11 +2953,47 @@ app.get('/api/best-calls', (req, res) => {
     hitRate2x: g.mults.filter(x => x >= 2).length / g.mults.length,
     hitRate10x: g.mults.filter(x => x >= 10).length / g.mults.length,
     chains: [...g.chains],
+    // Which platform this room or caller posts on. Without it a room row was
+    // just a name, and two rooms called the same thing on different platforms
+    // were indistinguishable.
+    sources: [...g.sources],
     best: g.best,
   })).sort((a, b) => (b.medianPeakMult ?? -1) - (a.medianPeakMult ?? -1) || b.calls - a.calls);
 
-  res.json({ by, groups: rows.slice(0, limit), coverage: coverageNote(measured) });
+  res.json({
+    by, sort: sortKey, groups: rows.slice(0, limit), coverage: coverageNote(measured),
+    facets: buildFacets(calls, sourceTally),
+  });
 });
+
+/**
+ * What this board can be narrowed to, with counts.
+ *
+ * Built from the rows that SURVIVED the current filters, so the UI can never
+ * offer a room or a chain that would return nothing -- an empty result from a
+ * control you just clicked reads as a bug even when it is arithmetic.
+ */
+function buildFacets(calls, sourceTally) {
+  const tally = (pick) => {
+    const m = new Map();
+    for (const c of calls) {
+      for (const v of [].concat(pick(c) || [])) {
+        if (!v) continue;
+        m.set(v, (m.get(v) || 0) + 1);
+      }
+    }
+    return [...m.entries()].map(([value, count]) => ({ value, count }))
+      .sort((a, b) => b.count - a.count || String(a.value).localeCompare(String(b.value)));
+  };
+  return {
+    // Counted before the source filter, so both platforms stay switchable.
+    sources: [...(sourceTally || new Map()).entries()]
+      .map(([value, count]) => ({ value, count }))
+      .sort((a, b) => b.count - a.count),
+    chains: tally(c => c.chain),
+    rooms: tally(c => c.room).slice(0, 40),
+  };
+}
 
 function coverageNote(measured) {
   return {

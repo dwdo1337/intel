@@ -10,33 +10,42 @@
      product arriving on top of another window, so it cannot be a different
      palette -- the toast used to be colder and greener than the app it came
      from, which is exactly how a notification starts feeling like an ad. */
-  --bg:        oklch(0.16 0.010 265);
-  --surface:   oklch(0.19 0.012 265 / 0.96);
-  --surface2:  oklch(0.21 0.012 265);
-  --surface3:  oklch(0.235 0.012 265);
+  /* Retuned to the DEX Paid Radar system: near-black ground, one saturated
+     green, and a small fixed set of state colours each with a 12% wash behind
+     it. The oklch ramp this replaced was a quieter, bluer grey that made every
+     number look equally unimportant. */
+  --bg:        #000;
+  --surface:   #111214f2;
+  --surface2:  #1a1b1f;
+  --surface3:  #212329;
   --raise:     rgba(255,255,255,0.03);
   --raise-2:   rgba(255,255,255,0.06);
-  --line:      rgba(255,255,255,0.06);
-  --line2:     rgba(255,255,255,0.09);
-  --text:      oklch(0.97 0.004 265);
-  --muted:     oklch(0.70 0.012 265);
-  --dim:       oklch(0.54 0.012 265);
-  --accent:    oklch(0.80 0.135 158);
-  --accent2:   oklch(0.86 0.110 158);
-  --accent-ink:oklch(0.20 0.030 158);
-  --accent-dim:color-mix(in oklab, var(--accent) 14%, transparent);
-  --sell:      oklch(0.64 0.125 25);
+  --line:      #24262c;
+  --line2:     #2e313a;
+  --text:      #fff;
+  --muted:     #8e929b;
+  --dim:       #5c6069;
+  --accent:    #2bf08c;
+  --accent2:   #7df7b8;
+  --accent-ink:#04120a;
+  --accent-dim:rgba(43,240,140,0.12);
+  --sell:      #ff4f6d;
+  --sell-dim:  rgba(255,79,109,0.12);
+  --warn:      #ffbf1f;
+  --warn-dim:  rgba(255,191,31,0.12);
   --buy:       var(--accent);
   /* Identity colour, matching the deck: chains and sources are a legend. */
-  --info:#3b82f6;--dc:#5865F2;--tg:#3b82f6;
-  --radius:8px;--radius-chip:4px;
+  --info:#4fa8ff;--dc:#5865F2;--tg:#4fa8ff;--violet:#b084ff;
+  /* Bigger than the old 8px. A notification is a single object sitting on top
+     of somebody's screen, not a row in a dense table. */
+  --radius:16px;--radius-chip:99px;
 }
 *{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%;overflow:hidden;background:transparent;font-family:'Inter',system-ui,sans-serif}
+html,body{height:100%;overflow:hidden;background:transparent;font-family:'Inter',system-ui,sans-serif;font-variant-numeric:tabular-nums}
 #toast{
-  width:420px;position:relative;border-radius:10px;overflow:hidden;
+  width:420px;position:relative;border-radius:20px;overflow:hidden;
   background:var(--surface);border:1px solid var(--line);
-  box-shadow:0 18px 60px rgba(0,0,0,0.7),0 0 0 1px rgba(79,227,168,0.08) inset,0 0 45px rgba(79,227,168,0.06);
+  box-shadow:0 18px 60px rgba(0,0,0,0.8),0 0 0 1px rgba(43,240,140,0.07) inset,0 0 45px rgba(43,240,140,0.05);
   backdrop-filter:blur(22px);
   animation:in .45s cubic-bezier(.2,.9,.25,1);
 }
@@ -56,7 +65,7 @@ html,body{height:100%;overflow:hidden;background:transparent;font-family:'Inter'
 .live{display:flex;align-items:center;gap:5px;font-size:10px;font-weight:800;color:#0a0b10;background:var(--accent);padding:3px 8px;border-radius:20px}
 .live-dot{width:5px;height:5px;border-radius:50%;background:#0a0b10;animation:blink 1.2s infinite}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
-.main{display:flex;gap:13px;align-items:flex-start}
+.main{display:flex;gap:13px;align-items:flex-start;position:relative}
 .banner{position:absolute;top:0;left:0;right:0;height:66px;background-size:cover;background-position:center;opacity:0;transition:opacity .25s ease;pointer-events:none;border-radius:14px 14px 0 0}
 .banner.on{opacity:.5}
 .banner::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(8,9,13,0.25) 0%,#08090d 100%)}
@@ -95,6 +104,36 @@ html,body{height:100%;overflow:hidden;background:transparent;font-family:'Inter'
 .metric-value.down{color:var(--sell)}
 /* Second row sits directly under the first and reads as one block with it. */
 .metrics-2{margin-top:6px}
+
+/* ── MC at call, and the high since ──────────────────────────────────────
+   Sits top-right of the identity block, mirroring where the DEX Paid card puts
+   it. Right-aligned and tabular so the digits line up with the metric strip
+   below rather than drifting against it. */
+.atcall{position:absolute;top:0;right:0;text-align:right;line-height:1.15;pointer-events:none}
+.ac-label{font-size:9px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--dim)}
+.ac-value{font-size:22px;font-weight:800;letter-spacing:-.5px;color:var(--text);margin-top:1px}
+/* The multiple is the loud part -- it is the one number that says whether the
+   call worked, and it only ever appears once a peak has actually been measured. */
+.ac-peak{margin-top:3px;display:inline-block;padding:2px 8px;border-radius:99px;
+  font-size:11px;font-weight:800;letter-spacing:-.2px;
+  background:var(--accent-dim);color:var(--accent)}
+.ac-peak.flat{background:var(--raise-2);color:var(--muted)}
+
+/* ── risk flags ──────────────────────────────────────────────────────────
+   One line, red ground, count first then the facts. Wraps rather than
+   truncating: a token with four problems must not hide three of them. */
+.riskline{display:flex;align-items:flex-start;gap:8px;flex-wrap:wrap;
+  margin-top:8px;padding:8px 10px;border-radius:12px;
+  background:var(--sell-dim);border:1px solid rgba(255,79,109,0.22)}
+.rl-head{font-size:11px;font-weight:800;color:var(--sell);white-space:nowrap}
+.rl-flags{display:flex;gap:6px;flex-wrap:wrap}
+.rl-flags span{padding:2px 8px;border-radius:99px;background:rgba(255,79,109,0.16);
+  font-size:10px;font-weight:700;color:#ffb3c0;white-space:nowrap}
+/* Amber, not red, when nothing is actually wrong but the check never ran. The
+   difference between "this is bad" and "nobody looked" has to survive. */
+.riskline.unknown{background:var(--warn-dim);border-color:rgba(255,191,31,0.22)}
+.riskline.unknown .rl-head{color:var(--warn)}
+.riskline.unknown .rl-flags span{background:rgba(255,191,31,0.16);color:#ffdb8a}
 .footer{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:11px;color:var(--muted)}
 /* Sized to the approved mockup rather than the cramped version that shipped:
    11px/700 in a 6x10 pill. This is a yes/no you read at a glance. */
@@ -233,6 +272,8 @@ html,body{height:100%;overflow:hidden;background:transparent;font-family:'Inter'
 #toast.note .ca-row,
 #toast.note .actions,
 #toast.note .callerrec,
+#toast.note .atcall,
+#toast.note .riskline,
 #toast.note .recall { display: none !important; }
 
 #toast.note .inner { padding-bottom: 12px; }
@@ -320,6 +361,15 @@ html,body{height:100%;overflow:hidden;background:transparent;font-family:'Inter'
       <div class="token-img" id="tokenImg">
         <div class="fallback" id="tokenFallback">I</div>
       </div>
+      <!-- WHAT IT WAS WORTH WHEN YOU WERE CALLED, AND THE HIGH SINCE.
+           The live market cap is in the metric strip below. This is the pair
+           that answers the only question being asked at alert time: am I early
+           or am I late. A single "now" figure cannot answer it. -->
+      <div class="atcall" id="atCall" style="display:none">
+        <div class="ac-label">MC at call</div>
+        <div class="ac-value" id="acValue">-</div>
+        <div class="ac-peak" id="acPeak" style="display:none"></div>
+      </div>
       <div class="info">
         <div class="title"><span class="name" id="tokenName">Token Name</span><span class="symbol" id="tokenSymbol">$SYM</span></div>
         <div class="badges" id="badges">
@@ -345,9 +395,22 @@ html,body{height:100%;overflow:hidden;background:transparent;font-family:'Inter'
          unrelated measurements on one line and made the whole block read as
          clutter. Structure follows meaning: row 1 = market, row 2 = holders and
          risk, footer = who is in it. Hidden entirely until one of them lands. -->
+    <!-- RISK AS FLAGS, NOT AS A SCORE.
+         A single percentage is one provider's opinion and reads as precision it
+         does not have. These are individually checkable facts -- mint authority
+         still on, dev holding a fifth of supply, a tax on selling -- and each
+         appears only when the underlying field actually answered. An unchecked
+         field produces NO flag rather than a reassuring absence of one, which is
+         why the row counts what it found instead of implying a clean token by
+         staying quiet. -->
+    <div class="riskline" id="riskLine" style="display:none">
+      <span class="rl-head" id="rlHead"></span>
+      <span class="rl-flags" id="rlFlags"></span>
+    </div>
     <div class="metrics metrics-2" id="metrics2" style="display:none">
       <div class="metric"><div class="metric-label">Holders</div><div class="metric-value" id="holders">—</div></div>
       <div class="metric"><div class="metric-label">Top 10</div><div class="metric-value" id="top10">—</div></div>
+      <div class="metric"><div class="metric-label">Smart / KOL</div><div class="metric-value" id="smartKol">-</div></div>
       <div class="metric"><div class="metric-label">Risk</div><div class="metric-value" id="risk">—</div></div>
     </div>
     <div class="footer">
@@ -407,9 +470,9 @@ const electron = window.electronAPI || (() => {
 
 function fmtUSD(n){
   if (n == null || isNaN(n)) return '—';
-  if (n >= 1e9) return '$' + (n/1e9).toFixed(2) + 'B';
-  if (n >= 1e6) return '$' + (n/1e6).toFixed(2) + 'M';
-  if (n >= 1e3) return '$' + (n/1e3).toFixed(2) + 'K';
+  if (n >= 1e9) return '$' + (n/1e9).toFixed(1) + 'B';
+  if (n >= 1e6) return '$' + (n/1e6).toFixed(1) + 'M';
+  if (n >= 1e3) return '$' + (n/1e3).toFixed(1) + 'K';
   return '$' + Number(n).toFixed(2);
 }
 // Plain counts (holders), not money. `50+` is preserved as-is: the holder
@@ -424,7 +487,9 @@ function fmtNum(n){
 function fmtPct(n){
   if (n == null || isNaN(n)) return '—';
   const v = Number(n);
-  return (v > 0 ? '+' : '') + v.toFixed(2) + '%';
+  // Whole percent above 100, one decimal below it. A +505.00% is noise; a
+  // +4.2% genuinely needs the decimal.
+  return (v > 0 ? '+' : '') + (Math.abs(v) >= 100 ? v.toFixed(0) : v.toFixed(1)) + '%';
 }
 function shortCA(ca, keep=6){
   if (!ca || ca.length < keep*2+2) return ca || '';
@@ -551,6 +616,72 @@ function applyTier(data){
     kind === 'watchlist-refresh' ? 'refresh'
     : kind === 'watchlist-wallet' ? 'wallet' : 'mention');
   line.style.display = 'flex';
+}
+
+/**
+ * Risk as a short line of flags.
+ *
+ * The DEX Paid card this borrows from puts "3 red flags · 110 bundlers · X
+ * renamed 12x · 17 insiders" directly under the metrics, and it is the fastest
+ * thing on the card to read: a count you cannot miss, then the specific facts
+ * behind it.
+ *
+ * Two rules make it honest rather than decorative:
+ *
+ *  1. A flag is raised only when the underlying field actually ANSWERED.
+ *     `is_mintable` being null means nobody checked, which is not the same as
+ *     mint authority being revoked, and must never render as the latter.
+ *  2. When nothing was checked at all, the row says so in amber instead of
+ *     staying silent. Silence on a risk row reads as "clean", and on a chain
+ *     with no safety provider that would be an invention.
+ */
+function renderRiskLine(data){
+  const row = document.getElementById('riskLine');
+  if (!row) return;
+  const head = document.getElementById('rlHead');
+  const flags = document.getElementById('rlFlags');
+  if (!head || !flags) return;
+
+  const f = [];
+  if (data.is_honeypot === true) f.push('honeypot');
+  if (data.is_mintable === true) f.push('mint ON');
+  if (data.is_freezable === true) f.push('freeze ON');
+  if (data.is_contract_renounced === false) f.push('not renounced');
+  if (data.dev_holder_pct != null && data.dev_holder_pct > 5) f.push('dev ' + Number(data.dev_holder_pct).toFixed(0) + '%');
+  if (data.top10_holder_pct != null && data.top10_holder_pct > 30) f.push('top10 ' + Number(data.top10_holder_pct).toFixed(0) + '%');
+  if (data.insider_holder_count != null && data.insider_holder_count > 0) f.push(data.insider_holder_count + ' insiders');
+  if (data.sell_tax_pct != null && data.sell_tax_pct > 5) f.push('sell tax ' + Number(data.sell_tax_pct).toFixed(0) + '%');
+  if (data.buy_tax_pct != null && data.buy_tax_pct > 5) f.push('buy tax ' + Number(data.buy_tax_pct).toFixed(0) + '%');
+  if (data.lp_burned_pct != null && data.lp_burned_pct < 50) f.push('LP ' + Number(data.lp_burned_pct).toFixed(0) + '% burned');
+  for (const r of (data.safety_risks || [])) {
+    const name = typeof r === 'string' ? r : (r && (r.name || r.label));
+    if (name && f.length < 6) f.push(String(name).slice(0, 24));
+  }
+
+  // Did ANY safety field come back? Used to tell "checked and clean" apart from
+  // "never checked", which look identical if you only count the flags.
+  const checked = ['is_honeypot','is_mintable','is_freezable','is_contract_renounced',
+                   'dev_holder_pct','top10_holder_pct','rug_risk_pct']
+                   .some(k => data[k] != null);
+
+  if (f.length) {
+    row.className = 'riskline';
+    head.textContent = '⚠ ' + f.length + (f.length === 1 ? ' red flag' : ' red flags');
+    flags.innerHTML = f.map(x => '<span>' + String(x).replace(/[<>]/g, '') + '</span>').join('');
+    row.style.display = '';
+  } else if (!checked) {
+    row.className = 'riskline unknown';
+    head.textContent = 'No safety data';
+    flags.innerHTML = '<span>nothing checked this token yet</span>';
+    row.style.display = '';
+  } else {
+    // Checked, nothing found. Say it plainly -- an empty row would be read as
+    // "not checked", which is the opposite of what happened.
+    row.className = 'riskline clean';
+    head.textContent = '';
+    flags.innerHTML = '';
+    row.style.display = 'none';
+  }
 }
 
 function renderDisplay(data){
@@ -749,10 +880,49 @@ function renderDisplay(data){
       !hasRisk ? null
         : data.rug_risk_pct >= 70 ? '#ef4444'
         : data.rug_risk_pct >= 40 ? '#f59e0b' : '#4fe3a0');
+    // Who is already in it, as a pair. `0 / 0` is a real answer once the
+    // lookup has returned; null is not, and renders as a dash.
+    const sm = data.smart_wallet_count, kl = data.kol_count;
+    const hasWho = sm != null || kl != null;
+    setCell('smartKol', hasWho ? `${sm ?? '-'} / ${kl ?? '-'}` : '-',
+      hasWho && ((sm ?? 0) > 0 || (kl ?? 0) > 0) ? 'var(--accent)' : null);
     // Show the row only once something real is in it, so an alert never opens
-    // with three em-dashes under it.
-    m2.style.display = (hasHolders || hasTop10 || hasRisk) ? '' : 'none';
+    // with four dashes under it.
+    m2.style.display = (hasHolders || hasTop10 || hasRisk || hasWho) ? '' : 'none';
   }
+
+  // ---- what it was worth when you were called, and the high since -----
+  //
+  // The metric strip above shows the LIVE market cap. On its own that cannot
+  // answer the question actually being asked at alert time -- am I early or am
+  // I late -- because it says nothing about where the call came in.
+  const atCall = document.getElementById('atCall');
+  if (atCall) {
+    const entry = data.entry_mcap_usd;
+    if (entry != null) {
+      document.getElementById('acValue').textContent = fmtUSD(entry);
+      atCall.style.display = '';
+      const peakEl = document.getElementById('acPeak');
+      // A multiple is only shown once a peak has actually been MEASURED.
+      // Deriving one from the live price would quietly score every token 1.00x
+      // the moment it was called, which is the exact dishonesty the peak
+      // tracking was built to remove.
+      const mult = data.multiplier != null ? Number(data.multiplier)
+        : (data.peak_mcap_usd != null && entry > 0 ? data.peak_mcap_usd / entry : null);
+      if (peakEl && mult != null && isFinite(mult)) {
+        peakEl.textContent = 'PEAK ' + (mult >= 10 ? mult.toFixed(0) : mult.toFixed(2)) + '×';
+        peakEl.className = 'ac-peak' + (mult < 1.05 ? ' flat' : '');
+        peakEl.style.display = '';
+      } else if (peakEl) {
+        peakEl.style.display = 'none';
+      }
+    } else {
+      atCall.style.display = 'none';
+    }
+  }
+
+  // ---- risk, as flags -------------------------------------------------
+  renderRiskLine(data);
 
   // ---- footer: who is in it -------------------------------------------
   const hc = document.getElementById('holderCounts');
@@ -793,8 +963,12 @@ function renderDisplay(data){
         ? '<span class="wl wl-s">@' + esc(w.handle) + '</span>'
         : '<span class="wl wl-w">' + esc(w.wallet.slice(0,4)) + '…' + esc(w.wallet.slice(-4)) + '</span>');
     }
+    // "+N" is an overflow marker, so it needs something to overflow FROM.
+    // With counts but no handles yet -- the usual state for the first second of
+    // an alert -- this used to render a bare "+4" floating on its own line,
+    // which reads as a stray character rather than as "four more wallets".
     const total = (data.kol_count || 0) + (data.smart_wallet_count || 0);
-    if (total > out.length) out.push('<span class="wl-more">+' + (total - out.length) + '</span>');
+    if (out.length && total > out.length) out.push('<span class="wl-more">+' + (total - out.length) + '</span>');
     wn.innerHTML = out.join('');
     wn.style.display = out.length ? 'flex' : 'none';
   }

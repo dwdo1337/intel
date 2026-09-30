@@ -9,6 +9,46 @@ what was actually published to [Releases](../../releases) — code sitting under
 
 ---
 
+## Unreleased
+
+### Added
+
+- **The leaderboard now says where every call came from.** Each row carries a
+  `TG` or `DC` badge — both when a token spread across platforms — so a
+  Telegram group and a Discord channel are no longer two identical-looking room
+  names. The data was in the API response from the first version and the board
+  simply never drew it.
+
+- **Filter and sort the board.** Source (Telegram / Discord), chain, and a
+  free-text room filter, plus sorting by peak multiple, value held now, most
+  recent, fastest to peak, or spread across rooms. Counts on every control come
+  from the server and are computed over the rows that survive the *other*
+  filters, so a control can never offer something that returns an empty board.
+
+  Two details worth keeping: the source filter is applied **before** picking who
+  called a token first, so "first on Telegram" means the first Telegram call
+  rather than the global first hidden behind a platform mismatch. And the source
+  facet is counted **before** its own filter — otherwise choosing Discord
+  deleted the Telegram button and you could not switch without clearing.
+
+- **When the call happened, and a time range.** Every row now shows how long
+  ago the call was made (`2d ago`, exact timestamp on hover) — distinct from
+  `peak +2d`, which is how long the *run* took. The board showed the second and
+  never the first, so a 75x from three weeks ago and one from this morning read
+  identically.
+
+  The range control (24h / 7d / 30d / All time) defaults to **7 days**, because
+  an unbounded board quietly becomes an all-time board where one old runner
+  outranks everything that happened this week. The window is judged on the
+  mention, so "last 24h" means somebody called it in the last 24h rather than
+  that an old token still exists.
+
+- **Grouped views carry the platform too.** `By room` and `By caller` rows show
+  which platforms they post on; previously two rooms with the same name on
+  different platforms were indistinguishable and merged into one row.
+
+---
+
 ## v0.3.0
 
 Everything below had been sitting in the repository unbuilt. The 0.2.1 download

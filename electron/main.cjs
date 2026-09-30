@@ -231,6 +231,36 @@ function toastPayload(hit) {
     kol_holders: Array.isArray(hit.kol_holders) ? hit.kol_holders : null,
     smart_holders: Array.isArray(hit.smart_holders) ? hit.smart_holders : null,
     pair_url: hit.pair_url,
+
+    // ── WHAT THE ALERT WAS WORTH, AND WHAT IT BECAME ──────────────────
+    // `mcap_usd` above is the live figure. These two are the pair that makes a
+    // number mean something: what it was when the call landed, and the highest
+    // it has been since. A toast showing only "now" cannot tell you whether you
+    // are early or late, which is the only question being asked at that moment.
+    entry_mcap_usd: hit.entry_mcap_usd ?? null,
+    peak_mcap_usd: hit.peak_mcap_usd ?? null,
+    multiplier: hit.multiplier ?? null,
+
+    // ── RISK, AS FLAGS RATHER THAN AS A SCORE ─────────────────────────
+    // `rug_risk_pct` is one number from one provider on one chain. These are the
+    // individually checkable facts behind a bad token, and each is either known
+    // or null -- never a zero standing in for "not checked". The toast turns
+    // them into a short line of flags; absent fields simply produce no flag.
+    is_mintable: hit.is_mintable ?? null,
+    is_freezable: hit.is_freezable ?? null,
+    is_honeypot: hit.is_honeypot ?? null,
+    is_contract_renounced: hit.is_contract_renounced ?? null,
+    dev_holder_pct: hit.dev_holder_pct ?? null,
+    insider_holder_count: hit.insider_holder_count ?? null,
+    lp_burned_pct: hit.lp_burned_pct ?? null,
+    buy_tax_pct: hit.buy_tax_pct ?? null,
+    sell_tax_pct: hit.sell_tax_pct ?? null,
+    // Named provider risks, already filtered to the serious ones upstream.
+    safety_risks: Array.isArray(hit.safety_risks) ? hit.safety_risks : null,
+    // How old the token was when it was called. "called 11m after launch" is a
+    // different signal from the same call on a three-day-old token.
+    pair_created_at: hit.pair_created_at ?? null,
+    launchpad_label: hit.launchpad || null,
     // Why this alert fired -- 'new' | 'watchlist-mention' | 'watchlist-refresh'.
     // Drives the pill so a re-alert on a starred token is never mistaken for a
     // fresh call.

@@ -248,3 +248,133 @@
   border-color: transparent;
   color: var(--accent);
 }
+
+/* ── WHERE FROM: platform badges + the filter bar ────────────────────────
+   The board carried `source` from the start and never drew it, so every row
+   was a bare room name with no way to tell a Telegram group from a Discord
+   channel — and no way to narrow to either. */
+
+.bc-src-tag {
+  flex: none;
+  font-family: var(--mono);
+  font-size: 8.5px;
+  font-weight: 800;
+  letter-spacing: .06em;
+  padding: 2px 5px;
+  border-radius: 4px;
+  line-height: 1.3;
+}
+.bc-src-tag.tg { color: #7fb3ff; background: rgba(59,130,246,.15); }
+.bc-src-tag.dc { color: #c8a2ff; background: rgba(168,85,247,.15); }
+
+.bc-filters {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 9px 16px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+  flex: none;
+}
+.bc-fgroup { display: flex; gap: 4px; align-items: center; }
+
+.bc-f {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  border-radius: 7px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--muted);
+  font-family: var(--sans);
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color .13s, border-color .13s, background .13s;
+}
+.bc-f:hover { color: var(--text); border-color: var(--line2); }
+.bc-f.on {
+  background: var(--accent-dim);
+  border-color: rgba(79,227,168,.35);
+  color: var(--accent);
+}
+/* The count is context, not the label — it must never outweigh the name. */
+.bc-f i {
+  font-style: normal;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--dim);
+}
+.bc-f.on i { color: var(--accent); opacity: .75; }
+.bc-f.src-telegram.on { border-color: rgba(59,130,246,.45); background: rgba(59,130,246,.12); color: #9cc5ff; }
+.bc-f.src-telegram.on i { color: #9cc5ff; }
+.bc-f.src-discord.on  { border-color: rgba(168,85,247,.45); background: rgba(168,85,247,.12); color: #d3b6ff; }
+.bc-f.src-discord.on i { color: #d3b6ff; }
+
+.bc-search {
+  flex: 1 1 160px;
+  min-width: 120px;
+  max-width: 260px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 7px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 12px;
+  outline: none;
+}
+.bc-search::placeholder { color: var(--dim); }
+.bc-search:focus { border-color: rgba(79,227,168,.4); }
+
+.bc-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--dim);
+  font-family: var(--mono);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+.bc-sort select {
+  height: 28px;
+  padding: 0 6px;
+  border-radius: 7px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  outline: none;
+}
+.bc-sort select:focus { border-color: rgba(79,227,168,.4); }
+
+.bc-clear {
+  padding: 4px 9px;
+  border-radius: 7px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--dim);
+  font-family: var(--sans);
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.bc-clear:hover { color: var(--sell); border-color: rgba(239,68,68,.4); }
+
+/* WHEN the call was made — distinct from `peak +2d`, which is how long the run
+   took. The board never said this at all, so an old runner and a fresh one
+   looked the same. */
+.bc-when {
+  flex: none;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--dim);
+  white-space: nowrap;
+}

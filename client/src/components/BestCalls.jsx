@@ -83,18 +83,41 @@ function BestCallsBoard({ onPick }) {
   useEffect(() => { localStorage.setItem('bc-redact', redact ? '1' : '0'); }, [redact]);
   const [data, setData] = useState(null);
   const [err, setErr] = useState(null);
+  // WHERE a call came from, as controls rather than as something you squint at.
+  const [source, setSource] = useState('');   // '' | telegram | discord
+  const [chain, setChain] = useState('');
+  const [room, setRoom] = useState('');
+  const [sort, setSort] = useState('peak');
+  // WHEN. Default is 7 days: an unbounded board quietly becomes an all-time
+  // board where one old 75x outranks everything that happened this week.
+  const [since, setSince] = useState('168');
+  // The room box is typed into, so it is debounced -- refetching per keystroke
+  // made the list flicker and raced responses back out of order.
+  const [roomQ, setRoomQ] = useState('');
+  useEffect(() => {
+    const t = setTimeout(() => setRoomQ(room.trim()), 250);
+    return () => clearTimeout(t);
+  }, [room]);
 
   useEffect(() => {
     let alive = true;
     setErr(null);
-    fetch(`/api/best-calls?by=${by}&limit=60`)
+    const qs = new URLSearchParams({ by, limit: '60', sort });
+    if (source) qs.set('source', source);
+    if (chain) qs.set('chain', chain);
+    if (roomQ) qs.set('room', roomQ);
+    if (since) qs.set('since', since);
+    fetch(`/api/best-calls?${qs}`)
       .then(r => (r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))))
       .then(j => { if (alive) setData(j); })
       .catch(e => { if (alive) setErr(e.message); });
     return () => { alive = false; };
-  }, [by]);
+  }, [by, source, chain, roomQ, sort, since]);
 
   const cov = data && data.coverage;
+  // Kept from the last response while a new one is in flight, so the controls
+  // do not collapse to "All" for a frame every time a filter changes.
+  const facets = (data && data.facets) || {};
 
   return (
     <div className="bc">
@@ -126,6 +149,63 @@ function BestCallsBoard({ onPick }) {
                 : ' · complete'}
             </span>
           </div>
+        )}
+      </div>
+
+      {/* WHERE FROM, as controls. Counts come from the server and are computed
+          over the rows that survived the other filters, so a control can never
+          offer something that would return an empty board. */}
+      <div className="bc-filters">
+        <div className="bc-fgroup" role="group" aria-label="Time range">
+          {[['24', '24h'], ['168', '7d'], ['720', '30d'], ['', 'All time']].map(([v, label]) => (
+            <button key={label} className={`bc-f${since === v ? ' on' : ''}`}
+                    onClick={() => setSince(v)}>{label}</button>
+          ))}
+        </div>
+
+        <div className="bc-fgroup" role="group" aria-label="Source">
+          <button className={`bc-f${source === '' ? ' on' : ''}`}
+                  onClick={() => setSource('')}>All</button>
+          {(facets.sources || []).map(f => (
+            <button key={f.value}
+                    className={`bc-f src-${f.value}${source === f.value ? ' on' : ''}`}
+                    onClick={() => setSource(source === f.value ? '' : f.value)}>
+              {f.value === 'telegram' ? 'Telegram' : 'Discord'}
+              <i>{f.count}</i>
+            </button>
+          ))}
+        </div>
+
+        <div className="bc-fgroup" role="group" aria-label="Chain">
+          <button className={`bc-f${chain === '' ? ' on' : ''}`}
+                  onClick={() => setChain('')}>All chains</button>
+          {(facets.chains || []).slice(0, 6).map(f => (
+            <button key={f.value}
+                    className={`bc-f${chain === f.value ? ' on' : ''}`}
+                    onClick={() => setChain(chain === f.value ? '' : f.value)}>
+              <span className={`bc-chain ${f.value}`}>{f.value}</span><i>{f.count}</i>
+            </button>
+          ))}
+        </div>
+
+        <input className="bc-search" value={room} placeholder="Filter by room…"
+               onChange={e => setRoom(e.target.value)} />
+
+        <label className="bc-sort">
+          Sort
+          <select value={sort} onChange={e => setSort(e.target.value)}>
+            <option value="peak">Peak multiple</option>
+            <option value="now">Held value now</option>
+            <option value="recent">Most recent</option>
+            <option value="fast">Fastest to peak</option>
+            <option value="spread">Spread across rooms</option>
+          </select>
+        </label>
+
+        {(source || chain || roomQ || since !== '168') && (
+          <button className="bc-clear" onClick={() => { setSource(''); setChain(''); setRoom(''); setSince('168'); }}>
+            clear
+          </button>
         )}
       </div>
 
@@ -164,6 +244,25 @@ const fmtUsd = v => {
   return '$' + Math.round(v);
 };
 const fmtMult = v => (v == null ? '—' : v >= 10 ? v.toFixed(0) + 'x' : v.toFixed(2) + 'x');
+/**
+ * How long ago the call was made.
+ *
+ * The board showed `peak +2d` -- how long the run TOOK -- and never once said
+ * WHEN the call happened, so a 75x from three weeks ago and one from this
+ * morning read identically. Both facts matter and they are different facts.
+ */
+const fmtAgo = iso => {
+  if (!iso) return null;
+  const ms = Date.now() - (Date.parse(iso) || 0);
+  if (!isFinite(ms) || ms < 0) return null;
+  const m = ms / 60000;
+  if (m < 1) return 'just now';
+  if (m < 60) return Math.round(m) + 'm ago';
+  if (m < 1440) return Math.round(m / 60) + 'h ago';
+  const d = m / 1440;
+  return (d < 30 ? Math.round(d) + 'd ago' : Math.round(d / 30) + 'mo ago');
+};
+
 const fmtMins = m => {
   if (m == null) return null;
   if (m < 60) return Math.round(m) + 'm';
@@ -178,6 +277,29 @@ const fmtMins = m => {
  * applies to half the rows is not a highlight, it is a background. 5x is the
  * point where a call was worth having seen.
  */
+/**
+ * Which platform a call came from.
+ *
+ * The board carried `source` from the very first version and never drew it, so
+ * every row read as a bare room name -- and a Telegram group and a Discord
+ * channel are not the same kind of place. Two badges when a call spread across
+ * both, because that is itself the signal.
+ */
+function SourceBadges({ sources, source }) {
+  const list = (sources && sources.length ? sources : (source ? [source] : []));
+  if (!list.length) return null;
+  return (
+    <>
+      {list.map(s => (
+        <span key={s} className={`bc-src-tag ${s === 'discord' ? 'dc' : 'tg'}`}
+              title={s === 'discord' ? 'Called on Discord' : 'Called on Telegram'}>
+          {s === 'discord' ? 'DC' : 'TG'}
+        </span>
+      ))}
+    </>
+  );
+}
+
 const HIGHLIGHT_AT = 5;
 const tone = m => (m == null ? '' : m >= 10 ? ' huge' : m >= HIGHLIGHT_AT ? ' good' : '');
 
@@ -200,6 +322,12 @@ function CallList({ calls, onPick, redact }) {
                   whoever called it first -- everyone after them had the benefit
                   of the first call. The rest are counted, not listed. */}
               <div className="bc-who">
+                <SourceBadges sources={c.sources} source={c.source} />
+                {c.calledAt && (
+                  <span className="bc-when" title={new Date(c.calledAt).toLocaleString()}>
+                    {fmtAgo(c.calledAt)}
+                  </span>
+                )}
                 <span className="bc-firstlabel">first</span>
                 <b>{redact ? mask.caller(c.caller) : '@' + c.caller}</b>
                 {c.room ? <> · {redact ? mask.room(c.room) : c.room}</> : null}
@@ -254,6 +382,7 @@ function GroupList({ groups, by, onPick, redact }) {
                      : (by === 'room' ? g.key : '@' + g.key)
             }</div>
             <div className="bc-who">
+              <SourceBadges sources={g.sources} />
               {g.calls} scored call{g.calls === 1 ? '' : 's'} · {g.chains.join(', ')}
             </div>
           </div>
