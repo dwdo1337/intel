@@ -551,12 +551,34 @@ async function fetchDexPaid(ca, chainId) {
   }
 }
 
+/**
+ * A request that did not answer, as opposed to a token with no pair.
+ *
+ * `enrichDexscreener` used to return `null` for BOTH, and the outcome sweep
+ * reads `null` as "no pair any more -- the token is dead". So a rate limit
+ * marked live tokens dead: measured on a 489-token sweep, **238 tokens were
+ * flagged `outcome_dead` that DexScreener prices right now** (sampled 3 of 3,
+ * all with live pairs and real market caps). The sweep fires 489 requests at
+ * 220ms -- about 272/min against a 300/min limit -- so sustained 429s are
+ * exactly what you would expect.
+ *
+ * This is the failure this project's rules name directly: a provider's absence
+ * is not a zero, and a failed lookup is not a measurement. The sentinel is
+ * TRUTHY, so callers written as `if (fresh && fresh.mcap_usd != null)` skip it
+ * on their own; only the explicit `fresh === null` test -- the one that means
+ * "genuinely gone" -- now requires a real answer.
+ */
+const DEX_UNAVAILABLE = Object.freeze({ unavailable: true });
+
 async function enrichDexscreener(ca) {
   try {
     const res = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${ca}`);
-    if (!res.ok) return null;
+    // 429 above all, but any non-OK status is the provider declining to answer
+    // rather than answering "nothing here".
+    if (!res.ok) return DEX_UNAVAILABLE;
     const data = await res.json();
     const pairs = data.pairs || [];
+    // The one genuine "no pair" case, and the only one allowed to mean dead.
     if (!pairs.length) return null;
     pairs.sort((a, b) => (b.liquidity?.usd || 0) - (a.liquidity?.usd || 0));
     const p = pairs[0];
@@ -585,8 +607,10 @@ async function enrichDexscreener(ca) {
       launchpad: canonicalLaunchpad(detectLaunchpad(ca, p.chainId, p.dexId, pairs)),
     };
   } catch (e) {
+    // A thrown request -- network, DNS, abort -- is unavailability too. It was
+    // returning null, which the sweep read as "this token is dead".
     log('enrichment', 'dexscreener enrich failed for ' + ca, { error: e.message });
-    return null;
+    return DEX_UNAVAILABLE;
   }
 }
 
@@ -2622,6 +2646,8 @@ app.post('/api/outcomes/refresh', async (req, res) => {
   res.json({ ok: true, started: true, tokens: targets.length, peaks: withPeaks });
 
   log('system', 'Outcome refresh started', { tokens: targets.length });
+  // Consecutive declined requests, used to back off. Reset by any real answer.
+  let unavailableRun = 0;
   for (const hit of targets) {
     try {
       const fresh = await enrichDexscreener(hit.ca);
@@ -2638,10 +2664,21 @@ app.post('/api/outcomes/refresh', async (req, res) => {
         // No pair at all any more. For a memecoin that is itself an outcome —
         // the token is effectively dead — but it is recorded as its own state
         // rather than silently folded in as a 0x.
+        //
+        // Reached ONLY on a real answer now. This branch used to also catch
+        // every failed request, which is how 238 live tokens were flagged dead
+        // in a single sweep.
         hit.outcome_dead = true;
         hit.outcome_at = new Date().toISOString();
         outcomeRun.updated++;
+      } else {
+        // The provider declined to answer. Nothing is written: the token keeps
+        // whatever it last knew, and the sweep counts it as unreached rather
+        // than as measured.
+        outcomeRun.unavailable = (outcomeRun.unavailable || 0) + 1;
+        unavailableRun++;
       }
+      if (fresh && fresh !== DEX_UNAVAILABLE) unavailableRun = 0;
     } catch (e) {
       log('error', 'Outcome refresh failed for a token', { ca: hit.ca, error: e.message });
     }
@@ -2658,11 +2695,26 @@ app.post('/api/outcomes/refresh', async (req, res) => {
     }
     outcomeRun.done++;
     // DexScreener is free but not a punching bag.
-    await new Promise(r => setTimeout(r, 220));
+    //
+    // 220ms is ~272 requests/min against a documented 300/min ceiling, which
+    // leaves no headroom at all once anything else on this process makes a
+    // request. That is how a sweep ended up unable to reach 238 of 489 tokens.
+    // 350ms is ~171/min, comfortably inside the limit, and a sweep that takes
+    // longer but answers is worth more than a fast one that invents deaths.
+    await new Promise(r => setTimeout(r, 350));
+    // And when the provider has already declined once, stop leaning on it.
+    // Without this the sweep keeps its cadence through a rate limit and simply
+    // collects more failures.
+    if (unavailableRun > 0) {
+      await new Promise(r => setTimeout(r, Math.min(4000, 400 * unavailableRun)));
+    }
   }
   persist();
   log('system', 'Outcome refresh complete', {
-    updated: outcomeRun.updated, peaks: outcomeRun.peaks, of: outcomeRun.total });
+    updated: outcomeRun.updated, peaks: outcomeRun.peaks, of: outcomeRun.total,
+    // Stated, not hidden. A sweep that could not reach half its tokens has not
+    // measured them, and a board built on it must not imply otherwise.
+    unavailable: outcomeRun.unavailable || 0 });
   io.emit('outcomes_done', {
     updated: outcomeRun.updated, peaks: outcomeRun.peaks, total: outcomeRun.total });
   outcomeRun = null;
