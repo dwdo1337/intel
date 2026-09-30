@@ -818,6 +818,8 @@ function MsgCard({ event, active, onClick, index = 0 }) {
           mint authority still on is a different object from a $24K cap without,
           and reading the second fact three rows later is reading it too late. */}
       <RiskLine safety={event.safety} chainLabel={chainLabel} top10={m.top10} />
+      <TerminalSplit terminals={event.terminals} />
+      <DevLine dev={event.dev} safety={event.safety} />
 
       {/* ── contract address ──
           On the same gutter as every row below it. It was the one block with
@@ -1017,6 +1019,112 @@ function MsgCard({ event, active, onClick, index = 0 }) {
  * and on a chain with no provider that would be an invention. Same rule as
  * `unknown` everywhere else in this deck, applied to a row that is new.
  */
+// GMGN's own colours for each trading app, so the bar reads as a legend rather
+// than as an arbitrary rainbow.
+const TERMINAL_COLOUR = {
+  fomo: '#3ecf8e', axiom: '#e8765a', gmgn: '#b5d95a', padre: '#a78bfa',
+  photon: '#6aa8f7', bullx: '#e9b44c', trojan: '#f26d7d', bonkbot: '#f0a05a',
+  maestro: '#7fd4c1', banana: '#e5c76b', phantom: '#ab9ff2', jupiter: '#c7f284',
+};
+const terminalName = k => ({ fomo: 'FOMO', gmgn: 'GMGN', bullx: 'BullX', bonkbot: 'BonkBot',
+  okx: 'OKX' }[k] || k.charAt(0).toUpperCase() + k.slice(1));
+
+/**
+ * Which trading apps the biggest holders trade through.
+ *
+ * The share matters more than the names: a token held mostly through one app
+ * is a different object from one spread across six, and a token where almost
+ * nobody carries a terminal tag is not being held by retail at all.
+ *
+ * The denominator is printed because it IS the claim -- "25 of 98" and "25 of
+ * 30" are different sentences, and the holder page can come back short.
+ */
+function TerminalSplit({ terminals }) {
+  if (!terminals || terminals.pct == null) return null;
+  const counts = Object.entries(terminals.counts || {});
+  const sampled = terminals.sampled || 1;
+  return (
+    <div className="term-row">
+      <div className="term-head">
+        <span className="term-label">Terminal users</span>
+        <b className="term-pct">{terminals.pct}%</b>
+        <span className="term-of">{terminals.users} of {sampled} holders</span>
+      </div>
+      {counts.length > 0 && (
+        <>
+          <div className="term-bar">
+            {counts.map(([k, v]) => (
+              <i key={k} style={{ width: `${(v / sampled) * 100}%`,
+                                  background: TERMINAL_COLOUR[k] || '#868b96' }} />
+            ))}
+          </div>
+          <div className="term-legend">
+            {counts.map(([k, v]) => (
+              <span key={k}>
+                <em style={{ background: TERMINAL_COLOUR[k] || '#868b96' }} />
+                {terminalName(k)} <b>{v}</b>
+              </span>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+/**
+ * The creator, and whoever funded them.
+ *
+ * Two explorer links, and the second one is deliberately conditional. `funder`
+ * is null when the money came from an exchange, because that address belongs to
+ * Binance rather than to a person -- the trail stops there, and a link that
+ * opens an omnibus wallet looks like evidence while explaining nothing.
+ *
+ * Counts that GMGN caps are rendered with a `+`. A thousand "bundler wallets"
+ * that did 0% of the volume is a ceiling, not a measurement, and the volume
+ * share beside it is the number worth reading.
+ */
+function DevLine({ dev, safety }) {
+  if (!dev || !dev.wallet) return null;
+  const short = w => `${w.slice(0, 4)}…${w.slice(-4)}`;
+  const arkham = w => `https://arkm.com/explorer/address/${w}`;
+  const capped = safety?.tagCountsCapped;
+  const cap = n => (n == null ? null : n >= 1000 ? '1000+' : String(n));
+  return (
+    <div className="dev-row">
+      <span className="dev-label">Dev</span>
+      <a className="dev-link" href={arkham(dev.wallet)} target="_blank" rel="noopener noreferrer"
+         title="Open the creator's wallet in Arkham">{short(dev.wallet)} ↗</a>
+      {dev.holdPct != null && (
+        <span className={`dev-stat${dev.holdPct > 5 ? ' bad' : ''}`}>holds {dev.holdPct.toFixed(1)}%</span>
+      )}
+      {dev.stillHolding === false && <span className="dev-stat">sold</span>}
+      {dev.launches != null && <span className="dev-stat">{dev.launches} launch{dev.launches === 1 ? '' : 'es'}</span>}
+      {dev.funder
+        ? <a className="dev-link" href={arkham(dev.funder)} target="_blank" rel="noopener noreferrer"
+             title={`Funded by ${short(dev.funder)}${dev.fundedAmountSol ? ` · ${dev.fundedAmountSol} SOL` : ''} — not an exchange, so the trail continues`}>
+            funder {short(dev.funder)} ↗
+          </a>
+        // Named rather than linked. The trail ends at an exchange.
+        : dev.fundedFromCex && dev.fundedBy
+          ? <span className="dev-stat" title="Funded from an exchange — the trail stops here">from {dev.fundedBy}</span>
+          : null}
+      {safety?.bundlers != null && (
+        <span className="dev-stat" title={capped ? 'GMGN caps this count at 1000, so it is a floor' : undefined}>
+          {cap(safety.bundlers)} bundlers
+          {safety.bundlerVolPct != null && <em> · {safety.bundlerVolPct}% of volume</em>}
+        </span>
+      )}
+      {safety?.snipers != null && <span className="dev-stat">{cap(safety.snipers)} snipers</span>}
+      {safety?.xRenames?.length > 0 && (
+        <span className="dev-stat bad" title={safety.xRenames.map(r => '@' + r.handle).join(' → ')}>
+          X renamed {safety.xRenames.length}×
+        </span>
+      )}
+    </div>
+  );
+}
+
 function RiskLine({ safety, chainLabel, top10 }) {
   const s = safety || {};
   const f = [];

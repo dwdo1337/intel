@@ -474,6 +474,18 @@ export async function fetchGmgnSecurity(ca, chain, log, { force = false } = {}) 
  * The renderer is Chromium, so <img src> works -- verified. Do not "fix" this
  * by proxying it through the backend; fetching it server-side is what fails.
  */
+/**
+ * GMGN's wallet-tag counts stop at 1000.
+ *
+ * Observed together on one token: bundlers 1000, fresh 1000, whales 4. A value
+ * sitting exactly on the ceiling is a floor -- "at least this many" -- and
+ * returning it as an integer would put a made-up precision on the card. It is
+ * returned as-is so the number is not lost, and `tag_counts_capped` says that
+ * at least one of them is a floor.
+ */
+const TAG_COUNT_CAP = 1000;
+const atCap = v => v;
+
 export async function fetchGmgnTokenInfo(ca, chain, log, { force = false } = {}) {
   const c = gmgnInfoChain(chain);
   if (!c || !_apiKey) return null;
@@ -489,11 +501,72 @@ export async function fetchGmgnTokenInfo(ca, chain, log, { force = false } = {})
   if (!j || typeof j !== 'object') { cacheSet(key, null); return null; }
 
   const httpUrl = v => (typeof v === 'string' && /^https?:\/\//i.test(v)) ? v : null;
+  // `token info` answers with wallet_tags_stat, stat and dev alongside the
+  // logo. Four fields were being kept and the rest discarded -- the request was
+  // already paid for, so everything below is free.
+  const w = j.wallet_tags_stat || {};
+  const st = j.stat || {};
+  const dv = j.dev || {};
+  const int = v => Number.isFinite(Number(v)) ? Number(v) : null;
   const out = {
     image_url: httpUrl(j.logo),
     header_url: httpUrl(j.banner),
     holder_count: Number.isFinite(Number(j.holder_count)) && Number(j.holder_count) > 0
       ? Number(j.holder_count) : null,
+
+    // ── WHO IS IN IT, BY KIND ────────────────────────────────────────
+    // Snipers and bundlers were dropped from this app once before because they
+    // came from the 50-wallet holder PAGE and saturated it, so the figure
+    // measured the page rather than the token.
+    //
+    // This is a different source -- GMGN's own aggregate -- but the SAME
+    // failure is present at a different limit. Measured on a live token:
+    // `bundler_wallets: 1000` and `fresh_wallets: 1000` alongside
+    // `whale_wallets: 4`. One thousand exactly, twice, is a ceiling and not a
+    // count, and a ceiling rendered as a number is the original bug wearing a
+    // new provider.
+    //
+    // So a value AT the cap is carried as a floor and flagged, exactly as the
+    // KOL and smart-money counts already are (`kol_capped`). The UI can say
+    // "1000+" or decline to show it; what it must not do is print 1000 as
+    // though somebody counted.
+    sniper_wallet_count: atCap(int(w.sniper_wallets)),
+    bundler_wallet_count: atCap(int(w.bundler_wallets)),
+    whale_wallet_count: atCap(int(w.whale_wallets)),
+    fresh_wallet_count: atCap(int(w.fresh_wallets)),
+    rat_wallet_count: atCap(int(w.rat_trader_wallets)),
+    tag_counts_capped: [w.sniper_wallets, w.bundler_wallets, w.whale_wallets,
+                        w.fresh_wallets, w.rat_trader_wallets]
+                        .some(v => Number(v) >= TAG_COUNT_CAP),
+
+    // ── HOW MUCH OF THE VOLUME THEY ARE ──────────────────────────────
+    // Counts say how many; these say how much of the trading was theirs, which
+    // is the half that decides whether a count matters.
+    bundler_volume_pct: st.top_bundler_trader_percentage != null ? pctFromRate(st.top_bundler_trader_percentage) : null,
+    rat_volume_pct: st.top_rat_trader_percentage != null ? pctFromRate(st.top_rat_trader_percentage) : null,
+    fresh_wallet_pct: st.fresh_wallet_rate != null ? pctFromRate(st.fresh_wallet_rate) : null,
+
+    // ── THE CREATOR ──────────────────────────────────────────────────
+    // `dev_wallet` already exists on a hit but comes from RugCheck, so it is
+    // Solana-only and arrives with the safety check. This is the same fact from
+    // a second provider, which fills it in where RugCheck never answered.
+    gmgn_creator_wallet: typeof dv.creator_address === 'string' ? dv.creator_address : null,
+    // Who funded the creator. The label ("Binance") tells you whether the
+    // trail stops at an exchange; the address is what an explorer link needs.
+    dev_funded_by: (typeof dv.fund_from === 'string' && dv.fund_from.trim()) ? dv.fund_from : null,
+    dev_launch_count: int(dv.creator_open_count),
+    dev_still_holding: dv.creator_token_status === 'creator_hold' ? true
+      : dv.creator_token_status === 'creator_close' ? false : null,
+    // A project that has renamed its X handle repeatedly is wearing someone
+    // else's history. Kept as the list, because "renamed 12x" and the names it
+    // wore are different claims.
+    x_renames: Array.isArray(dv.twitter_name_change_history)
+      ? dv.twitter_name_change_history.map(r => ({
+          handle: r.twitter_username || null,
+          at: r.rename_timestamp ? new Date(Number(r.rename_timestamp) * 1000).toISOString() : null,
+        })).filter(r => r.handle)
+      : null,
+    cto_flag: dv.cto_flag === 1 ? true : dv.cto_flag === 0 ? false : null,
     // How many OTHER tokens reuse this exact image. A copycat launch reusing a
     // known project's art scores high here. Captured because it is a real
     // signal, but it is NOT surfaced in the UI yet -- deciding what counts as
@@ -740,6 +813,132 @@ export function extractTokenExtrasFromDevHistory(devHistory, ca) {
  * BACKGROUND priority: nothing is waiting on this the way someone waits on
  * artwork, and the queue is shared with the KOL watcher.
  */
+/**
+ * Which trading apps the biggest holders actually trade through.
+ *
+ * GMGN tags a wallet with the terminal it trades from, so the top holders carry
+ * a readable distribution: a token held mostly by FOMO app users is a different
+ * object from one held mostly through Axiom or a Telegram bot, and a token
+ * where almost nobody carries a terminal tag is held by wallets that do not
+ * trade like retail at all.
+ *
+ * COSTS A REQUEST, unlike everything else added in this pass. The existing
+ * holder lookups pass `--tag`, so they only ever see KOL or smart-money
+ * wallets; the distribution needs the unfiltered top of the book. It runs at
+ * BACKGROUND priority so a live signal still gets its artwork and safety first.
+ *
+ * `sampled` is reported alongside every count because the denominator is the
+ * whole claim: "18 of 100" and "18 of 23" are not the same sentence, and the
+ * page can come back short.
+ */
+const TERMINAL_TAGS = [
+  'fomo', 'axiom', 'gmgn', 'padre', 'photon', 'bullx', 'trojan', 'bonkbot',
+  'maestro', 'banana', 'pepeboost', 'drops', 'nova', 'bloom', 'moonshot',
+  'phantom', 'okx', 'binance', 'jupiter', 'vector', 'uxento', 'terminal',
+];
+const TERMINAL_SET = new Set(TERMINAL_TAGS);
+
+/**
+ * Where the creator's wallet got its money.
+ *
+ * The useful distinction is one bit wide: funded from an EXCHANGE, or funded
+ * from another wallet. An exchange is where the trail stops -- the address
+ * belongs to Binance, not to a person, and linking it explains nothing. Another
+ * wallet is where the trail continues, and that address is worth opening in an
+ * explorer, because the same funder behind several launches is the thing you
+ * are actually looking for.
+ *
+ * So the funder address is returned ONLY when it is not a CEX. A link that
+ * opens Binance's omnibus wallet is worse than no link: it looks like evidence.
+ */
+const CEX_FUNDERS = /binance|okx|bybit|coinbase|kraken|kucoin|gate|mexc|bitget|htx|huobi|crypto\.com|bitfinex|upbit|robinhood/i;
+
+export async function fetchGmgnWalletFunding(wallet, chain, log) {
+  const c = gmgnInfoChain(chain);
+  if (!c || !_apiKey || !wallet) return null;
+
+  const key = `fund:${c}:${wallet}`;
+  const cached = cacheGet(key);
+  if (cached !== undefined) return cached;
+
+  const j = await runCli(
+    ['portfolio', 'stats', '--chain', c, '--wallet', wallet, '--period', '30d'],
+    log, GMGN_PRIORITY.BACKGROUND
+  );
+  if (isTransient(j)) return null;
+  const row = Array.isArray(j) ? j[0] : j;
+  if (!row || typeof row !== 'object') { cacheSet(key, null); return null; }
+
+  const common = row.common || {};
+  const label = (typeof common.fund_from === 'string' && common.fund_from.trim()) ? common.fund_from : null;
+  const addr = typeof common.fund_from_address === 'string' ? common.fund_from_address : null;
+  const isCex = label ? CEX_FUNDERS.test(label) : false;
+
+  const out = {
+    dev_funded_by: label,
+    dev_funded_from_cex: isCex,
+    // Null for a CEX on purpose -- see above.
+    dev_funder_wallet: isCex ? null : addr,
+    dev_funded_amount_sol: Number.isFinite(Number(common.fund_amount)) ? Number(common.fund_amount) : null,
+    dev_wallet_created_at: common.created_at
+      ? new Date(Number(common.created_at) * 1000).toISOString() : null,
+    dev_funding_checked_at: new Date().toISOString(),
+  };
+  cacheSet(key, out);
+  return out;
+}
+
+export async function fetchGmgnTerminals(ca, chain, log, { force = false } = {}) {
+  const c = gmgnHolderChain(chain);
+  if (!c || !_apiKey) return null;
+
+  const key = `term:${c}:${ca}`;
+  if (!force) {
+    const cached = cacheGet(key);
+    if (cached !== undefined) return cached;
+  }
+
+  const j = await runCli(
+    ['token', 'holders', '--chain', c, '--address', ca, '--limit', '100'],
+    log, GMGN_PRIORITY.BACKGROUND
+  );
+  if (isTransient(j)) return null;                       // never cache a non-answer
+  const list = Array.isArray(j && j.list) ? j.list : null;
+  if (!list) { cacheSet(key, null); return null; }
+
+  // addr_type 2 is a pool or an exchange account, not a person. Leaving them in
+  // inflates the denominator with wallets that could never carry a terminal tag.
+  const wallets = list.filter(h => h && h.addr_type !== 2);
+  if (!wallets.length) { cacheSet(key, null); return null; }
+
+  const counts = {};
+  let users = 0;
+  for (const h of wallets) {
+    const tags = Array.isArray(h.tags) ? h.tags : [];
+    let hasOne = false;
+    for (const t of tags) {
+      if (!TERMINAL_SET.has(t)) continue;
+      counts[t] = (counts[t] || 0) + 1;
+      hasOne = true;
+    }
+    // Counted per WALLET, not per tag: one wallet can carry several (fomo and
+    // axiom both), and summing the tags would report more users than there are
+    // holders.
+    if (hasOne) users++;
+  }
+
+  const out = {
+    terminal_sampled: wallets.length,
+    terminal_users: users,
+    terminal_pct: Math.round((users / wallets.length) * 1000) / 10,
+    terminal_counts: Object.fromEntries(
+      Object.entries(counts).sort((a, b) => b[1] - a[1])),
+    terminals_checked_at: new Date().toISOString(),
+  };
+  cacheSet(key, out);
+  return out;
+}
+
 export async function fetchGmgnPool(ca, chain, log, { force = false } = {}) {
   // gmgnInfoChain, NOT gmgnChain. CHAIN_MAP is the SECURITY map and is narrow on
   // purpose -- widening it would start firing safety lookups on chains whose

@@ -14,7 +14,7 @@ import { Api } from 'telegram';
 import { HitStorePersistence } from './persistence.js';
 import { fetchSafety, isSolanaAddress, fetchImageFromMetadata } from './safety.js';
 import { configureGmgn, isGmgnConfigured, fetchGmgnSecurity, fetchGmgnDevHistory, extractTokenExtrasFromDevHistory, fetchGmgnTokenInfo, fetchGmgnTokenWallets, gmgnHolderChain, WALLET_PAGE,
-         fetchGmgnPool, fetchGmgnKline } from './gmgn.js';
+         fetchGmgnPool, fetchGmgnKline, fetchGmgnTerminals, fetchGmgnWalletFunding } from './gmgn.js';
 import { plausibleHolderCount, resolveHolderCount } from './plausibility.js';
 import { higherPeak, klineResolution, peakFromCandles, latestFromCandles, peakMultiple, minutesToPeak, KLINE_PAGE } from './peak.js';
 import { resolveLiquidity, gmgnPoolChain } from './liquidity.js';
@@ -937,7 +937,13 @@ async function enrichSafetyAsync(ca, chain, { force = false } = {}) {
   // re-read even when we already have one, because "351 holders" going stale
   // is exactly the kind of wrong number this refresh exists to correct.
   const needsHolders = force || hit.holder_count == null;
-  if (needsImage || needsHolders || force) {
+  // The same response also carries the wallet-tag counts, the creator and the
+  // X rename history. Gating the call on image-or-holders alone meant a token
+  // whose artwork and holder count had already come from DexScreener and
+  // RugCheck never asked GMGN at all -- so those fields stayed null forever on
+  // exactly the tokens that were best covered elsewhere.
+  const needsTags = force || (hit.sniper_wallet_count == null && hit.dev_launch_count == null);
+  if (needsImage || needsHolders || needsTags || force) {
     try {
       const info = await fetchGmgnTokenInfo(ca, chainName, log, { force });
       if (info) {
@@ -964,6 +970,29 @@ async function enrichSafetyAsync(ca, chain, { force = false } = {}) {
           hit.image_dup_count = info.image_dup_count;
           changed = true;
         }
+
+        // Everything else the SAME response already carried. These used to be
+        // parsed and dropped; the request was paid for either way.
+        //
+        // Copied with `!= null` rather than a truthiness test throughout: zero
+        // snipers is a real answer and must not be discarded as falsy, which is
+        // the mistake that makes a checked token look unchecked.
+        for (const k of ['sniper_wallet_count', 'bundler_wallet_count', 'whale_wallet_count',
+                         'fresh_wallet_count', 'rat_wallet_count', 'bundler_volume_pct',
+                         'rat_volume_pct', 'fresh_wallet_pct', 'dev_funded_by',
+                         'dev_launch_count', 'dev_still_holding', 'cto_flag']) {
+          if (info[k] != null && (force || hit[k] == null)) { hit[k] = info[k]; changed = true; }
+        }
+        if (Array.isArray(info.x_renames) && info.x_renames.length && (force || !hit.x_renames)) {
+          hit.x_renames = info.x_renames; changed = true;
+        }
+        // GMGN's creator address fills in where RugCheck never answered --
+        // RugCheck is Solana-only, so on every EVM chain this is the only one
+        // there is. It never OVERWRITES: RugCheck reads the mint authority
+        // directly, which is the stronger claim.
+        if (!hit.dev_wallet && info.gmgn_creator_wallet) {
+          hit.dev_wallet = info.gmgn_creator_wallet; changed = true;
+        }
         if (changed) {
           log('enrichment', 'GMGN token info attached', {
             ca, chain: chainName, image: !!info.image_url, holders: info.holder_count,
@@ -974,6 +1003,49 @@ async function enrichSafetyAsync(ca, chain, { force = false } = {}) {
       }
     } catch (e) {
       log('error', 'GMGN token info threw', { ca, error: e.message });
+    }
+  }
+
+  // ---- 3a-2. Who holds it, and who funded the dev ---------------------
+  //
+  // Both cost a request, unlike everything in 3a, so they run LAST and at
+  // background priority: a signal on screen gets its artwork, market data and
+  // safety first. Neither blocks the card.
+  //
+  // Gated on absence rather than run every pass. The terminal mix of the top
+  // hundred holders moves slowly, and the wallet that funded a creator never
+  // moves at all.
+  if (isGmgnConfigured()) {
+    if (force || hit.terminal_pct == null) {
+      try {
+        const term = await fetchGmgnTerminals(ca, chainName, log, { force });
+        if (term) {
+          Object.assign(hit, term);
+          log('enrichment', 'Terminal mix attached', {
+            ca, users: term.terminal_users, of: term.terminal_sampled,
+          });
+          io.emit('ca_update', hit);
+          persist();
+        }
+      } catch (e) {
+        log('error', 'GMGN terminals threw', { ca, error: e.message });
+      }
+    }
+
+    // Needs a creator address, which arrives with the safety check or from
+    // GMGN above -- so this is a no-op on the first pass for most tokens and
+    // resolves on the next one.
+    if (hit.dev_wallet && (force || hit.dev_funding_checked_at == null)) {
+      try {
+        const fund = await fetchGmgnWalletFunding(hit.dev_wallet, chainName, log);
+        if (fund) {
+          Object.assign(hit, fund);
+          io.emit('ca_update', hit);
+          persist();
+        }
+      } catch (e) {
+        log('error', 'GMGN dev funding threw', { ca, error: e.message });
+      }
     }
   }
 
@@ -3221,10 +3293,45 @@ app.get('/api/react-feed', (req, res) => {
         rugged: d.rugged, devWallet: d.dev_wallet, insiderHolders: d.insider_holder_count,
         graphInsiders: d.graph_insiders_detected, lpProviders: d.total_lp_providers,
         risks: d.safety_risks || [], source: d.safety_source, checkedAt: d.safety_checked_at,
+        // Counted over the whole holder set by GMGN, not off the 50-wallet
+        // page that made these meaningless the first time they were tried.
+        snipers: d.sniper_wallet_count, bundlers: d.bundler_wallet_count,
+        whales: d.whale_wallet_count, freshWallets: d.fresh_wallet_count,
+        ratWallets: d.rat_wallet_count,
+        // How much of the trading was theirs -- the half that decides whether
+        // a count matters.
+        bundlerVolPct: d.bundler_volume_pct, ratVolPct: d.rat_volume_pct,
+        freshPct: d.fresh_wallet_pct,
+        ctoFlag: d.cto_flag, xRenames: d.x_renames || null,
+        tagCountsCapped: d.tag_counts_capped ?? null,
         // null = never checked, which is NOT the same as "they did not pay".
         dexPaid: d.dex_paid, dexBoosts: d.dex_boosts, dexPaidAt: d.dex_paid_checked_at,
       },
       links: { pair: d.pair_url, twitter: d.twitter_url, website: d.website_url, telegram: d.telegram_url },
+
+      // Which trading apps the top holders trade through. `sampled` travels
+      // with the counts because the denominator IS the claim: "18 of 100" and
+      // "18 of 23" are different sentences.
+      terminals: d.terminal_pct == null ? null : {
+        pct: d.terminal_pct, users: d.terminal_users, sampled: d.terminal_sampled,
+        counts: d.terminal_counts || {}, checkedAt: d.terminals_checked_at,
+      },
+
+      // The creator, and whoever funded them. `funder` is null when the money
+      // came from an exchange -- that address belongs to Binance, not to a
+      // person, and linking it would look like evidence while explaining
+      // nothing.
+      dev: d.dev_wallet ? {
+        wallet: d.dev_wallet,
+        holdPct: d.dev_holder_pct,
+        stillHolding: d.dev_still_holding,
+        launches: d.dev_launch_count,
+        fundedBy: d.dev_funded_by,
+        fundedFromCex: d.dev_funded_from_cex,
+        funder: d.dev_funder_wallet,
+        fundedAmountSol: d.dev_funded_amount_sol,
+        walletCreatedAt: d.dev_wallet_created_at,
+      } : null,
       // null (not an empty object) when the watcher never saw this token, so
       // the UI can distinguish "no notable wallet touched it" from "we were
       // not watching when they did".

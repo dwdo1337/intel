@@ -846,3 +846,33 @@
 .risk-line.clean .rl-head{font-size:10.5px;font-weight:700;color:var(--accent);opacity:.85}
 .risk-line.clean .rl-flags span{background:none;padding:0;font-weight:500;
   font-size:10.5px;color:var(--dim)}
+
+/* ── terminal mix ─────────────────────────────────────────────────────────
+   Which trading apps the top holders trade through. The denominator sits in
+   the header because it is the claim -- "25 of 98" and "25 of 30" are
+   different sentences and the holder page can come back short. */
+.term-row{margin-top:10px}
+.term-head{display:flex;align-items:baseline;gap:8px}
+.term-label{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
+.term-pct{font-family:var(--mono);font-size:14px;font-weight:700;color:var(--text)}
+.term-of{font-size:10.5px;color:var(--dim)}
+.term-bar{display:flex;height:5px;border-radius:99px;overflow:hidden;background:var(--raise);margin-top:6px}
+.term-bar i{display:block;height:100%}
+.term-legend{display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:6px}
+.term-legend span{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;color:var(--muted)}
+.term-legend em{width:7px;height:7px;border-radius:50%;display:inline-block}
+.term-legend b{color:var(--text);font-weight:700}
+
+/* ── the creator ──────────────────────────────────────────────────────────
+   Two explorer links; the funder one appears only when the money did NOT come
+   from an exchange, because that address belongs to Binance and linking it
+   looks like evidence while explaining nothing. */
+.dev-row{display:flex;align-items:center;flex-wrap:wrap;gap:6px 10px;margin-top:10px;
+  padding-top:9px;border-top:1px solid var(--line)}
+.dev-label{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
+.dev-link{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--accent);
+  padding:2px 8px;border-radius:99px;background:var(--accent-dim);text-decoration:none}
+.dev-link:hover{background:rgba(43,240,140,0.20)}
+.dev-stat{font-size:10.5px;color:var(--muted)}
+.dev-stat em{font-style:normal;color:var(--dim)}
+.dev-stat.bad{color:var(--sell)}
