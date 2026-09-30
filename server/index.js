@@ -980,7 +980,9 @@ async function enrichSafetyAsync(ca, chain, { force = false } = {}) {
         for (const k of ['sniper_wallet_count', 'bundler_wallet_count', 'whale_wallet_count',
                          'fresh_wallet_count', 'rat_wallet_count', 'bundler_volume_pct',
                          'rat_volume_pct', 'fresh_wallet_pct', 'dev_funded_by',
-                         'dev_launch_count', 'dev_still_holding', 'cto_flag']) {
+                         'dev_launch_count', 'dev_still_holding', 'cto_flag',
+                         // Says at least one count above is a FLOOR, not a measurement.
+                         'tag_counts_capped']) {
           if (info[k] != null && (force || hit[k] == null)) { hit[k] = info[k]; changed = true; }
         }
         if (Array.isArray(info.x_renames) && info.x_renames.length && (force || !hit.x_renames)) {
