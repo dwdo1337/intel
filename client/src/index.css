@@ -12,11 +12,11 @@
 
      One hue (265) across every surface keeps the greys from drifting cold and
      plasticky the way independent hex values do. */
-  --bg:        oklch(0.16 0.010 265);
-  --surface:   oklch(0.19 0.012 265);
-  --surface2:  oklch(0.21 0.012 265);
-  --surface3:  oklch(0.235 0.012 265);
-  --surface4:  oklch(0.27 0.013 265);
+  --bg:        #000;
+  --surface:   #111214;
+  --surface2:  #1a1b1f;
+  --surface3:  #212329;
+  --surface4:  #2a2c33;
 
   /* Elevation as a background, used where a border used to be. */
   --raise:     rgba(255,255,255,0.03);
@@ -25,36 +25,38 @@
   /* ── LINES ───────────────────────────────────────────────────────────
      Hairlines only, and only where a divider is genuinely load-bearing. ~8%
      white against these surfaces reads as a seam, not a box. */
-  --line:      rgba(255,255,255,0.06);
-  --line2:     rgba(255,255,255,0.09);
-  --line3:     rgba(255,255,255,0.13);
+  --line:      #24262c;
+  --line2:     #2e313a;
+  --line3:     #3a3e49;
 
   /* ── TEXT ────────────────────────────────────────────────────────────
      Values at full strength, labels at roughly half. The old palette ran
      labels at #7d879b and values at #f0f2f7, which is nearly the same
      contrast, so nothing led. */
-  --text:      oklch(0.97 0.004 265);
-  --muted:     oklch(0.70 0.012 265);
-  --dim:       oklch(0.54 0.012 265);
+  --text:      #fff;
+  --muted:     #8e929b;
+  --dim:       #5c6069;
 
   /* ── ACCENT: ONE GREEN ───────────────────────────────────────────────
      Everything used to glow -- green, purple, orange, yellow and blue all at
      once -- so nothing could read as important. There is exactly one accent
      now, and the rule of thumb is at most three accented elements in view. */
-  --accent:     oklch(0.80 0.135 158);
-  --accent2:    oklch(0.86 0.110 158);
-  --accent-ink: oklch(0.20 0.030 158);          /* text ON the accent */
+  --accent:     #2bf08c;
+  --accent2:    #7df7b8;
+  --accent-ink: #04120a;                        /* text ON the accent */
   --accent-dim: color-mix(in oklab, var(--accent) 14%, transparent);
   --accent-ring: color-mix(in oklab, var(--accent) 40%, transparent);
 
   /* The only other colour: negatives. Muted on purpose -- a loss should be
      legible, not alarming. */
-  --sell:      oklch(0.64 0.125 25);
+  --sell:      #ff4f6d;
+  --sell-dim:  rgba(255,79,109,0.12);
   --buy:       var(--accent);
   /* `warn` survives as a token because risk chips reference it, but it is no
      longer amber. A warning is a negative and now says so in the one negative
      colour, rather than introducing a third hue for a middle state. */
-  --warn:      oklch(0.70 0.100 40);
+  --warn:      #ffbf1f;
+  --warn-dim:  rgba(255,191,31,0.12);
 
   /* ── IDENTITY COLOUR ─────────────────────────────────────────────────
      Chains and sources keep their brand colours, and this is not a relaxing of
@@ -68,8 +70,9 @@
 
      Real brand values; the badges tint them down to ~11% for the background and
      use the colour itself for the text, which stays legible on these surfaces. */
-  --info:      #3b82f6;
-  --tg:        #3b82f6;                /* Telegram blue */
+  --info:      #4fa8ff;
+  --violet:    #b084ff;
+  --tg:        #4fa8ff;                /* Telegram blue */
   --dc:        #5865F2;                /* Discord blurple */
   --chain-sol: #9945FF;
   --chain-robinhood: #00C805;
@@ -95,10 +98,10 @@
 
   /* ── RADII ───────────────────────────────────────────────────────────
      Cards 8, inputs 6, chips 4. Nothing is a pill except the primary action. */
-  --radius:        8px;
-  --radius-lg:     12px;
-  --radius-input:  6px;
-  --radius-chip:   4px;
+  --radius:        16px;
+  --radius-lg:     20px;
+  --radius-input:  12px;
+  --radius-chip:   99px;
 
   /* ── ELEVATION ───────────────────────────────────────────────────────
      One soft, wide shadow doing the work borders used to do. No coloured
@@ -118,7 +121,7 @@
    scrolled the whole document and the filters, feed and inspector all moved
    together. `height:100%` is what makes the inner columns scroll on their own.
    `overflow:hidden` on body stops the page itself from scrolling at all. */
-html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:13px}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:13px;font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased}
 #root,.app{height:100%;min-height:0;display:flex;flex-direction:column;background:var(--bg)}
 .screen{display:none;flex:1;min-height:0;flex-direction:column;overflow:hidden;background:var(--bg)}
 .screen.active{display:flex}

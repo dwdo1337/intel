@@ -16,7 +16,7 @@ import { fetchSafety, isSolanaAddress, fetchImageFromMetadata } from './safety.j
 import { configureGmgn, isGmgnConfigured, fetchGmgnSecurity, fetchGmgnDevHistory, extractTokenExtrasFromDevHistory, fetchGmgnTokenInfo, fetchGmgnTokenWallets, gmgnHolderChain, WALLET_PAGE,
          fetchGmgnPool, fetchGmgnKline } from './gmgn.js';
 import { plausibleHolderCount, resolveHolderCount } from './plausibility.js';
-import { higherPeak, klineResolution, peakFromCandles, peakMultiple, minutesToPeak, KLINE_PAGE } from './peak.js';
+import { higherPeak, klineResolution, peakFromCandles, latestFromCandles, peakMultiple, minutesToPeak, KLINE_PAGE } from './peak.js';
 import { resolveLiquidity, gmgnPoolChain } from './liquidity.js';
 import { fetchPumpFunCoin, athMarketCapUsd, isPumpFunMint } from './pumpfun.js';
 import { startKolWatcher, getKolActivity, kolWatcherStatus } from './kol.js';
@@ -2468,6 +2468,26 @@ async function fillPeak(hit) {
 
     const peak = peakFromCandles(candles, refPrice, refMcap);
     if (peak) changed = notePeak(hit, peak.mcap, peak.at || new Date().toISOString(), 'kline') || changed;
+
+    // The same candles also carry what it is worth NOW, and that was being
+    // thrown away. Without it the board's "now" column was empty on 498 of 500
+    // tokens -- a peak with nothing beside it, which is the one shape the board
+    // must never take, because a run with no round trip next to it flatters
+    // every rug.
+    //
+    // Only written when nothing FRESHER exists. A scan or a manual refresh
+    // reads a live price; this is a candle close and can be up to one candle
+    // old, so it fills a gap rather than overwriting a better measurement.
+    const latest = latestFromCandles(candles, refPrice, refMcap);
+    if (latest && latest.mcap > 0) {
+      const haveAt = Date.parse(hit.live_mcap_at || 0) || 0;
+      const thisAt = latest.at ? Number(latest.at) : Date.now();
+      if (hit.live_mcap_usd == null || thisAt > haveAt) {
+        hit.live_mcap_usd = latest.mcap;
+        hit.live_mcap_at = new Date(thisAt).toISOString();
+        changed = true;
+      }
+    }
   } catch (e) {
     log('error', 'Kline peak lookup threw', { ca: hit.ca, error: e.message });
   }

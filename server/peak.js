@@ -160,3 +160,37 @@ export function minutesToPeak(calledAt, peakAt) {
   const mins = (b - a) / 60000;
   return mins >= 0 ? mins : null;
 }
+
+/**
+ * The most recent close in the same window, as a market cap.
+ *
+ * WHY THIS EXISTS. The board's "now" column was empty on 498 of 500 tokens.
+ * `live_mcap_usd` is only written by a scan or a manual refresh, while 489 of
+ * those peaks came from the CANDLE backfill -- and candles were being read for
+ * their highs and then thrown away. The last candle in a window that ends at
+ * `now` already carries the current price; not reading it meant paying for the
+ * request and discarding the answer.
+ *
+ * It is a CLOSE, not a tick: at daily resolution the last candle can be hours
+ * old, so callers record it with its timestamp rather than presenting it as
+ * real-time. A figure that is a known number of minutes old is useful; one
+ * pretending to be live is not.
+ *
+ * Returns null rather than guessing when the reference price is missing, the
+ * candle list is empty, or the final close is unusable.
+ */
+export function latestFromCandles(candles, refPrice, refMcap) {
+  const p0 = Number(refPrice), m0 = Number(refMcap);
+  if (!Number.isFinite(p0) || p0 <= 0) return null;
+  if (!Number.isFinite(m0) || m0 <= 0) return null;
+  if (!Array.isArray(candles) || !candles.length) return null;
+
+  // Walk back from the end: the very last candle can be an empty forming one.
+  for (let i = candles.length - 1; i >= 0; i--) {
+    const c = candles[i];
+    const close = Number(c && c.close);
+    if (!Number.isFinite(close) || close <= 0) continue;
+    return { mcap: m0 * (close / p0), at: c.time ?? null };
+  }
+  return null;
+}

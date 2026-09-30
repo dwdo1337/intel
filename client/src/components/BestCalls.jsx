@@ -355,10 +355,22 @@ function CallList({ calls, onPick, redact }) {
             </div>
 
             <div className="bc-now">
-              {/* Never hidden. A 10x that round-tripped to zero must not read
-                  the same as one that held. */}
-              <div className={`bc-nowmult${c.dead ? ' dead' : ''}`}>
-                {c.dead ? 'dead' : fmtMult(c.nowMult)}
+              {/* NOW, in the same unit as the peak beside it.
+                  The multiple alone made the column hard to place: "0.3x" is
+                  abstract where "$3.5K" is the thing you would actually be
+                  holding. Both are shown, with the dollar figure leading and
+                  the ratio underneath, so the round trip is unmissable.
+
+                  Never hidden. A 10x that went to zero must not read the same
+                  as one that held -- a board showing only how far a call ran
+                  flatters every rug, which is the whole reason this column
+                  exists. */}
+              <div className="bc-nowlabel">now</div>
+              <div className={`bc-nowval${c.dead ? ' dead' : ''}`}>
+                {c.dead ? 'dead' : fmtUsd(c.nowMcap)}
+              </div>
+              <div className={`bc-nowmult${c.dead ? ' dead' : c.nowMult >= 1 ? ' up' : ' down'}`}>
+                {c.dead ? '—' : `${fmtMult(c.nowMult)} vs entry`}
               </div>
               <div className="bc-sub">{mins ? `peak +${mins}` : 'now'}</div>
             </div>

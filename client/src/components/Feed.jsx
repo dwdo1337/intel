@@ -814,6 +814,11 @@ function MsgCard({ event, active, onClick, index = 0 }) {
         />
       </div>
 
+      {/* Straight under the numbers, because it qualifies them. A $24K cap with
+          mint authority still on is a different object from a $24K cap without,
+          and reading the second fact three rows later is reading it too late. */}
+      <RiskLine safety={event.safety} chainLabel={chainLabel} top10={m.top10} />
+
       {/* ── contract address ──
           On the same gutter as every row below it. It was the one block with
           no label, which left it floating between the metrics and the source
@@ -995,6 +1000,71 @@ function MsgCard({ event, active, onClick, index = 0 }) {
           <a className="link" href={dexUrl} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}>DEXSCREENER <IconArrowUpRight size={12} /></a>
         </>}
       </div>
+    </div>
+  );
+}
+
+/**
+ * Risk as a short line of flags, mirroring the desktop alert.
+ *
+ * `rugRisk` is one provider's score on one chain and reads as precision it does
+ * not have. These are individually checkable facts, and each appears only when
+ * its field actually ANSWERED -- `mintRevoked === null` means nobody looked,
+ * which is not the same as mint being revoked and must never render as it.
+ *
+ * The amber branch is the point. When no safety field came back at all the row
+ * SAYS so rather than staying quiet, because an empty risk row reads as "clean"
+ * and on a chain with no provider that would be an invention. Same rule as
+ * `unknown` everywhere else in this deck, applied to a row that is new.
+ */
+function RiskLine({ safety, chainLabel, top10 }) {
+  const s = safety || {};
+  const f = [];
+  if (s.isHoneypot === true) f.push('honeypot');
+  if (s.mintRevoked === false) f.push('mint ON');
+  if (s.freezeable === true) f.push('freeze ON');
+  if (s.contractRenounced === false) f.push('not renounced');
+  if (s.devPct != null && s.devPct > 5) f.push(`dev ${s.devPct.toFixed(0)}%`);
+  // Concentration is the flag the alert already raises, so the deck raises it
+  // on the same threshold. It also appears as a sub-label under Holders; that
+  // one states the number, this one states that the number is a problem.
+  if (top10 != null && top10 > 30) f.push(`top10 ${top10.toFixed(0)}%`);
+  if (s.insiderHolders != null && s.insiderHolders > 0) f.push(`${s.insiderHolders} insiders`);
+  if (s.sellTax != null && s.sellTax > 5) f.push(`sell tax ${s.sellTax.toFixed(0)}%`);
+  if (s.buyTax != null && s.buyTax > 5) f.push(`buy tax ${s.buyTax.toFixed(0)}%`);
+  if (s.lpBurned != null && s.lpBurned < 50) f.push(`LP ${s.lpBurned.toFixed(0)}% burned`);
+  for (const r of (s.risks || [])) {
+    const name = typeof r === 'string' ? r : (r && (r.name || r.label));
+    if (name && f.length < 6) f.push(String(name).slice(0, 28));
+  }
+
+  // Did ANY safety field answer? Tells "checked and clean" apart from "never
+  // checked", which look identical if you only count flags.
+  const checked = ['isHoneypot', 'mintRevoked', 'freezeable', 'contractRenounced',
+                   'devPct', 'rugRisk', 'lpBurned'].some(k => s[k] != null);
+
+  if (f.length) {
+    return (
+      <div className="risk-line">
+        <span className="rl-head">&#9888; {f.length} red flag{f.length === 1 ? '' : 's'}</span>
+        <span className="rl-flags">{f.map(x => <span key={x}>{x}</span>)}</span>
+      </div>
+    );
+  }
+  if (!checked) {
+    return (
+      <div className="risk-line unknown">
+        <span className="rl-head">No safety data</span>
+        <span className="rl-flags"><span>no provider covers {chainLabel}</span></span>
+      </div>
+    );
+  }
+  // Checked, nothing found. Stated rather than left blank -- silence here reads
+  // as "not checked", which is the opposite of what happened.
+  return (
+    <div className="risk-line clean">
+      <span className="rl-head">&#10003; No red flags</span>
+      <span className="rl-flags"><span>{s.source ? `checked via ${s.source}` : 'checked'}</span></span>
     </div>
   );
 }

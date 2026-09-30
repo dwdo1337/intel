@@ -10,7 +10,7 @@
  * If `scarlett` ever fails, the feature has stopped doing the one thing it was
  * built for.
  */
-import { higherPeak, klineResolution, peakFromCandles, peakMultiple, minutesToPeak, KLINE_PAGE }
+import { higherPeak, klineResolution, peakFromCandles, latestFromCandles, peakMultiple, minutesToPeak, KLINE_PAGE }
   from './peak.js';
 
 let failures = 0, count = 0;
@@ -137,6 +137,24 @@ near('minutes to peak', minutesToPeak('2026-08-01T00:00:00Z', '2026-08-01T00:30:
 check('a peak before the call is not a duration',
   minutesToPeak('2026-08-01T01:00:00Z', '2026-08-01T00:30:00Z'), null);
 check('unparsable timestamps -> null', minutesToPeak('nope', 'also nope'), null);
+
+// -- latestFromCandles -----------------------------------------------
+// The board's "now" column was empty on 498 of 500 tokens because the candle
+// backfill read highs and discarded the closes it had already paid for.
+near('last close scales by the reference ratio',
+  latestFromCandles([{ close: 2, time: 10 }], 1, 1000)?.mcap, 2000);
+near('a fall is reported as a fall, not clamped to the entry',
+  latestFromCandles([{ close: 0.5, time: 10 }], 1, 1000)?.mcap, 500);
+near('the LAST candle wins, not the highest',
+  latestFromCandles([{ close: 9, time: 1 }, { close: 3, time: 2 }], 1, 1000)?.mcap, 3000);
+// A forming final candle can carry no close at all; walking back beats
+// reporting null for a window that plainly has data in it.
+near('an empty trailing candle falls back to the one before it',
+  latestFromCandles([{ close: 4, time: 1 }, { close: null, time: 2 }], 1, 1000)?.mcap, 4000);
+check('no candles -> null', latestFromCandles([], 1, 1000), null);
+check('no reference price -> null, never a guess', latestFromCandles([{ close: 2 }], null, 1000), null);
+check('zero reference price -> null, not Infinity', latestFromCandles([{ close: 2 }], 0, 1000), null);
+check('all closes unusable -> null', latestFromCandles([{ close: 0 }, { close: -1 }], 1, 1000), null);
 
 console.log(`\n${count - failures}/${count} passed\n`);
 process.exit(failures ? 1 : 0);

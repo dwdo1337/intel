@@ -378,3 +378,14 @@
   color: var(--dim);
   white-space: nowrap;
 }
+
+/* ── NOW: what it is worth today, beside what it peaked at ────────────────
+   The dollar figure leads because it is the concrete one; the ratio sits
+   under it. Red when the call round-tripped, which is the case this column
+   was added to make impossible to miss. */
+.bc-nowlabel{font-size:9px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--dim)}
+.bc-nowval{font-family:var(--mono);font-size:15px;font-weight:700;color:var(--text);margin-top:1px}
+.bc-nowval.dead{color:var(--sell)}
+.bc-nowmult{font-size:11px;font-weight:700;margin-top:1px}
+.bc-nowmult.up{color:var(--accent)}
+.bc-nowmult.down,.bc-nowmult.dead{color:var(--sell)}
