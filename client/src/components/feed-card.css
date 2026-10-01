@@ -903,3 +903,61 @@
 /* The deck is three columns; below a narrow feed the six wrap to two rows
    rather than crushing the digits out of legibility. */
 @media (max-width:1500px){ .tile-row{grid-template-columns:repeat(3,1fr)} }
+
+/* ── the call bar ─────────────────────────────────────────────────────────
+   The EVENT, above the token. Tinted by platform so a Telegram call and a
+   Discord one are distinguishable before you read either. */
+.call-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  padding:7px 12px;border-radius:var(--radius) var(--radius) 0 0;
+  background:var(--surface2);border-bottom:1px solid var(--line);font-size:11px}
+.call-bar.tg{box-shadow:inset 3px 0 0 var(--tg)}
+.call-bar.dc{box-shadow:inset 3px 0 0 var(--dc)}
+.cb-src{display:inline-flex;align-items:center;gap:5px;font-weight:700;
+  letter-spacing:.04em;text-transform:uppercase;font-size:10px}
+.call-bar.tg .cb-src{color:var(--tg)} .call-bar.dc .cb-src{color:var(--dc)}
+.cb-room{color:var(--text);font-weight:600;max-width:240px;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap}
+.cb-author{color:var(--muted);font-family:var(--mono);font-size:10.5px}
+.cb-spacer{flex:1}
+/* How old the token was AT the call. Without it the metrics have no unit. */
+.cb-after{color:var(--accent);font-weight:600;font-size:10.5px}
+.cb-ago{color:var(--dim);font-size:10.5px;white-space:nowrap}
+
+/* ── market / wallets / dev ───────────────────────────────────────────────
+   Three questions asked together, answered by three providers. Columns let the
+   eye compare them; stacked they read as unrelated facts. The grid keeps its
+   shape when a column has no data, because columns that move with whatever
+   answered make the card something you re-read instead of scan. */
+.minicols{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+.mc{background:var(--surface2);border-radius:var(--radius-input);padding:10px 11px;min-width:0}
+.mc h5{margin:0 0 7px;font-size:9.5px;font-weight:700;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--dim);display:flex;align-items:center;gap:7px}
+.mc-link{font-family:var(--mono);font-size:9.5px;font-weight:600;color:var(--accent);
+  text-decoration:none;text-transform:none;letter-spacing:0}
+.mc-link:hover{text-decoration:underline}
+.mc-r{display:flex;align-items:baseline;justify-content:space-between;gap:8px;padding:2px 0;min-width:0}
+.mc-r span{font-size:10.5px;color:var(--muted);white-space:nowrap}
+.mc-r b{font-family:var(--mono);font-size:11.5px;font-weight:700;color:var(--text);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mc-r b.up{color:var(--accent)} .mc-r b.down{color:var(--sell)}
+.mc-r.sm{padding-top:3px}
+.mc-r.sm span{font-size:10px}
+.mc-r.sm .up{color:var(--accent)} .mc-r.sm .down{color:var(--sell)}
+.mc-none{font-size:10.5px;color:var(--dim);font-style:italic}
+.mc-note{font-size:9.5px;color:var(--dim);margin-top:4px}
+.mc-flow{display:flex;height:4px;border-radius:99px;overflow:hidden;
+  background:var(--sell);margin-top:6px}
+.mc-flow i{display:block;height:100%;background:var(--accent)}
+.mc-term{margin-top:8px}
+.mc-fund{display:inline-block;margin-top:6px;font-size:10px;font-weight:700;
+  color:var(--accent);background:var(--accent-dim);padding:3px 9px;
+  border-radius:99px;text-decoration:none}
+.mc-fund:hover{background:rgba(43,240,140,0.20)}
+/* The deck is already three columns. Below a narrow feed these three would be
+   columns inside a column, so they stack. */
+@media (max-width:1500px){ .minicols{grid-template-columns:1fr} }
+
+/* buys / sells sit either side of the flow bar they describe, so they must
+   stay on one line even when the column is narrow. */
+.mc-r.sm{justify-content:space-between;gap:6px;flex-wrap:nowrap}
+.mc-r.sm span{font-size:9.5px;white-space:nowrap}

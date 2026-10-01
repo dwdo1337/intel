@@ -659,6 +659,21 @@ function MsgCard({ event, active, onClick, index = 0 }) {
   // the live price would score every token 1.00x the instant it was called --
   // the exact flattery peak tracking exists to remove.
   const peakMult = m.peakMult != null && isFinite(m.peakMult) ? Number(m.peakMult) : null;
+  // `ageMinutes` is the token's age NOW, so the age AT the call is that minus
+  // however long ago the call was. A call eleven minutes after launch and the
+  // same call on a three-day-old token are different events, and the metrics
+  // below mean different things in each.
+  const ageAtCall = (() => {
+    if (m.ageMinutes == null || !event.time) return null;
+    const sinceCall = (Date.now() - new Date(event.time).getTime()) / 60000;
+    const at = m.ageMinutes - sinceCall;
+    // Clock skew or a token whose pair predates its own listing can push this
+    // negative. Saying nothing beats saying "called -4m after launch".
+    if (!isFinite(at) || at < 0) return null;
+    if (at < 60) return `${Math.round(at)}m`;
+    if (at < 1440) return `${(at / 60).toFixed(1)}h`;
+    return `${Math.round(at / 1440)}d`;
+  })();
   const s = event.safety || {};
   const initials = (event.token.name || '?').split(' ').map(x => x[0]).join('').slice(0, 2).toUpperCase();
   const platformColor = event.platform === 'tg' ? '#3b82f6' : '#a855f7';
@@ -715,6 +730,30 @@ function MsgCard({ event, active, onClick, index = 0 }) {
       )}
 
       {/* ── identity: image, name, ticker, chain, venue, time ── */}
+      {/* THE CALL BAR.
+          Who called it, where, when, and how old the token was at that moment
+          -- the four facts that describe the EVENT, as opposed to the token.
+          The reference card leads with the equivalent bar and it earns the
+          position: a call is a thing that happened at a time, and reading the
+          metrics before knowing whether it landed one minute or three days
+          after launch is reading them without their unit.
+
+          It replaces the Source row rather than joining it. Having both would
+          repeat the platform, room and author a second time in the same card,
+          which is the duplication the KPI row was just removed for. */}
+      <div className={`call-bar ${event.platform === 'tg' ? 'tg' : 'dc'}`}>
+        <span className="cb-src">
+          {event.platform === 'tg' ? <IconTelegram size={11} /> : <IconDiscord size={11} />}
+          {platformLabel}
+        </span>
+        <span className="cb-room" title={sourceName}>{sourceName}</span>
+        {event.author && <span className="cb-author">@{event.author}</span>}
+        <CallerRecord author={event.author} />
+        <span className="cb-spacer" />
+        {ageAtCall && <span className="cb-after">called {ageAtCall} after launch</span>}
+        <span className="cb-ago">{fmtRelTime(event.time)}</span>
+      </div>
+
       <div className="msg-head">
         {event.token.image ? (
           <img className="msg-av-real" src={event.token.image} alt="" onError={e => { e.target.style.display='none'; const fb=e.target.nextSibling; if(fb) fb.style.display='flex'; }} />
@@ -777,7 +816,10 @@ function MsgCard({ event, active, onClick, index = 0 }) {
             )}
           </div>
         )}
-        <div className="msg-time">{fmtRelTime(event.time)}</div>
+        {/* The relative time lives in the call bar now. Having it here too
+            put "1d ago" twice in one card, six centimetres apart -- the same
+            duplication the KPI row was removed for, reintroduced by the bar
+            that was supposed to own the event's timing. */}
       </div>
 
       {/* ── headline metrics ──
@@ -840,8 +882,7 @@ function MsgCard({ event, active, onClick, index = 0 }) {
           mint authority still on is a different object from a $24K cap without,
           and reading the second fact three rows later is reading it too late. */}
       <RiskLine safety={event.safety} chainLabel={chainLabel} top10={m.top10} />
-      <TerminalSplit terminals={event.terminals} />
-      <DevLine dev={event.dev} safety={event.safety} />
+      <MiniColumns event={event} m={m} />
 
       {/* ── contract address ──
           On the same gutter as every row below it. It was the one block with
@@ -863,22 +904,7 @@ function MsgCard({ event, active, onClick, index = 0 }) {
           address strip's inner padding, the quote's border-left, the wallet
           rows' box padding -- so six sections started at six different x
           positions and the card had no vertical edge to read down. */}
-      <div className="fc-row">
-        <span className="fc-key">Source</span>
-        <div className="fc-val msg-attrib">
-          <span className={`attrib-src ${event.platform === 'tg' ? 'tg' : 'dc'}`}>
-            {event.platform === 'tg' ? <IconTelegram size={12} /> : <IconDiscord size={12} />}
-            {platformLabel}
-          </span>
-          <span className="attrib-chat" title={sourceName}>{sourceName}</span>
-          {event.author && <span className="attrib-author">@{event.author}</span>}
-          {/* The caller's track record, right next to their name — the point of
-              measuring it at all. Rendered only when enough of their calls have
-              a real outcome; a median built on one scored call out of thirty is
-              noise wearing a number's clothes. */}
-          <CallerRecord author={event.author} />
-        </div>
-      </div>
+
 
       {/* EVERY caller, not just the first.
           The card showed one name while the badge said "called 2x", which
@@ -1061,6 +1087,129 @@ const terminalName = k => ({ fomo: 'FOMO', gmgn: 'GMGN', bullx: 'BullX', bonkbot
  * The denominator is printed because it IS the claim -- "25 of 98" and "25 of
  * 30" are different sentences, and the holder page can come back short.
  */
+/**
+ * Market / Wallets / Dev, side by side.
+ *
+ * Three questions that are asked together and answered from three different
+ * providers: is it trading, who is holding it, and who made it. Stacked as
+ * rows they read as a list of unrelated facts; in columns the eye compares
+ * them, which is the whole point -- heavy volume with nobody notable holding
+ * and a dev who has launched forty coins is a shape you recognise instantly
+ * and cannot see in a list.
+ *
+ * A column whose data has not arrived says so rather than collapsing. The grid
+ * holding its shape is what makes the comparison possible at all; a card where
+ * the columns move depending on what answered is a card you have to re-read.
+ */
+function MiniColumns({ event, m }) {
+  const dev = event.dev;
+  const s = event.safety || {};
+  const t = event.terminals;
+  const buys = m.buys ?? 0, sells = m.sells ?? 0;
+  const flow = buys + sells;
+  const short = w => `${w.slice(0, 4)}…${w.slice(-4)}`;
+  const arkham = w => `https://arkm.com/explorer/address/${w}`;
+  const cap = n => (n == null ? null : n >= 1000 ? '1000+' : String(n));
+  const row = (k, v, tone) => (
+    <div className="mc-r" key={k}><span>{k}</span><b className={tone || ''}>{v}</b></div>
+  );
+
+  return (
+    <div className="minicols">
+      <div className="mc">
+        <h5>Market</h5>
+        {row('Vol 24h', (m.liveVol ?? m.vol) == null ? '—' : `$${fmt(m.liveVol ?? m.vol)}`)}
+        {row('Change 1h', m.chg1h == null ? '—' : `${m.chg1h > 0 ? '+' : ''}${m.chg1h.toFixed(1)}%`,
+             m.chg1h == null ? null : m.chg1h >= 0 ? 'up' : 'down')}
+        {row('Change 24h', m.chg24h == null ? '—' : `${m.chg24h > 0 ? '+' : ''}${m.chg24h.toFixed(1)}%`,
+             m.chg24h == null ? null : m.chg24h >= 0 ? 'up' : 'down')}
+        {flow > 0 && (
+          <>
+            <div className="mc-flow"><i style={{ width: `${(buys / flow) * 100}%` }} /></div>
+            <div className="mc-r sm"><span className="up">{buys} buys</span><span className="down">{sells} sells</span></div>
+          </>
+        )}
+      </div>
+
+      <div className="mc">
+        <h5>Wallets</h5>
+        {t && t.pct != null
+          ? row('Terminal users', `${t.pct}%`)
+          : row('Terminal users', '—')}
+        {event.holders
+          ? row('Smart / KOL', `${event.holders.smartMoney ?? '-'} / ${event.holders.kols ?? '-'}`,
+                (event.holders.smartMoney > 0 || event.holders.kols > 0) ? 'up' : null)
+          : row('Smart / KOL', '—')}
+        {row('Snipers', s.snipers == null ? '—' : cap(s.snipers))}
+        {row('Bundlers', s.bundlers == null ? '—' : cap(s.bundlers),
+             s.bundlerVolPct > 10 ? 'down' : null)}
+        {/* The count is a ceiling; the share of volume is the measurement. */}
+        {s.bundlerVolPct != null && row('of volume', `${s.bundlerVolPct}%`,
+             s.bundlerVolPct > 10 ? 'down' : null)}
+        {t && Object.keys(t.counts || {}).length > 0 && <TerminalBar terminals={t} />}
+      </div>
+
+      <div className="mc">
+        <h5>
+          Dev
+          {dev?.wallet && (
+            <a className="mc-link" href={arkham(dev.wallet)} target="_blank" rel="noopener noreferrer"
+               title="Open the creator's wallet in Arkham">{short(dev.wallet)} ↗</a>
+          )}
+        </h5>
+        {!dev?.wallet
+          ? <div className="mc-none">creator not resolved</div>
+          : <>
+              {row('Holds', dev.holdPct == null ? '—' : `${dev.holdPct.toFixed(1)}%`,
+                   dev.holdPct > 5 ? 'down' : null)}
+              {dev.stillHolding != null && row('Status', dev.stillHolding ? 'still holding' : 'sold',
+                   dev.stillHolding ? 'down' : null)}
+              {row('Launches', dev.launches == null ? '—' : dev.launches,
+                   dev.launches > 20 ? 'down' : null)}
+              {s.xRenames?.length > 0 && row('X renamed', `${s.xRenames.length}×`, 'down')}
+              {/* Linked only when the funder is NOT an exchange: that address
+                  belongs to Binance, the trail stops there, and rendering it
+                  would look like evidence while explaining nothing. */}
+              {dev.funder
+                ? <a className="mc-fund" href={arkham(dev.funder)} target="_blank" rel="noopener noreferrer"
+                     title={`Funded by ${short(dev.funder)}${dev.fundedAmountSol ? ` · ${dev.fundedAmountSol} SOL` : ''} — not an exchange, so the trail continues`}>
+                    Funder in Arkham ↗
+                  </a>
+                : dev.fundedFromCex && dev.fundedBy
+                  ? <div className="mc-none">funded from {dev.fundedBy}</div>
+                  : null}
+            </>}
+      </div>
+    </div>
+  );
+}
+
+/** The terminal split, as a bar plus legend. Shared by the column and nothing
+ *  else now -- it used to be a full-width row of its own. */
+function TerminalBar({ terminals }) {
+  const counts = Object.entries(terminals.counts || {});
+  const sampled = terminals.sampled || 1;
+  return (
+    <div className="mc-term">
+      <div className="term-bar">
+        {counts.map(([k, v]) => (
+          <i key={k} style={{ width: `${(v / sampled) * 100}%`,
+                              background: TERMINAL_COLOUR[k] || '#868b96' }} />
+        ))}
+      </div>
+      <div className="term-legend">
+        {counts.map(([k, v]) => (
+          <span key={k}>
+            <em style={{ background: TERMINAL_COLOUR[k] || '#868b96' }} />
+            {terminalName(k)} <b>{v}</b>
+          </span>
+        ))}
+      </div>
+      <div className="mc-note">{terminals.users} of {sampled} holders</div>
+    </div>
+  );
+}
+
 function TerminalSplit({ terminals }) {
   if (!terminals || terminals.pct == null) return null;
   const counts = Object.entries(terminals.counts || {});
