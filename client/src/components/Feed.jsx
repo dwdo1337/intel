@@ -754,72 +754,48 @@ function MsgCard({ event, active, onClick, index = 0 }) {
         <span className="cb-ago">{fmtRelTime(event.time)}</span>
       </div>
 
-      <div className="msg-head">
+      {/* THE IDENTITY BLOCK, on the reference card's own geometry.
+          72px mark, 30px/900 ticker, 36px/900 market cap. The previous version
+          carried the same facts at roughly half those sizes, which is what kept
+          the card reading as a dense table with extra blocks bolted on rather
+          than as the thing it was meant to look like. Size IS the difference
+          here -- there was nothing wrong with the content. */}
+      <div className="c-top">
         {event.token.image ? (
-          <img className="msg-av-real" src={event.token.image} alt="" onError={e => { e.target.style.display='none'; const fb=e.target.nextSibling; if(fb) fb.style.display='flex'; }} />
+          <img className="c-ico" src={event.token.image} alt=""
+               onError={e => { e.target.style.display = 'none'; const fb = e.target.nextSibling; if (fb) fb.style.display = 'grid'; }} />
         ) : null}
-        {/* Tinted by source, not by token: a flat tile per platform reads as a
-            category, where the old per-token gradient was noise. */}
-        <div className="msg-av"
-             style={{ background: `${color}1f`, color,
-                      display: event.token.image ? 'none' : 'flex' }}>{initials}</div>
-        <div className="msg-meta-head">
-          <div className="msg-line1">
-            <span className="msg-token">{event.token.name || 'Unknown'}</span>
-            <span className="msg-ticker">{event.token.symbol || '—'}</span>
-            {/* DEX Paid belongs with the token's identity, not buried in the
-                launch row: it is the fastest read on whether anyone spent money
-                presenting this token. Reflects the last scan or refresh.
-                null = never checked, and renders as nothing rather than as
-                "No" -- an unchecked profile is not a finding. */}
-            {event.safety?.dexPaid === true && (
-              <span className="msg-dexpaid" title="Paid, approved DexScreener token profile — checked at the last scan or refresh">
-                DEX PAID
-              </span>
-            )}
-            {event.safety?.dexPaid === false && (
-              <span className="msg-dexpaid no" title="No approved paid DexScreener profile as of the last scan or refresh">
-                NO DEX PAID
-              </span>
-            )}
-          </div>
-          <div className="msg-venue-row">
-            <span className="venue-chip chain"
-                  style={{ background: `${chainColor}1c`, color: chainColor }}>
-              <span className="venue-dot" style={{ background: chainColor }} />
-              {chainLabel}
-            </span>
-            {venueLabel && (
-              <span className={`venue-chip ${hasLaunchpad ? 'launchpad' : 'dex'}`}>
-                {hasLaunchpad ? venueLabel : `${venueLabel} (DEX)`}
-              </span>
-            )}
-            {isFollowup && mentionCount > 1 && (
-              <span className="venue-chip repeat">↻ called {mentionCount}×</span>
-            )}
+        <div className="c-ico" style={{ background: `${color}1f`, color,
+                                        display: event.token.image ? 'none' : 'grid' }}>{initials}</div>
+
+        <div className="c-id">
+          <div className="c-sym">{event.token.symbol ? `$${event.token.symbol}` : '—'}</div>
+          <div className="c-name">{event.token.name || 'Unknown'}</div>
+          <div className="c-tags">
+            <span className="tag" style={{ background: `${chainColor}1f`, color: chainColor }}>{chainLabel}</span>
+            {venueLabel && <span className={`tag ${hasLaunchpad ? 't-boost' : 't-dim'}`}>{venueLabel}</span>}
+            {/* null = never checked, and renders as nothing. An unchecked
+                profile is not a finding. */}
+            {event.safety?.dexPaid === true && <span className="tag t-profile">DEX PAID</span>}
+            {event.safety?.dexPaid === false && <span className="tag t-dim">NO DEX PAID</span>}
+            {isFollowup && mentionCount > 1 && <span className="tag t-cto">called {mentionCount}×</span>}
+            {event.watched && <span className="tag t-ad">watchlist</span>}
           </div>
         </div>
-        {/* WHAT IT WAS WORTH WHEN YOU WERE CALLED, top-right, exactly where
-            the reference card puts it. The metric row below leads with the LIVE
-            cap after a refresh; this one never moves, and the two together are
-            what answer "am I early or late". A multiple appears only once a
-            peak has been MEASURED -- deriving one from the live price would
-            score every token 1.00x the moment it was called. */}
+
         {m.entryMcap != null && (
-          <div className="msg-atcall">
-            <div className="ac-label">MC at call</div>
-            <div className="ac-value">${fmt(m.entryMcap)}</div>
+          <div className="c-mc">
+            <div className="v">${fmt(m.entryMcap)}</div>
+            {/* Only ever a MEASURED peak -- deriving one from the live price
+                would score every token 1.00x the instant it was called. */}
             {peakMult != null && (
-              <div className={`ac-peak${peakMult < 1.05 ? ' flat' : ''}`}>
-                PEAK {peakMult >= 10 ? peakMult.toFixed(0) : peakMult.toFixed(2)}&times;
+              <div className={`s ${peakMult >= 1.05 ? 'up' : ''}`}>
+                PEAK {peakMult >= 10 ? peakMult.toFixed(0) : peakMult.toFixed(2)}×
               </div>
             )}
+            <div className="at">MC at call</div>
           </div>
         )}
-        {/* The relative time lives in the call bar now. Having it here too
-            put "1d ago" twice in one card, six centimetres apart -- the same
-            duplication the KPI row was removed for, reintroduced by the bar
-            that was supposed to own the event's timing. */}
       </div>
 
       {/* ── headline metrics ──
@@ -858,24 +834,18 @@ function MsgCard({ event, active, onClick, index = 0 }) {
           A tile renders a dash when its field is null. It is never dropped:
           a missing tile would shift the other five and break the one thing
           this row is for. */}
-      <div className="tile-row">
-        <Tile label={refreshedPct == null ? 'Market cap' : 'Market cap now'}
-              value={(m.liveMcap ?? m.mcap) == null ? '—' : `$${fmt(m.liveMcap ?? m.mcap)}`}
-              tone={refreshedPct == null ? null : refreshedPct >= 0 ? 'good' : 'bad'} />
-        <Tile label="Liquidity" value={(m.liveLiq ?? m.liq) == null ? '—' : `$${fmt(m.liveLiq ?? m.liq)}`} />
-        <Tile label="Holders" value={m.holders == null ? '—' : fmt(m.holders)} />
-        <Tile label="Top 10" value={m.top10 == null ? '—' : `${m.top10.toFixed(1)}%`}
-              tone={m.top10 != null && m.top10 > 30 ? 'bad' : null} />
-        <Tile label="Terminal users"
-              value={event.terminals?.pct == null ? '—' : `${event.terminals.pct}%`} />
-        {/* `holders` is only present once the wallet lookup has RUN, so an
-            absent block is "not checked yet" and renders a dash. A zero inside
-            it is a real answer -- nobody notable is in this -- and renders as
-            a zero. Those are different facts and the tile keeps them apart. */}
-        <Tile label="Smart / KOL"
-              value={!event.holders ? '—'
-                : `${event.holders.smartMoney ?? '-'} / ${event.holders.kols ?? '-'}`}
-              tone={event.holders && ((event.holders.smartMoney > 0) || (event.holders.kols > 0)) ? 'good' : null} />
+      {/* Six stats, their grid: 1px gaps with the line colour showing through,
+          so the cells read as one instrument rather than six floating chips.
+          A null field shows a dash and keeps its cell -- dropping one shifts
+          the other five and breaks the only thing a fixed row is for. */}
+      <div className="c-stats">
+        <div><span>Market cap</span><b>{(m.liveMcap ?? m.mcap) == null ? '—' : `$${fmt(m.liveMcap ?? m.mcap)}`}</b></div>
+        <div><span>Liquidity</span><b>{(m.liveLiq ?? m.liq) == null ? '—' : `$${fmt(m.liveLiq ?? m.liq)}`}</b></div>
+        <div><span>Holders</span><b>{m.holders == null ? '—' : fmt(m.holders)}</b></div>
+        <div><span>Top 10</span><b className={m.top10 != null && m.top10 > 30 ? 'dn' : ''}>{m.top10 == null ? '—' : `${m.top10.toFixed(1)}%`}</b></div>
+        <div><span>Terminal</span><b>{event.terminals?.pct == null ? '—' : `${event.terminals.pct}%`}</b></div>
+        <div><span>Smart / KOL</span><b className={event.holders && ((event.holders.smartMoney > 0) || (event.holders.kols > 0)) ? 'up' : ''}>
+          {!event.holders ? '—' : `${event.holders.smartMoney ?? '-'} / ${event.holders.kols ?? '-'}`}</b></div>
       </div>
 
       {/* Straight under the numbers, because it qualifies them. A $24K cap with

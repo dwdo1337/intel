@@ -961,3 +961,84 @@
    stay on one line even when the column is narrow. */
 .mc-r.sm{justify-content:space-between;gap:6px;flex-wrap:nowrap}
 .mc-r.sm span{font-size:9.5px;white-space:nowrap}
+
+/* ═══ THE REFERENCE CARD'S OWN GEOMETRY ═══════════════════════════════════
+   Adapted from dex-paid-tracker/web/style.css rather than re-derived. The
+   content was already right; the SCALE was not, and scale is what made the
+   card keep reading as a dense table with blocks bolted on.
+
+   Kept to Intel's tokens (--surface2 for --card2, --accent for --green) so one
+   palette still governs the deck and the notification. */
+
+.c-top{display:flex;align-items:center;gap:16px;padding:20px 22px 16px}
+.c-ico{width:72px;height:72px;border-radius:20px;object-fit:cover;background:var(--surface2);
+  flex:none;display:grid;place-items:center;font-size:30px;font-weight:900;color:var(--dim)}
+.c-id{min-width:0;flex:1}
+.c-sym{font-size:30px;font-weight:900;letter-spacing:-1px;line-height:1.05;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text)}
+.c-name{font-size:15px;color:var(--dim);font-weight:600;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+.c-tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.c-tags .tag{font-size:13px;font-weight:800;padding:5px 10px;border-radius:99px;letter-spacing:.2px}
+.t-profile{background:var(--accent-dim);color:var(--accent)}
+.t-boost{background:var(--warn-dim);color:var(--warn)}
+.t-ad{background:rgba(79,168,255,0.12);color:var(--info)}
+.t-cto{background:rgba(176,132,255,0.12);color:var(--violet)}
+.t-dim{background:var(--surface2);color:var(--dim)}
+
+.c-mc{text-align:right;flex:none}
+.c-mc .v{font-family:var(--mono);font-size:36px;font-weight:900;letter-spacing:-1.5px;
+  line-height:1;color:var(--text)}
+.c-mc .s{display:inline-block;margin-top:8px;font-size:18px;font-weight:800;
+  padding:6px 12px;border-radius:12px;background:var(--surface2);color:var(--muted)}
+.c-mc .s.up{background:var(--accent-dim);color:var(--accent)}
+.c-mc .at{font-size:13px;color:var(--dim);font-weight:600;margin-top:6px}
+
+/* The 1px gaps are the LINE colour showing through the grid, which is what
+   makes six cells read as one instrument instead of six chips. */
+.c-stats{display:grid;grid-template-columns:repeat(6,1fr);gap:1px;background:var(--line);
+  border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin-top:4px}
+.c-stats div{background:var(--surface);padding:12px 16px;min-width:0}
+.c-stats span{display:block;font-size:12px;color:var(--dim);font-weight:700;
+  text-transform:uppercase;letter-spacing:.4px}
+.c-stats b{font-family:var(--mono);font-size:20px;font-weight:800;color:var(--text);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+.c-stats b.dn{color:var(--sell)} .c-stats b.up{color:var(--accent)}
+@media (max-width:1500px){ .c-stats{grid-template-columns:repeat(3,1fr)} }
+
+/* The rest of the card sits on the same 22px gutter as .c-top. */
+.risk-line,.minicols{margin-left:22px;margin-right:22px}
+.risk-line{margin-top:14px}
+
+/* ── the remaining rows, on the reference's .c-row geometry ───────────────
+   CONTRACT / MESSAGE / KOL were the last blocks still drawn in the old
+   label-gutter style: a 10px grey key in a narrow column with the value
+   hanging off it. At the new scale they read as a different card stapled to
+   the bottom of this one. Same 22px gutter, same 12px uppercase key, same
+   pill-shaped values as everything above. */
+.fc-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;padding:14px 22px 0}
+.fc-key{font-size:12px;color:var(--dim);font-weight:800;text-transform:uppercase;
+  letter-spacing:.5px;width:78px;flex:none}
+.fc-val{flex:1;min-width:0;font-size:15px;font-weight:600}
+.fc-row + .fc-row{padding-top:10px}
+
+/* The message is the caller's own words -- the one piece of prose on the card,
+   so it gets room rather than a monospace strip. */
+.msg-text,.fc-val .msg-body{font-size:15px;line-height:1.45;color:var(--text)}
+
+/* buys / sells sit under the bar they describe, one line, no container. The
+   previous rule left a stray box outline around them. */
+.mc-flow{margin-top:8px}
+.mc-r.sm{display:flex;justify-content:space-between;align-items:baseline;
+  background:none;border:0;padding:4px 0 0;gap:8px}
+.mc-r.sm span{font-size:11px;font-weight:700}
+
+/* The footer buttons at the reference's size -- a 17px primary that actually
+   looks like the thing you press. */
+.msg-actions,.card-actions{padding:16px 22px 20px;gap:8px}
+
+/* They describe the two ends of the bar above them, so they belong at the two
+   ends of one line. Without nowrap the narrow column wraps them into a stack
+   and the pairing is lost. */
+.mc-r.sm{flex-wrap:nowrap}
+.mc-r.sm span{white-space:nowrap}
