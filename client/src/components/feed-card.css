@@ -876,3 +876,30 @@
 .dev-stat{font-size:10.5px;color:var(--muted)}
 .dev-stat em{font-style:normal;color:var(--dim)}
 .dev-stat.bad{color:var(--sell)}
+
+/* ── MC at call, top-right of the identity block ──────────────────────────
+   Where the reference card puts it. The metric row below leads with the LIVE
+   cap after a refresh; this one never moves, and the pair is what answers
+   "am I early or late". */
+.msg-atcall{text-align:right;line-height:1.15;margin-left:auto;padding-left:14px}
+.ac-label{font-size:9px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--dim)}
+.ac-value{font-family:var(--mono);font-size:18px;font-weight:700;letter-spacing:-.4px;color:var(--text);margin-top:1px}
+.ac-peak{display:inline-block;margin-top:3px;padding:2px 8px;border-radius:99px;
+  font-size:10.5px;font-weight:800;background:var(--accent-dim);color:var(--accent)}
+.ac-peak.flat{background:var(--raise-2);color:var(--muted)}
+
+/* ── the tile row ─────────────────────────────────────────────────────────
+   Six equal tiles, the same six on every token, so you learn where to look
+   once. A null field shows a dash rather than dropping the tile: a missing
+   tile shifts the other five and breaks the only thing this row is for. */
+.tile-row{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-top:12px}
+.tile{background:var(--surface2);border-radius:var(--radius-input);padding:9px 10px;min-width:0}
+.tile-label{font-size:9.5px;font-weight:600;color:var(--dim);white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis;margin-bottom:3px}
+.tile-value{font-family:var(--mono);font-size:14px;font-weight:700;color:var(--text);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tile-value.bad{color:var(--sell)}
+.tile-value.good{color:var(--accent)}
+/* The deck is three columns; below a narrow feed the six wrap to two rows
+   rather than crushing the digits out of legibility. */
+@media (max-width:1500px){ .tile-row{grid-template-columns:repeat(3,1fr)} }

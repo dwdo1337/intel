@@ -654,6 +654,11 @@ function MsgCard({ event, active, onClick, index = 0 }) {
   };
   if (!event || !event.token) return null;
   const m = event.metrics || {};
+  // Only ever a MEASURED peak. `peakMult` is null until the outcome sweep or a
+  // live high-water mark has actually seen one, and deriving a fallback from
+  // the live price would score every token 1.00x the instant it was called --
+  // the exact flattery peak tracking exists to remove.
+  const peakMult = m.peakMult != null && isFinite(m.peakMult) ? Number(m.peakMult) : null;
   const s = event.safety || {};
   const initials = (event.token.name || '?').split(' ').map(x => x[0]).join('').slice(0, 2).toUpperCase();
   const platformColor = event.platform === 'tg' ? '#3b82f6' : '#a855f7';
@@ -755,6 +760,23 @@ function MsgCard({ event, active, onClick, index = 0 }) {
             )}
           </div>
         </div>
+        {/* WHAT IT WAS WORTH WHEN YOU WERE CALLED, top-right, exactly where
+            the reference card puts it. The metric row below leads with the LIVE
+            cap after a refresh; this one never moves, and the two together are
+            what answer "am I early or late". A multiple appears only once a
+            peak has been MEASURED -- deriving one from the live price would
+            score every token 1.00x the moment it was called. */}
+        {m.entryMcap != null && (
+          <div className="msg-atcall">
+            <div className="ac-label">MC at call</div>
+            <div className="ac-value">${fmt(m.entryMcap)}</div>
+            {peakMult != null && (
+              <div className={`ac-peak${peakMult < 1.05 ? ' flat' : ''}`}>
+                PEAK {peakMult >= 10 ? peakMult.toFixed(0) : peakMult.toFixed(2)}&times;
+              </div>
+            )}
+          </div>
+        )}
         <div className="msg-time">{fmtRelTime(event.time)}</div>
       </div>
 
@@ -771,47 +793,47 @@ function MsgCard({ event, active, onClick, index = 0 }) {
 
           The stored `scan_*` fields are still never overwritten; this is purely
           about which of the two the card leads with once both exist. */}
-      <div className="msg-kpis">
-        <Kpi
-          label="Market cap"
-          value={liveOr(m.liveMcap, m.mcap)}
-          sub={refreshedPct == null ? 'at time of call'
-            : `${refreshedPct >= 0 ? '+' : ''}${refreshedPct.toFixed(1)}% · was $${fmt(m.mcap)} at call`}
-          tone={refreshedPct == null ? null : refreshedPct >= 0 ? 'up' : 'down'}
-        />
-        <Kpi
-          label="Liquidity"
-          value={liveOr(m.liveLiq, m.liq)}
-          sub={(m.liveLiq ?? m.liq) == null
-            // "no pool data" reads like a fetch that failed. Measured against
-            // DexScreener, every Solana token missing this figure genuinely has
-            // no pool: it is still on its launchpad's bonding curve and no AMM
-            // pair exists yet. Naming that is useful information -- an early
-            // entry -- rather than an apology for missing data.
-            ? (bondingCurve ? 'bonding curve · no pair yet' : 'not reported by DEX')
-            : m.liveLiq != null && m.liq != null && m.liveLiq !== m.liq
-              ? `${m.liveLiq >= m.liq ? '+' : ''}${pctDelta(m.liq, m.liveLiq)} · was $${fmt(m.liq)}`
-              // Where the figure came from, when it did not come from the
-              // provider every other number on this card came from. A bonding
-              // curve's real depth and an AMM pool's are different
-              // measurements, and a row that shows one while implying the other
-              // is the kind of quiet wrongness this app exists not to do.
-              : m.liqSource === 'pumpfun-curve' ? 'bonding curve reserves'
-              : m.liqSource === 'gmgn-pool' ? 'pool reserves · GMGN'
-              : `${chainLabel} pair`}
-          tone={m.liveLiq != null && m.liq != null && m.liveLiq !== m.liq
-            ? (m.liveLiq >= m.liq ? 'up' : 'down') : null}
-        />
-        {/* Holder count comes from RugCheck on Solana and GMGN elsewhere, and
-            is re-read on every refresh. */}
-        <Kpi
-          label="Holders"
-          value={m.holders == null ? '—' : fmt(m.holders)}
-          sub={m.holders == null
-            ? (chain === 'solana' ? 'not indexed yet' : 'not indexed yet')
-            : (m.top10 != null ? `top10 ${m.top10.toFixed(0)}%` : 'holder count')}
-          tone={m.top10 != null && m.top10 > 80 ? 'down' : null}
-        />
+      {/* The three-KPI row that used to sit here is gone, replaced by the tile
+          row below.
+
+          It was showing LIQUIDITY and HOLDERS a second time, three rows above
+          the tiles that show them again, and MARKET CAP a third time next to
+          the "MC at call" figure in the header. Three readings of the same
+          number in one card is not emphasis -- it is three chances to read a
+          different one by accident, because the KPI led with the live value
+          after a refresh while the header never moves.
+
+          One row of tiles now carries every figure once. The header carries the
+          call-time cap, which is the only number that is deliberately frozen. */}
+
+      {/* THE SIX FIGURES YOU READ FIRST.
+          The reference card puts these in a row of equal tiles above
+          everything else, and the reason it works is that they are the same
+          six on every token -- you learn where to look once. The detail rows
+          below answer follow-up questions; this row answers "is this worth a
+          follow-up question at all".
+
+          A tile renders a dash when its field is null. It is never dropped:
+          a missing tile would shift the other five and break the one thing
+          this row is for. */}
+      <div className="tile-row">
+        <Tile label={refreshedPct == null ? 'Market cap' : 'Market cap now'}
+              value={(m.liveMcap ?? m.mcap) == null ? '—' : `$${fmt(m.liveMcap ?? m.mcap)}`}
+              tone={refreshedPct == null ? null : refreshedPct >= 0 ? 'good' : 'bad'} />
+        <Tile label="Liquidity" value={(m.liveLiq ?? m.liq) == null ? '—' : `$${fmt(m.liveLiq ?? m.liq)}`} />
+        <Tile label="Holders" value={m.holders == null ? '—' : fmt(m.holders)} />
+        <Tile label="Top 10" value={m.top10 == null ? '—' : `${m.top10.toFixed(1)}%`}
+              tone={m.top10 != null && m.top10 > 30 ? 'bad' : null} />
+        <Tile label="Terminal users"
+              value={event.terminals?.pct == null ? '—' : `${event.terminals.pct}%`} />
+        {/* `holders` is only present once the wallet lookup has RUN, so an
+            absent block is "not checked yet" and renders a dash. A zero inside
+            it is a real answer -- nobody notable is in this -- and renders as
+            a zero. Those are different facts and the tile keeps them apart. */}
+        <Tile label="Smart / KOL"
+              value={!event.holders ? '—'
+                : `${event.holders.smartMoney ?? '-'} / ${event.holders.kols ?? '-'}`}
+              tone={event.holders && ((event.holders.smartMoney > 0) || (event.holders.kols > 0)) ? 'good' : null} />
       </div>
 
       {/* Straight under the numbers, because it qualifies them. A $24K cap with
@@ -1173,6 +1195,20 @@ function RiskLine({ safety, chainLabel, top10 }) {
     <div className="risk-line clean">
       <span className="rl-head">&#10003; No red flags</span>
       <span className="rl-flags"><span>{s.source ? `checked via ${s.source}` : 'checked'}</span></span>
+    </div>
+  );
+}
+
+/**
+ * One figure in the tile row. Deliberately dumber than `Kpi`: no sub-label, no
+ * delta, no source note. The row's job is a single sweep of the eye, and a tile
+ * that explains itself is a tile you have to stop and read.
+ */
+function Tile({ label, value, tone }) {
+  return (
+    <div className="tile">
+      <div className="tile-label">{label}</div>
+      <div className={`tile-value${tone ? ' ' + tone : ''}`}>{value}</div>
     </div>
   );
 }
