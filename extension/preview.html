@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>intel. — alert preview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  /* Deliberately a PLAIN page, not the deck. The whole point of the extension
+     is that the alert appears over whatever you are reading, so a preview
+     drawn on top of the deck would be testing the wrong thing. */
+  :root { color-scheme: dark; }
+  body { margin: 0; min-height: 100vh; background: #0b0c0e; color: #fff;
+    font: 500 16px/1.6 Inter, system-ui, sans-serif; padding: 48px 24px; }
+  .wrap { max-width: 680px; margin: 0 auto; }
+  h1 { font-size: 28px; font-weight: 900; letter-spacing: -.8px; margin: 0 0 8px; }
+  p { color: #8e929b; max-width: 60ch; margin: 0 0 24px; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; }
+  button { border: 0; border-radius: 14px; padding: 13px 18px; background: #1a1b1f; color: #fff;
+    font: 800 15px Inter, system-ui, sans-serif; cursor: pointer; }
+  button.go { background: #2bf08c; color: #04120a; }
+  button:hover { filter: brightness(1.25); }
+  .filler { margin-top: 40px; color: #5c6069; font-size: 14px; line-height: 1.8; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Alert preview</h1>
+  <p>This page loads the extension's real <code>toast.js</code>, so what you see here is exactly
+     what appears on any other tab. Nothing is sent to the Windows notification centre.</p>
+  <div class="row">
+    <button class="go" id="signal">New call</button>
+    <button id="note">Watchlist note</button>
+    <button id="thin">No narrative yet</button>
+  </div>
+  <p class="filler">The alert carries four things: what the token is, who called it and in which
+     room, the market cap at the moment of the call, and the account behind it. Clicking the body
+     opens the deck on that token; the button copies the contract address.</p>
+</div>
+
+<script src="toast.js"></script>
+<script>
+  // The renderer talks to the extension when a toast is clicked. Outside the
+  // extension there is no runtime, so stub it rather than let the click throw
+  // and make the preview look broken when it is not.
+  if (!window.chrome || !window.chrome.runtime) {
+    window.chrome = { runtime: { sendMessage: (m) => console.log('would open the deck:', m) } };
+  }
+
+  const SIGNAL = {
+    id: 'preview-1', ca: 'DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263',
+    symbol: 'BONK', name: 'Bonk', image: null, mcap: 329474445,
+    chat_name: 'Alpha Signals', author: '@dogeon1ke', tier: 'signal',
+    x: { handle: 'bonk_inu', name: 'BONK!!!', avatar: null, followers: 455600, verified: true },
+  };
+  const NOTE = {
+    id: 'preview-2', ca: 'H4phNbsqjV5rqk8u6FUACTLB6rNZRTAPGnBb8KXJpump',
+    symbol: 'SSE', name: 'Solana Social Explorer', image: null, mcap: 98540,
+    chat_name: 'Degen Lounge', author: '@mirawave', tier: 'note',
+    x: { handle: 'usetapestry', name: 'tapestry', avatar: null, followers: 23577, verified: true },
+  };
+  // The narrative lands a second after the alert fires, so this shape is the
+  // common one for a brand-new token and has to look finished without it.
+  const THIN = {
+    id: 'preview-3', ca: '7GCihgDB8fe6KNjn2MYtkzZcRjQy3t9GHdC8uHYmW2hr',
+    symbol: 'POPCAT', name: 'Popcat', image: null, mcap: 41200,
+    chat_name: 'Early Entries', author: '@tenzo', tier: 'signal', x: null,
+  };
+
+  const opts = { seconds: 90 };
+  document.getElementById('signal').onclick = () => window.IntelToast.show(SIGNAL, opts);
+  document.getElementById('note').onclick   = () => window.IntelToast.show(NOTE, opts);
+  document.getElementById('thin').onclick   = () => window.IntelToast.show(THIN, opts);
+</script>
+</body>
+</html>
