@@ -289,9 +289,10 @@ alert that sometimes means nothing teaches you to ignore it.
 
 | | |
 | --- | --- |
-| Launch | `START-INTEL.bat` (first run ~60s while it self-extracts) |
+| Launch | `npm start`, or `START-INTEL.bat` on Windows |
+| Open it | <http://localhost:5050> |
+| Alerts on other tabs | load `extension/` at `chrome://extensions` |
 | Settings / login | gear icon in the top bar |
-| Your data | `%APPDATA%\intel-command-deck\` |
-| Diagnostics | `%APPDATA%\intel-command-deck\backend.log` |
-| GMGN key | manual edit of `config.json` in that folder — no UI yet |
-| Rebuild | `cd app && npm run electron:pack` |
+| Your data | `data/signals.json` next to the code |
+| GMGN key | manual edit of `config.json` — no UI yet |
+| Rebuild the UI | `npm run build` |

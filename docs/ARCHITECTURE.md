@@ -358,46 +358,35 @@ own: a borderless, always-on-top `BrowserWindow` rendering `toast.html`.
 
 ---
 
-## 12. Packaging and distribution
+## 12. Running and distribution
 
-Portable single-file `.exe` (~73 MB) via electron-builder; no installer, no
-admin rights. `START-INTEL.bat` at the workspace root launches the newest build.
+The deck runs from source: `npm start` serves the built React client and the
+backend together on `127.0.0.1:5050`, and you reach it in a browser. On Windows
+`START-INTEL.bat` does the same thing, installing dependencies and building the
+client on first run.
 
-**Packaging is the subtlest part of the system.** The server is ESM and runs as a
-child process, which interacts badly with Electron's asar archive. The rule
-learned the hard way: *once anything is unpacked, everything it resolves by
-relative path must be unpacked with it.* Concretely — `server/`, `node_modules/`
-and `client/dist/` are all `asarUnpack`ed; `server/package.json` declares
-`"type": "module"` locally because the root manifest stays inside the archive;
-the backend is spawned with `ELECTRON_RUN_AS_NODE=1` because `process.execPath`
-is the Electron binary, not Node; and writable paths come from Electron's
-`userData` because the app directory is read-only.
+Alerts reach other tabs through the browser extension in `extension/`, which
+subscribes to a plain WebSocket on `/ws`. That endpoint exists separately from
+the deck's Socket.IO connection for one reason: a Manifest V3 service worker has
+no bundler, and pulling a Socket.IO client into it to carry four message shapes
+would not be worth it. The socket is broadcast-only and reads nothing it
+receives.
 
-**A second packaged-only trap:** the backend runs as `electron.exe
---run-as-node`, so every child it spawns is Electron too. `gmgn-cli` parses
-arguments with `commander`, which special-cases Electron and mis-slices `argv`
-in a packaged app — reading the script path as a command name. **Every GMGN call
-failed in the `.exe` while working perfectly in dev.** `server/gmgn-cli-shim.cjs`
-makes the child look like plain node before handing over.
+Writable state lives beside the code — `data/signals.json` for the signal store,
+`config.json` for credentials — and `INTEL_DATA_DIR` moves both somewhere else
+when you want an isolated instance for testing.
 
-**Since 2026-08-05 the backend is bundled with esbuild** into
-`dist-server/server.cjs`, so `node_modules` is not shipped at all. The unpacked
-payload dropped from ~280 MB and thousands of files to **6 MB and 31 files**,
-and cold start from ~60 s to **14 s**.
-
-`gmgn-cli` is bundled separately to `dist-server/vendor/gmgn-cli/dist/index.mjs`
-because it is *spawned* as its own process and therefore needs its own
-resolvable dependencies — the vendor nesting exists so its runtime
-`require("../package.json")` and `require("../../package.json")` both land
-inside our tree.
-
-Dev still runs `server/index.js` directly, so source edits need no rebuild.
-
-**Diagnostics:** backend spawn, exit code, stdout and stderr always append to
-`%APPDATA%\intel-command-deck\backend.log`. This is unconditional by design — it
-was silence on this path that hid a chain of packaging failures.
-
----
+> **Removed 2026-10-02.** The deck used to ship as a packaged Electron `.exe`,
+> and most of the hard-won knowledge in this section was about surviving that:
+> `asarUnpack` rules, a local `server/package.json` declaring `"type": "module"`
+> because the root manifest stayed inside the archive, `ELECTRON_RUN_AS_NODE=1`
+> on the backend because `process.execPath` was the Electron binary, and
+> `server/gmgn-cli-shim.cjs`, which existed because `commander` special-cases
+> Electron and mis-sliced `argv` in a packaged app — reading the script path as
+> a command name, so **every GMGN call failed in the `.exe` while working
+> perfectly in dev**. None of that applies now and all of it is gone. It is
+> recorded here because the same traps return the moment anyone packages an ESM
+> Node server inside Electron again.
 
 ## 13. Security and privacy
 

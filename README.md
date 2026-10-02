@@ -12,7 +12,7 @@ you only when something is worth it.**
 [![No account](https://img.shields.io/badge/account-none-4fe3a0?style=flat-square)](#privacy)
 [![Licence](https://img.shields.io/badge/licence-MIT-6b7588?style=flat-square)](LICENSE)
 
-[**Download**](../../releases) · [Setup](docs/SETUP.md) ·
+[Setup](docs/SETUP.md) ·
 [How it works](docs/HOW-IT-WORKS.md) · [Architecture](docs/ARCHITECTURE.md) ·
 [Changelog](CHANGELOG.md)
 
@@ -194,48 +194,47 @@ wrong"* rather than *"these are two different tokens"*.
 
 ## Install
 
-### Option A — installer (recommended)
-
-Download **`intel-Command-Deck-Setup-x.y.z.exe`** from
-[Releases](../../releases) and run it. Standard wizard: pick a folder, get a
-desktop and Start-menu shortcut.
-
-It installs per-user, so **no admin rights and no UAC prompt**. Uninstalling
-leaves your credentials and signal history alone.
-
-### Option B — portable
-
-Download **`intel-Command-Deck-Portable-x.y.z.exe`** and run it. No install, no
-shortcuts — it unpacks to a temp folder on each launch. Good for a USB stick.
-
-> Prefer the installer if you can. The portable build re-extracts to `%TEMP%` on
-> every launch, and on a machine that cleans that folder aggressively the
-> extraction can be removed **while the app is running**.
-
-> **SmartScreen** will warn on first run, because the binary isn't code-signed
-> (a certificate costs a few hundred dollars a year). Click **More info → Run
-> anyway**. If you'd rather not trust a binary, build it yourself — see below.
-
-**First launch takes about 15 seconds** while the backend starts and connects.
-
-### Option C — build from source
-
-Requires **Node.js 20+**.
+Requires **Node.js 20+**. The deck runs locally and you reach it in your
+browser; there is no installer to download.
 
 ```bash
 git clone https://github.com/dwdo1337/intel.git
 cd intel
 npm install
 cd client && npm install && cd ..
-npm run electron:pack
+npm run build
+npm start
 ```
 
-Both installers land in `dist-electron/`. To run in development instead:
+Then open **<http://localhost:5050>**. Leave the terminal open — closing it
+stops the deck.
+
+On Windows you can double-click **`START-INTEL.bat`** instead. It installs
+dependencies and builds the interface on first run, then starts the deck and
+opens your browser.
+
+### Alerts on every tab
+
+Calls appear in the deck as they arrive. To get the same alert on whatever tab
+you are looking at:
+
+1. Open `chrome://extensions` and turn on **Developer mode**.
+2. Choose **Load unpacked** and pick the `extension` folder.
+
+The toolbar icon shows a red **OFF** badge whenever the deck is not running, so
+"no alerts" and "nothing is listening" never look the same.
+
+**Nothing is sent to the operating system's notification centre.** Alerts are
+drawn inside the page, in a shadow root the host page's styles cannot reach.
+
+### Development
 
 ```bash
-npm run build          # build the UI
-node server/index.js   # backend + UI on http://127.0.0.1:5050
+npm run dev    # backend plus a Vite dev server with hot reload
 ```
+
+`npm start` serves the **built** client, so run `npm run build` after changing
+anything under `client/src/`.
 
 ---
 
@@ -275,9 +274,9 @@ Telegram (GramJS user session) ─┐
 Discord (gateway WebSocket) ────┘
 ```
 
-Three processes: an Electron main process that draws the notification windows, a
-Node backend (Express + Socket.IO) that ingests and enriches, and a React UI
-served locally at `127.0.0.1:5050`.
+Two processes: a Node backend (Express + Socket.IO) that ingests and enriches,
+and a React UI it serves at `127.0.0.1:5050`. A browser extension subscribes to
+a plain WebSocket on the same port and draws the alerts on any other tab.
 
 More detail in [docs/HOW-IT-WORKS.md](docs/HOW-IT-WORKS.md) and
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).

@@ -203,14 +203,12 @@ against every file in the directory.
 - **../github-release/PUBLISHING.md** — how to push and cut a release
 - **../github-release/AGENT-SETUP-PROMPT.md** — hand to an agent to install and verify
 
-The app now builds **two** Windows artifacts (`npm run electron:pack`):
+The app no longer builds a Windows artifact. It runs from source --
+`npm start`, or `START-INTEL.bat` on Windows -- and you reach it at
+<http://localhost:5050>. Alerts reach other tabs through the extension in
+`extension/`, loaded once at `chrome://extensions`.
 
-| artifact | what |
-| --- | --- |
-| `intel-Command-Deck-Setup-<v>.exe` | NSIS wizard, per-user, no admin/UAC, keeps AppData on uninstall |
-| `intel-Command-Deck-Portable-<v>.exe` | single file, unpacks per launch |
-
-Both are byte-scanned for credentials before release.
+Every file is still byte-scanned for credentials before release.
 
 ---
 

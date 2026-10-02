@@ -70,17 +70,14 @@ Copy `app/config.example.json` to `app/config.json` and fill it in:
 Leave `monitored_chats` and `monitored_guilds` empty — you pick the chats
 inside the app, which is easier than looking up numeric ids by hand.
 
-> ### Where the packaged app actually reads this from
+> ### Where this is read from
 >
-> `app/config.json` is what the **development** server reads.
+> `config.json` beside the server, and nowhere else. Edit it, restart the deck,
+> and the change is live.
 >
-> The packaged `.exe` reads from **`%APPDATA%\intel-command-deck\config.json`**,
-> because the app directory inside a portable build is a read-only archive.
-> On first run the app creates that folder; edits you make in the repo after
-> that point have no effect on the `.exe`.
->
-> The folder is named `intel-command-deck` (from the app's internal `name`),
-> not "intel. Command Deck".
+> `INTEL_DATA_DIR` moves both the config and the signal store somewhere else,
+> which is how you run a second instance for testing without touching the one
+> holding your real credentials.
 
 ---
 
@@ -116,7 +113,7 @@ Requires Node.js 18+.
 cd app
 npm install
 npm run build            # builds the React client
-npm run electron:pack    # produces the portable .exe in dist-electron/
+npm start                # serves it, and the backend, on :5050
 ```
 
 Other scripts: `npm run dev` (backend + Vite dev server), `npm run server`

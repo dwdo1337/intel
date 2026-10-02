@@ -55,7 +55,7 @@
 import { execFile } from 'child_process';
 import { existsSync } from 'fs';
 import { fileURLToPath } from 'url';
-import { dirname, join, sep } from 'path';
+import { dirname, join } from 'path';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -74,18 +74,10 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 // its OWN dependency tree — shipping the package alone failed with
 // "Cannot find package 'undici'". Bundling it is what lets node_modules be
 // dropped from the build entirely.
-const CLI_BUNDLED = join(__dirname, 'vendor', 'gmgn-cli', 'dist', 'index.mjs')
-  .replace(`app.asar${sep}`, `app.asar.unpacked${sep}`);
-const CLI_FROM_MODULES = join(__dirname, '..', 'node_modules', 'gmgn-cli', 'dist', 'index.js')
-  .replace(`app.asar${sep}`, `app.asar.unpacked${sep}`);
+const CLI_BUNDLED = join(__dirname, 'vendor', 'gmgn-cli', 'dist', 'index.mjs');
+const CLI_FROM_MODULES = join(__dirname, '..', 'node_modules', 'gmgn-cli', 'dist', 'index.js');
 const CLI_ENTRY = existsSync(CLI_BUNDLED) ? CLI_BUNDLED : CLI_FROM_MODULES;
 
-// The CLI is launched THROUGH a shim rather than directly. gmgn-cli parses
-// args with commander, which special-cases Electron and mis-slices argv in a
-// packaged build, so every call died with "unknown command <path>". The shim
-// makes the child look like plain node first. See gmgn-cli-shim.cjs.
-const CLI_SHIM = join(__dirname, 'gmgn-cli-shim.cjs')
-  .replace(`app.asar${sep}`, `app.asar.unpacked${sep}`);
 
 const CALL_TIMEOUT_MS = 20000;
 const MIN_GAP_MS = 1200;
@@ -219,7 +211,7 @@ function runCli(args, log, priority = GMGN_PRIORITY.ONDEMAND) {
     return new Promise((resolve) => {
       execFile(
         process.execPath,
-        [CLI_SHIM, CLI_ENTRY, ...args, '--raw'],
+        [CLI_ENTRY, ...args, '--raw'],
         {
           timeout: CALL_TIMEOUT_MS,
           windowsHide: true,
@@ -227,21 +219,6 @@ function runCli(args, log, priority = GMGN_PRIORITY.ONDEMAND) {
           env: {
             ...process.env,
             GMGN_API_KEY: _apiKey,
-            // MUST be set explicitly, not inherited.
-            //
-            // When packaged, this server is itself running as
-            // `electron.exe --run-as-node`, so process.execPath is the ELECTRON
-            // binary. Electron REMOVES ELECTRON_RUN_AS_NODE from process.env
-            // once it has consumed it, precisely so children don't inherit it
-            // -- which means spawning the CLI without setting it again starts
-            // Electron in APP mode and the CLI never runs:
-            //   error: unknown command '...\gmgn-cli\dist\index.js'
-            //
-            // Every GMGN call failed this way in the packaged build while
-            // working perfectly in dev (where execPath is node). Symptom was
-            // silent: no KOL data, no smart money, no GMGN artwork, and a KOL
-            // watcher reporting tokensIndexed: 0.
-            ELECTRON_RUN_AS_NODE: '1',
           },
         },
         (err, stdout, stderr) => {

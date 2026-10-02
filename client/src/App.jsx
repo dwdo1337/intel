@@ -34,32 +34,6 @@ export default function App() {
   // the deck sits there looking broken.
   const [openReq, setOpenReq] = useState(null);
 
-  // Clicking a toast -- a watch note especially -- should land on that token,
-  // not merely raise the window. The main process sends the ca over
-  // `open-token`, re-exposed by electron/preload.cjs.
-  // The extension opens the deck at #token=<ca> when one of its in-page alerts
-  // is clicked. Read on mount AND on hashchange, because clicking a second
-  // alert while the deck tab is already open changes the hash without
-  // reloading anything -- without the listener the first token would just stay
-  // on screen and the click would look broken.
-  useEffect(() => {
-    const fromHash = () => {
-      const m = /[#&]token=([^&]+)/.exec(window.location.hash || '');
-      if (m) setOpenReq({ ca: decodeURIComponent(m[1]), n: Date.now() });
-    };
-    fromHash();
-    window.addEventListener('hashchange', fromHash);
-    return () => window.removeEventListener('hashchange', fromHash);
-  }, []);
-
-  useEffect(() => {
-    const api = window.electronAPI;
-    if (!api || typeof api.onOpenToken !== 'function') return;   // browser dev
-    return api.onOpenToken(({ ca }) => {
-      if (ca) setOpenReq({ ca, n: Date.now() });
-    });
-  }, []);
-
   const loadFeed = async (keepSelection = true) => {
     try {
       const res = await fetch('/api/react-feed');
