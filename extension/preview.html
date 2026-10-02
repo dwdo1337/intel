@@ -30,7 +30,8 @@
   <p>This page loads the extension's real <code>toast.js</code>, so what you see here is exactly
      what appears on any other tab. Nothing is sent to the Windows notification centre.</p>
   <div class="row">
-    <button class="go" id="signal">New call</button>
+    <button class="go" id="signal">New call · profile</button>
+    <button id="tweet">New call · linked post</button>
     <button id="note">Watchlist note</button>
     <button id="thin">No narrative yet</button>
   </div>
@@ -48,28 +49,49 @@
     window.chrome = { runtime: { sendMessage: (m) => console.log('would open the deck:', m) } };
   }
 
+  // Real artwork and real avatars, so the preview exercises image loading and
+  // the fallback letter tile rather than only the happy path with neither.
   const SIGNAL = {
     id: 'preview-1', ca: 'DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263',
-    symbol: 'BONK', name: 'Bonk', image: null, mcap: 329474445,
+    symbol: 'BONK', name: 'Bonk',
+    image: 'https://dd.dexscreener.com/ds-data/tokens/solana/DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263.png',
+    mcap: 329474445,
     chat_name: 'Alpha Signals', author: '@dogeon1ke', tier: 'signal',
     x: { handle: 'bonk_inu', name: 'BONK!!!', avatar: null, followers: 455600, verified: true },
+    tweet: null,
+  };
+  // The caller linked a POST. The post replaces the profile strip, because it
+  // is the claim they were pointing at.
+  const TWEET = {
+    id: 'preview-2', ca: 'H4phNbsqjV5rqk8u6FUACTLB6rNZRTAPGnBb8KXJpump',
+    symbol: 'SSE', name: 'Solana Social Explorer',
+    image: 'https://dd.dexscreener.com/ds-data/tokens/solana/H4phNbsqjV5rqk8u6FUACTLB6rNZRTAPGnBb8KXJpump.png',
+    mcap: 98540,
+    chat_name: 'Degen Lounge', author: '@mirawave', tier: 'signal',
+    x: { handle: 'usetapestry', name: 'tapestry', avatar: null, followers: 23577, verified: true },
+    tweet: {
+      text: 'Building an open social graph on @solana.\n\nEvery profile, follow and post onchain, portable between apps. No platform owns your audience.',
+      likes: 1840, views: 96200, image: null,
+    },
   };
   const NOTE = {
-    id: 'preview-2', ca: 'H4phNbsqjV5rqk8u6FUACTLB6rNZRTAPGnBb8KXJpump',
+    id: 'preview-3', ca: 'H4phNbsqjV5rqk8u6FUACTLB6rNZRTAPGnBb8KXJpump',
     symbol: 'SSE', name: 'Solana Social Explorer', image: null, mcap: 98540,
     chat_name: 'Degen Lounge', author: '@mirawave', tier: 'note',
     x: { handle: 'usetapestry', name: 'tapestry', avatar: null, followers: 23577, verified: true },
+    tweet: null,
   };
   // The narrative lands a second after the alert fires, so this shape is the
   // common one for a brand-new token and has to look finished without it.
   const THIN = {
-    id: 'preview-3', ca: '7GCihgDB8fe6KNjn2MYtkzZcRjQy3t9GHdC8uHYmW2hr',
+    id: 'preview-4', ca: '7GCihgDB8fe6KNjn2MYtkzZcRjQy3t9GHdC8uHYmW2hr',
     symbol: 'POPCAT', name: 'Popcat', image: null, mcap: 41200,
-    chat_name: 'Early Entries', author: '@tenzo', tier: 'signal', x: null,
+    chat_name: 'Early Entries', author: '@tenzo', tier: 'signal', x: null, tweet: null,
   };
 
   const opts = { seconds: 90 };
   document.getElementById('signal').onclick = () => window.IntelToast.show(SIGNAL, opts);
+  document.getElementById('tweet').onclick  = () => window.IntelToast.show(TWEET, opts);
   document.getElementById('note').onclick   = () => window.IntelToast.show(NOTE, opts);
   document.getElementById('thin').onclick   = () => window.IntelToast.show(THIN, opts);
 </script>

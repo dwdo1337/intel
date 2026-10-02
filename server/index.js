@@ -2390,6 +2390,20 @@ function emitAlert(hit, kind, trigger) {
         verified: !!hit.x_info.profile.verified,
         url: hit.x_info.url || null,
       } : null,
+      // THE POST ITSELF when the caller linked one, not merely its author.
+      // A status link is the caller pointing at a claim; showing only
+      // "@someone, 23K followers" throws away the claim and keeps the
+      // letterhead. Trimmed here rather than in the toast so the same limit
+      // applies wherever the alert is rendered.
+      tweet: hit.x_info && hit.x_info.tweet ? {
+        text: String(hit.x_info.tweet.text || '').slice(0, 240),
+        likes: hit.x_info.tweet.likes ?? null,
+        views: hit.x_info.tweet.views ?? null,
+        // One image. The alert is a strip in the corner of someone else's
+        // page, and a four-up media grid in it is a popup, not a notice.
+        image: (hit.x_info.tweet.media || []).find(m => m && m.url) ?
+               (hit.x_info.tweet.media.find(m => m && m.url)).url : null,
+      } : null,
       tier: isWatchlistKind(kind) ? 'note' : 'signal',
       alert_kind: kind,
       at: Date.now(),

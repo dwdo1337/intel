@@ -13,6 +13,10 @@
 
   const CSS = `
   :host { all: initial; }
+  /* ONE corner, always the top right. The reference let this be configured
+     and that is a setting with no right answer: an alert that can be in four
+     places is one you have to look for, and the whole value of a corner strip
+     is that your eye already knows where it will be. */
   .stack { position: fixed; z-index: 2147483647; display: flex; flex-direction: column; gap: 10px;
     width: 384px; max-width: calc(100vw - 24px); top: 16px; right: 16px;
     font: 500 13px/1.45 Inter, system-ui, -apple-system, 'Segoe UI', sans-serif;
@@ -59,7 +63,27 @@
   .nar img { width: 26px; height: 26px; border-radius: 50%; object-fit: cover; background: #24262c; flex: none; }
   .nar .h { min-width: 0; flex: 1; font-size: 12px; font-weight: 700; color: #d6d8dd;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .nar .v { width: 13px; height: 13px; border-radius: 50%; background: #1d9bf0; color: #fff;
+    font-size: 8px; font-weight: 900; display: grid; place-items: center; flex: none; }
   .nar .f { font-size: 12px; font-weight: 900; color: #fff; flex: none; }
+  /* A linked POST replaces the profile strip rather than sitting under it.
+     The caller pointed at a claim; the claim is the content, and stacking
+     both would make a corner strip taller than the page it sits on. */
+  .tw { margin-top: 8px; padding: 9px 11px; background: #17181c; border-radius: 12px; }
+  .tw .who { display: flex; align-items: center; gap: 7px; }
+  .tw .who img { width: 22px; height: 22px; border-radius: 50%; object-fit: cover;
+    background: #24262c; flex: none; }
+  .tw .who .h { min-width: 0; flex: 1; font-size: 11.5px; font-weight: 700; color: #8e929b;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tw .who .f { font-size: 11.5px; font-weight: 800; color: #d6d8dd; flex: none; }
+  /* Four lines, then it clips. Enough to judge the claim, not so much that
+     the alert becomes something you have to close before you can work. */
+  .tw p { margin: 7px 0 0; font-size: 13px; line-height: 1.45; color: #fff; font-weight: 500;
+    display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4;
+    overflow: hidden; white-space: pre-line; word-break: break-word; }
+  .tw .pic { display: block; width: 100%; max-height: 132px; object-fit: cover;
+    border-radius: 9px; margin-top: 8px; background: #24262c; }
+  .tw .st { display: flex; gap: 12px; margin-top: 7px; font-size: 11.5px; font-weight: 700; color: #5c6069; }
   .bar { height: 2px; background: #1a1b1f; }
   .bar i { display: block; height: 100%; width: 100%; background: var(--c, #2bf08c); transform-origin: left; }
   `;
@@ -115,11 +139,32 @@
         `${a.chat_name ? esc(a.chat_name) : ''}</div>`
       : '';
 
-    const nar = a.x
-      ? `<div class="nar">${a.x.avatar ? `<img src="${esc(a.x.avatar)}" alt="">` : ''}` +
+    // What the token IS. A linked post wins over the profile: the post is the
+    // claim the caller was pointing at, where the profile is only who made it.
+    let nar = '';
+    if (a.tweet && a.tweet.text) {
+      const x = a.x || {};
+      nar =
+        `<div class="tw">` +
+          `<div class="who">` +
+            `${x.avatar ? `<img src="${esc(x.avatar)}" alt="">` : ''}` +
+            `<span class="h">${esc(x.name || '')}${x.handle ? ` @${esc(x.handle)}` : ''}</span>` +
+            `${x.followers != null ? `<span class="f">${count(x.followers)}</span>` : ''}` +
+          `</div>` +
+          `<p>${esc(a.tweet.text)}</p>` +
+          `${a.tweet.image ? `<img class="pic" src="${esc(a.tweet.image)}" alt="">` : ''}` +
+          `${(a.tweet.likes != null || a.tweet.views != null)
+            ? `<div class="st">${a.tweet.likes != null ? `<span>♥ ${count(a.tweet.likes)}</span>` : ''}` +
+              `${a.tweet.views != null ? `<span>👁 ${count(a.tweet.views)}</span>` : ''}</div>`
+            : ''}` +
+        `</div>`;
+    } else if (a.x) {
+      nar =
+        `<div class="nar">${a.x.avatar ? `<img src="${esc(a.x.avatar)}" alt="">` : ''}` +
         `<span class="h">${esc(a.x.name || ('@' + a.x.handle))} · @${esc(a.x.handle)}</span>` +
-        `<span class="f">${count(a.x.followers)}</span></div>`
-      : '';
+        `${a.x.verified ? '<i class="v">✓</i>' : ''}` +
+        `<span class="f">${count(a.x.followers)}</span></div>`;
+    }
 
     el.innerHTML = `
       <div class="in">
