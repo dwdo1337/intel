@@ -2389,6 +2389,11 @@ function emitAlert(hit, kind, trigger) {
         followers: hit.x_info.profile.followers ?? null,
         verified: !!hit.x_info.profile.verified,
         url: hit.x_info.url || null,
+        // The bio, which is the profile equivalent of the post text: what the
+        // account says it is. Without it the alert showed a name and a follower
+        // count, which tells you the account is popular but not what it claims
+        // to be. Trimmed here so the limit holds wherever the alert is drawn.
+        bio: String(hit.x_info.profile.bio || '').slice(0, 240) || null,
       } : null,
       // THE POST ITSELF when the caller linked one, not merely its author.
       // A status link is the caller pointing at a claim; showing only

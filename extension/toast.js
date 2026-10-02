@@ -32,17 +32,25 @@
   .t::before { content: ''; position: absolute; inset: 0 auto 0 0; width: 3px; background: var(--c, #2bf08c); }
   .t.note { --c: #fff; }
   .in { padding: 13px 14px 12px 16px; }
-  .hd { display: flex; align-items: center; gap: 11px; }
+  .hd { display: flex; align-items: flex-start; gap: 11px; }
   .ic { width: 46px; height: 46px; border-radius: 12px; object-fit: cover; background: #1a1b1f;
     flex: none; display: grid; place-items: center; font-weight: 800; font-size: 18px; color: #8e929b; }
   .id { min-width: 0; flex: 1; }
-  .tk { display: flex; align-items: center; gap: 7px; font-size: 17px; font-weight: 800;
+  .tk { display: flex; align-items: baseline; gap: 9px; font-size: 17px; font-weight: 800;
     letter-spacing: -.2px; white-space: nowrap; }
-  .tk span { overflow: hidden; text-overflow: ellipsis; }
-  .sub { display: flex; align-items: center; gap: 6px; margin-top: 2px; font-size: 12px;
-    color: #8e929b; white-space: nowrap; overflow: hidden; }
-  .sub .nm { overflow: hidden; text-overflow: ellipsis; }
-  .sub .mc { color: #fff; font-weight: 700; flex: none; }
+  .tk .sym { overflow: hidden; text-overflow: ellipsis; }
+  .tk .mc { margin-left: auto; font-size: 16px; font-weight: 900; color: #fff; flex: none; }
+  .sub { font-size: 12px; color: #8e929b; margin-top: 1px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  /* WHO AND WHERE, on one line under the ticker rather than in a panel of its
+     own. It was a full-width box with its own label, padding and background,
+     which gave two short facts the same weight as the post they sit above. */
+  .who { display: flex; align-items: center; gap: 5px; margin-top: 3px; font-size: 11.5px;
+    font-weight: 700; color: #8e929b; white-space: nowrap; overflow: hidden; }
+  .who .nm { overflow: hidden; text-overflow: ellipsis; }
+  .who b { color: #d6d8dd; font-weight: 800; flex: none; }
+  .who .wl { background: #fff; color: #000; border-radius: 5px; padding: 1px 5px;
+    font-size: 9.5px; font-weight: 900; letter-spacing: .04em; flex: none; }
   .cp { flex: none; align-self: flex-start; border: 1px solid #2e313a; background: #1a1b1f; color: #fff;
     border-radius: 10px; padding: 7px 12px; font: 700 12px Inter, system-ui, sans-serif; cursor: pointer; }
   .cp:hover { background: #22242a; }
@@ -51,39 +59,31 @@
     background: transparent; color: #5c6069; font-size: 14px; line-height: 20px; cursor: pointer;
     opacity: 0; transition: opacity .15s; }
   .t:hover .x { opacity: 1; } .x:hover { background: #22242a; color: #fff; }
-  .who { margin-top: 10px; padding: 9px 11px; background: #17181c; border-radius: 12px;
-    color: #d6d8dd; font-size: 13px; line-height: 1.5; }
-  .who b { color: #fff; }
-  .src { display: block; margin-bottom: 3px; font-size: 11px; font-weight: 700; color: #8e929b; }
-  /* The narrative, one line: who the project claims to be and how many people
-     follow it. This is the fact that most often decides whether the tab is
-     worth switching to at all. */
-  .nar { display: flex; align-items: center; gap: 8px; margin-top: 8px; padding: 8px 10px;
-    background: #17181c; border-radius: 12px; }
-  .nar img { width: 26px; height: 26px; border-radius: 50%; object-fit: cover; background: #24262c; flex: none; }
-  .nar .h { min-width: 0; flex: 1; font-size: 12px; font-weight: 700; color: #d6d8dd;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .nar .v { width: 13px; height: 13px; border-radius: 50%; background: #1d9bf0; color: #fff;
-    font-size: 8px; font-weight: 900; display: grid; place-items: center; flex: none; }
-  .nar .f { font-size: 12px; font-weight: 900; color: #fff; flex: none; }
-  /* A linked POST replaces the profile strip rather than sitting under it.
-     The caller pointed at a claim; the claim is the content, and stacking
-     both would make a corner strip taller than the page it sits on. */
-  .tw { margin-top: 8px; padding: 9px 11px; background: #17181c; border-radius: 12px; }
-  .tw .who { display: flex; align-items: center; gap: 7px; }
-  .tw .who img { width: 22px; height: 22px; border-radius: 50%; object-fit: cover;
+
+  /* ---- the narrative: what the token says it is -------------------------
+     One block for both shapes. A linked post puts its text here; an account
+     link puts its bio. The text area is sized for about two sentences and
+     scrolls past that, so a long bio neither clips mid-thought nor turns the
+     alert into a column down the side of the page. */
+  .nar { margin-top: 9px; padding: 10px 11px; background: #17181c; border-radius: 12px; }
+  .nar .au { display: flex; align-items: center; gap: 7px; }
+  .nar .au img { width: 22px; height: 22px; border-radius: 50%; object-fit: cover;
     background: #24262c; flex: none; }
-  .tw .who .h { min-width: 0; flex: 1; font-size: 11.5px; font-weight: 700; color: #8e929b;
+  .nar .au .h { min-width: 0; flex: 1; font-size: 11.5px; font-weight: 700; color: #8e929b;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .tw .who .f { font-size: 11.5px; font-weight: 800; color: #d6d8dd; flex: none; }
-  /* Four lines, then it clips. Enough to judge the claim, not so much that
-     the alert becomes something you have to close before you can work. */
-  .tw p { margin: 7px 0 0; font-size: 13px; line-height: 1.45; color: #fff; font-weight: 500;
-    display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4;
-    overflow: hidden; white-space: pre-line; word-break: break-word; }
-  .tw .pic { display: block; width: 100%; max-height: 132px; object-fit: cover;
+  .nar .au .v { width: 13px; height: 13px; border-radius: 50%; background: #1d9bf0; color: #fff;
+    font-size: 8px; font-weight: 900; display: grid; place-items: center; flex: none; }
+  .nar .au .f { font-size: 11.5px; font-weight: 800; color: #d6d8dd; flex: none; }
+  .nar .txt { margin-top: 7px; font-size: 13px; line-height: 1.5; color: #fff; font-weight: 500;
+    white-space: pre-line; word-break: break-word;
+    max-height: 78px; overflow-y: auto; overscroll-behavior: contain;
+    scrollbar-width: thin; scrollbar-color: #2e313a transparent; }
+  .nar .txt::-webkit-scrollbar { width: 5px; }
+  .nar .txt::-webkit-scrollbar-thumb { background: #2e313a; border-radius: 99px; }
+  .nar .txt::-webkit-scrollbar-track { background: transparent; }
+  .nar .pic { display: block; width: 100%; max-height: 124px; object-fit: cover;
     border-radius: 9px; margin-top: 8px; background: #24262c; }
-  .tw .st { display: flex; gap: 12px; margin-top: 7px; font-size: 11.5px; font-weight: 700; color: #5c6069; }
+  .nar .st { display: flex; gap: 12px; margin-top: 7px; font-size: 11.5px; font-weight: 700; color: #5c6069; }
   .bar { height: 2px; background: #1a1b1f; }
   .bar i { display: block; height: 100%; width: 100%; background: var(--c, #2bf08c); transform-origin: left; }
   `;
@@ -131,55 +131,56 @@
       ? `<img class="ic" src="${esc(a.image)}" alt="">`
       : `<div class="ic">${esc((a.symbol || '?').slice(0, 1))}</div>`;
 
-    // Who called it and where. The whole point of the deck, so it is in the
-    // alert verbatim rather than summarised into "a source".
-    const who = (a.chat_name || a.author)
-      ? `<div class="who"><span class="src">${a.tier === 'note' ? 'WATCHLIST' : 'CALLED BY'}</span>` +
-        `${a.author ? `<b>${esc(a.author)}</b>` : ''}${a.author && a.chat_name ? ' · ' : ''}` +
-        `${a.chat_name ? esc(a.chat_name) : ''}</div>`
+    // Who called it and where, on the line under the ticker. The whole point
+    // of the deck, so it is carried verbatim -- but it is two short facts,
+    // and a panel of its own gave it the weight of the post above it.
+    const who = (a.author || a.chat_name)
+      ? `<div class="who">` +
+          `${a.tier === 'note' ? '<span class="wl">WATCHLIST</span>' : ''}` +
+          `${a.author ? `<b>${esc(a.author)}</b>` : ''}` +
+          `${a.author && a.chat_name ? '<span>·</span>' : ''}` +
+          `${a.chat_name ? `<span class="nm">${esc(a.chat_name)}</span>` : ''}` +
+        `</div>`
       : '';
 
-    // What the token IS. A linked post wins over the profile: the post is the
-    // claim the caller was pointing at, where the profile is only who made it.
-    let nar = '';
-    if (a.tweet && a.tweet.text) {
-      const x = a.x || {};
-      nar =
-        `<div class="tw">` +
-          `<div class="who">` +
+    // What the token says it IS. A linked post wins over the profile: the post
+    // is the claim the caller pointed at, where the bio is only the standing
+    // description. Either way the words go in the same scrollable area, so the
+    // alert is the same height whichever one arrived.
+    const x = a.x || {};
+    const post = a.tweet && a.tweet.text ? a.tweet : null;
+    const words = post ? post.text : (x.bio || '');
+    const nar = (words || x.handle)
+      ? `<div class="nar">` +
+          `<div class="au">` +
             `${x.avatar ? `<img src="${esc(x.avatar)}" alt="">` : ''}` +
             `<span class="h">${esc(x.name || '')}${x.handle ? ` @${esc(x.handle)}` : ''}</span>` +
+            `${x.verified ? '<i class="v">✓</i>' : ''}` +
             `${x.followers != null ? `<span class="f">${count(x.followers)}</span>` : ''}` +
           `</div>` +
-          `<p>${esc(a.tweet.text)}</p>` +
-          `${a.tweet.image ? `<img class="pic" src="${esc(a.tweet.image)}" alt="">` : ''}` +
-          `${(a.tweet.likes != null || a.tweet.views != null)
-            ? `<div class="st">${a.tweet.likes != null ? `<span>♥ ${count(a.tweet.likes)}</span>` : ''}` +
-              `${a.tweet.views != null ? `<span>👁 ${count(a.tweet.views)}</span>` : ''}</div>`
+          `${words ? `<div class="txt">${esc(words)}</div>` : ''}` +
+          `${post && post.image ? `<img class="pic" src="${esc(post.image)}" alt="">` : ''}` +
+          `${post && (post.likes != null || post.views != null)
+            ? `<div class="st">${post.likes != null ? `<span>♥ ${count(post.likes)}</span>` : ''}` +
+              `${post.views != null ? `<span>👁 ${count(post.views)}</span>` : ''}</div>`
             : ''}` +
-        `</div>`;
-    } else if (a.x) {
-      nar =
-        `<div class="nar">${a.x.avatar ? `<img src="${esc(a.x.avatar)}" alt="">` : ''}` +
-        `<span class="h">${esc(a.x.name || ('@' + a.x.handle))} · @${esc(a.x.handle)}</span>` +
-        `${a.x.verified ? '<i class="v">✓</i>' : ''}` +
-        `<span class="f">${count(a.x.followers)}</span></div>`;
-    }
+        `</div>`
+      : '';
 
     el.innerHTML = `
       <div class="in">
         <div class="hd">
           ${icon}
           <div class="id">
-            <div class="tk"><span>$${esc(a.symbol || '?')}</span></div>
-            <div class="sub">
-              <span class="nm">${esc(a.name || '')}</span>
+            <div class="tk">
+              <span class="sym">$${esc(a.symbol || '?')}</span>
               ${mc ? `<span class="mc">${mc}</span>` : ''}
             </div>
+            <div class="sub">${esc(a.name || '')}</div>
+            ${who}
           </div>
           <button class="cp">Copy CA</button>
         </div>
-        ${who}
         ${nar}
       </div>
       <div class="bar"><i></i></div>
