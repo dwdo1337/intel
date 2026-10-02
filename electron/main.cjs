@@ -207,6 +207,12 @@ function toastPayload(hit) {
     liquidity_usd: hit.liquidity_usd,
     price_change_24h: hit.price_change_24h,
     dex_paid: hit.dex_paid,
+    // THE NARRATIVE, compacted. The alert already says what was bought and by
+    // whom; this is the only field that says what it IS. A 45-follower account
+    // opened last week and a real project produce the same market cap, and the
+    // alert is where that distinction is worth the most -- it is the one
+    // moment you are deciding whether to even open the deck.
+    x_info: hit.x_info || null,
     // HOLDER counts ONLY -- who is in this token right now.
     //
     // These used to fall back to `kol_count` / `smart_wallet_count`, which come

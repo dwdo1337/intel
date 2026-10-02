@@ -22,6 +22,7 @@ import { fetchPumpFunCoin, athMarketCapUsd, isPumpFunMint } from './pumpfun.js';
 import { startKolWatcher, getKolActivity, kolWatcherStatus } from './kol.js';
 import { startFlowWatcher, getFlow, flowWatcherStatus } from './flow.js';
 import { passesAlertFilters, sanitizeThresholds } from './alert-filter.js';
+import { xInfoForUrl } from './x.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 // The React build sits at ../client/dist from the SOURCE (server/), and at the
@@ -838,6 +839,37 @@ async function enrichSafetyAsync(ca, chain, { force = false } = {}) {
       }
     } catch (e) {
       log('error', 'RugCheck enrichment threw', { ca, error: e.message });
+    }
+  }
+
+  // ---- 3a-3. The narrative: the X account or post behind the token -----
+  //
+  // THIS IS THE THING A CALL IS ACTUALLY JUDGED ON. Market cap says what was
+  // bought; the X account says what it IS -- a real project, or an egg account
+  // opened on Tuesday with 45 followers. The deck carried the bare link, so
+  // that judgement happened in a browser tab every single time.
+  //
+  // Needs no key (FxTwitter is public) and is gated on absence, because a
+  // profile does not change between two calls of the same coin. Deliberately
+  // NOT gated on isGmgnConfigured: it is a different provider entirely, and
+  // tying it to GMGN's key would silence it for anyone without one.
+  if (hit.twitter_url && (force || hit.x_checked_at == null)) {
+    try {
+      const xi = await xInfoForUrl(hit.twitter_url);
+      // The timestamp is written whether or not anything came back, so a
+      // handle that does not exist is asked once rather than on every pass.
+      hit.x_checked_at = Date.now();
+      if (xi) {
+        hit.x_info = xi;
+        log('enrichment', 'X narrative attached', {
+          ca, kind: xi.kind, handle: xi.profile?.handle || null,
+          followers: xi.profile?.followers ?? null,
+        });
+        io.emit('ca_update', hit);
+      }
+      persist();
+    } catch (e) {
+      log('error', 'X narrative threw', { ca, error: e.message });
     }
   }
 
@@ -3310,6 +3342,10 @@ app.get('/api/react-feed', (req, res) => {
         dexPaid: d.dex_paid, dexBoosts: d.dex_boosts, dexPaidAt: d.dex_paid_checked_at,
       },
       links: { pair: d.pair_url, twitter: d.twitter_url, website: d.website_url, telegram: d.telegram_url },
+      // The X profile or post behind the token. null whenever X did not
+      // answer -- the card then shows no narrative block at all rather than
+      // an empty frame implying there was nothing to say.
+      xInfo: d.x_info || null,
 
       // Which trading apps the top holders trade through. `sampled` travels
       // with the counts because the denominator IS the claim: "18 of 100" and

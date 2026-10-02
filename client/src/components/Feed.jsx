@@ -838,6 +838,14 @@ function MsgCard({ event, active, onClick, index = 0 }) {
           so the cells read as one instrument rather than six floating chips.
           A null field shows a dash and keeps its cell -- dropping one shifts
           the other five and breaks the only thing a fixed row is for. */}
+      {/* THE NARRATIVE, directly under the identity and above the numbers.
+          A market cap tells you what was bought. This tells you what it IS,
+          and that is what a call is actually judged on -- whether the account
+          behind it is a real project or an egg opened on Tuesday with 45
+          followers. Placing it below the stats would make it a footnote to
+          the number, when it is the thing that qualifies the number. */}
+      <Narrative xInfo={event.xInfo} />
+
       <div className="c-stats">
         <div><span>Market cap</span><b>{(m.liveMcap ?? m.mcap) == null ? '—' : `$${fmt(m.liveMcap ?? m.mcap)}`}</b></div>
         <div><span>Liquidity</span><b>{(m.liveLiq ?? m.liq) == null ? '—' : `$${fmt(m.liveLiq ?? m.liq)}`}</b></div>
@@ -1374,4 +1382,116 @@ function IconTelegram({ size = 14 }) {
 }
 function IconDiscord({ size = 14 }) {
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ display:'inline-block', verticalAlign:'middle', marginRight:4 }}><path d="M9 11a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm6 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/><path d="M5.5 4h13c.8 0 1.5.7 1.5 1.5v13c0 .8-.7 1.5-1.5 1.5h-3.8l-1.2-1.2-1.2 1.2H10l-1.2-1.2-1.2 1.2H5.5c-.8 0-1.5-.7-1.5-1.5v-13C4 4.7 4.7 4 5.5 4z"/></svg>;
+}
+
+
+// ---------------------------------------------------------------------------
+// The narrative: the X account or post attached to the token.
+//
+// Ported from dex-paid-tracker/web/card-parts.js. The precedence is the
+// reference's and is deliberate: a POST beats a PROFILE, because a link to a
+// specific tweet is the caller pointing at a claim, while a profile link is
+// just the account. A community link stays a plain link -- FxTwitter cannot
+// read those, and drawing a preview for one would be inventing it.
+//
+// Renders NOTHING when X did not answer. An empty frame would say "this token
+// has no story", which is a different and unearned claim.
+// ---------------------------------------------------------------------------
+
+const xnum = n => n == null ? '—'
+  : n >= 1e6 ? (n / 1e6).toFixed(1) + 'M'
+  : n >= 1e3 ? (n / 1e3).toFixed(1) + 'K'
+  : String(n);
+
+const xjoined = t => {
+  if (!t) return null;
+  try { return new Date(t).toLocaleDateString('en', { month: 'short', year: 'numeric' }); }
+  catch { return null; }
+};
+
+function Narrative({ xInfo }) {
+  if (!xInfo) return null;
+  if (xInfo.kind === 'community') {
+    return (
+      <div className="c-row narrative">
+        <a className="xcomm" href={xInfo.url} target="_blank" rel="noopener noreferrer">
+          👥 X Community ↗
+        </a>
+      </div>
+    );
+  }
+  if (xInfo.tweet) return <XTweet xInfo={xInfo} />;
+  if (xInfo.profile) return <XProfile p={xInfo.profile} url={xInfo.url} />;
+  return null;
+}
+
+function XProfile({ p, url }) {
+  const joined = xjoined(p.joined);
+  return (
+    <a className="xpc" href={url || `https://x.com/${p.handle}`} target="_blank" rel="noopener noreferrer"
+       onClick={e => e.stopPropagation()}>
+      {p.banner && <div className="xpc-ban" style={{ backgroundImage: `url(${p.banner})` }} />}
+      <div className="xpc-body">
+        <div className="xpc-top">
+          {p.avatar ? <img className="xpc-av" src={p.avatar} alt="" loading="lazy" /> : <div className="xpc-av" />}
+          <div className="xpc-id">
+            <b>
+              {p.name || p.handle}
+              {p.verified && <i className={`xpc-v${p.verifiedType === 'business' ? ' gold' : ''}`} title="Verified">✓</i>}
+              <span className="xpc-x">𝕏</span>
+            </b>
+            <span>@{p.handle}</span>
+          </div>
+          <span className="xpc-open">↗</span>
+        </div>
+        {p.bio && <p className="xpc-bio">{p.bio}</p>}
+        {(p.location || joined) && (
+          <div className="xpc-meta">
+            {p.location && <span>📍 {p.location}</span>}
+            {joined && <span>🗓 Joined {joined}</span>}
+          </div>
+        )}
+        {/* Follower count is the single most load-bearing number here, so it
+            is shown even when null -- as a dash. Omitting the row when X did
+            not return it would read as an account with no following at all. */}
+        <div className="xpc-f">
+          <span><b>{xnum(p.following)}</b> Following</span>
+          <span><b>{xnum(p.followers)}</b> Followers</span>
+        </div>
+      </div>
+    </a>
+  );
+}
+
+function XTweet({ xInfo }) {
+  const t = xInfo.tweet, p = xInfo.profile || {};
+  const media = (t.media || []).slice(0, 4);
+  return (
+    <a className="xtw" href={xInfo.url} target="_blank" rel="noopener noreferrer"
+       onClick={e => e.stopPropagation()}>
+      <div className="xpc-top">
+        {p.avatar ? <img className="xpc-av sm" src={p.avatar} alt="" loading="lazy" /> : <div className="xpc-av sm" />}
+        <div className="xpc-id">
+          <b>{p.name || p.handle || 'X post'}{p.verified && <i className="xpc-v" title="Verified">✓</i>}</b>
+          <span>@{p.handle || ''} · {xnum(p.followers)} followers</span>
+        </div>
+        <span className="xpc-open">↗</span>
+      </div>
+      <p className="xtw-text">{t.text}</p>
+      {t.quote && (
+        <div className="xtw-quote"><b>@{t.quote.handle || ''}</b> {t.quote.text}</div>
+      )}
+      {media.length > 0 && (
+        <div className={`xtw-media n${media.length}`}>
+          {media.map((mm, i) => <img key={i} src={mm.url} alt="" loading="lazy" />)}
+        </div>
+      )}
+      <div className="xtw-stats">
+        <span>💬 {xnum(t.replies)}</span>
+        <span>🔁 {xnum(t.retweets)}</span>
+        <span>❤️ {xnum(t.likes)}</span>
+        <span>👁 {xnum(t.views)}</span>
+      </div>
+    </a>
+  );
 }

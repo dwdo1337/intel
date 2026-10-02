@@ -1042,3 +1042,59 @@
    and the pairing is lost. */
 .mc-r.sm{flex-wrap:nowrap}
 .mc-r.sm span{white-space:nowrap}
+
+/* =====================================================================
+   THE NARRATIVE BLOCK
+   ---------------------------------------------------------------------
+   Geometry from dex-paid-tracker/web/style.css, unchanged except for
+   the margin that seats it inside Intel's card.
+
+   The banner is 92px and the avatar laps up over it by 34px with a 3px
+   ring in the card colour. That overlap is the whole reason the block
+   reads as an X profile at a glance rather than as another panel of
+   ours -- it is the shape people already know. It is also why the
+   avatar grows to 64px only when a banner is present: with no banner
+   there is nothing to lap over, and a 64px circle on its own line
+   would just be a large avatar.
+   ===================================================================== */
+
+.xpc,.xtw{display:block;background:var(--surface2);border:1px solid var(--line);border-radius:18px;
+  overflow:hidden;color:var(--text);text-decoration:none;margin:14px 22px 0}
+.xpc:hover,.xtw:hover{border-color:var(--line3)}
+.xpc-ban{height:92px;background:var(--line) center/cover}
+.xpc-body{padding:12px 16px 14px}
+.xpc-ban + .xpc-body .xpc-av{margin-top:-34px;border:3px solid var(--surface2);width:64px;height:64px}
+.xpc-top{display:flex;align-items:center;gap:10px}
+.xpc-av{width:46px;height:46px;border-radius:50%;object-fit:cover;background:var(--line);flex:none}
+.xpc-av.sm{width:38px;height:38px}
+.xpc-id{display:flex;flex-direction:column;min-width:0;flex:1}
+.xpc-id b{font-size:17px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.xpc-id span{font-size:14px;color:var(--dim);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.xpc-v{font-style:normal;display:inline-grid;place-items:center;width:17px;height:17px;border-radius:50%;
+  background:#1d9bf0;color:#fff;font-size:11px;vertical-align:2px;margin-left:4px}
+.xpc-v.gold{background:#e2b719}
+.xpc-x{color:var(--dim);font-weight:700;font-size:14px;margin-left:5px}
+.xpc-open{color:var(--dim);font-size:18px;margin-left:auto;align-self:flex-start}
+.xpc-bio{margin:10px 0 0;font-size:15px;line-height:1.45;color:#d4d6db}
+.xpc-meta{display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;font-size:14px;color:var(--dim);font-weight:600}
+.xpc-meta:empty{display:none}
+.xpc-f{display:flex;gap:16px;margin-top:8px;font-size:14px;color:var(--dim);font-weight:600}
+.xpc-f b{color:var(--text);font-weight:800}
+
+/* A post, when the caller linked one. Its own text leads at 15px -- the
+   claim is the content here, where on a profile the identity is. */
+.xtw{padding:14px 16px}
+.xtw-text{margin:10px 0 0;font-size:15px;line-height:1.45;white-space:pre-wrap}
+.xtw-quote{margin-top:10px;padding:10px 12px;border-radius:12px;background:var(--surface3);
+  font-size:14px;line-height:1.4;color:var(--muted)}
+.xtw-quote b{color:var(--text);font-weight:800}
+.xtw-media{display:grid;gap:4px;margin-top:10px;border-radius:12px;overflow:hidden}
+.xtw-media.n1{grid-template-columns:1fr}
+.xtw-media.n2{grid-template-columns:1fr 1fr}
+.xtw-media.n3,.xtw-media.n4{grid-template-columns:1fr 1fr}
+.xtw-media img{width:100%;height:100%;max-height:220px;object-fit:cover;display:block;background:var(--line)}
+.xtw-stats{display:flex;gap:16px;margin-top:10px;font-size:13px;color:var(--dim);font-weight:700}
+
+.xcomm{display:inline-flex;align-items:center;gap:6px;padding:8px 12px;border-radius:12px;
+  background:var(--surface2);font-size:15px;font-weight:700;color:var(--text);text-decoration:none}
+.narrative{padding-top:14px}

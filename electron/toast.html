@@ -243,6 +243,24 @@ html,body{height:100%;overflow:hidden;background:transparent;font-family:'Inter'
 /* A placeholder initial carries the chain's colour, set inline by the renderer
    alongside the chain dot. */
 .token-img .fallback { color: var(--muted); background: var(--raise-2); }
+
+/* The narrative row: avatar, name, handle + age, follower count.
+   Four facts, one line. The follower count is right-aligned and bold
+   because it is the one that most often decides whether you open the
+   deck at all. */
+.xrow{display:flex;align-items:center;gap:10px;margin-top:10px;padding:10px 12px;
+  border-radius:12px;background:var(--raise);text-decoration:none;color:inherit}
+.xrow-av{width:34px;height:34px;border-radius:50%;object-fit:cover;background:var(--line);flex:none}
+.xrow-id{min-width:0;flex:1}
+.xrow-name{display:flex;align-items:center;gap:4px;font-size:13px;font-weight:800;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.xrow-v{font-style:normal;display:inline-grid;place-items:center;width:14px;height:14px;
+  border-radius:50%;background:#1d9bf0;color:#fff;font-size:9px;flex:none}
+.xrow-sub{font-size:11px;color:var(--muted);font-weight:600;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.xrow-f{text-align:right;flex:none}
+.xrow-f b{display:block;font-size:14px;font-weight:900;line-height:1}
+.xrow-f span{font-size:10px;color:var(--muted);font-weight:600}
 </style>
 </head>
 <body>
@@ -413,6 +431,17 @@ html,body{height:100%;overflow:hidden;background:transparent;font-family:'Inter'
       <div class="metric"><div class="metric-label">Smart / KOL</div><div class="metric-value" id="smartKol">-</div></div>
       <div class="metric"><div class="metric-label">Risk</div><div class="metric-value" id="risk">—</div></div>
     </div>
+    <!-- The X account or post behind the token. Hidden entirely when X did
+         not answer: an empty row would claim the token has no story, which is
+         a different thing from not having asked. -->
+    <a class="xrow" id="xRow" style="display:none" href="#" target="_blank" rel="noopener noreferrer">
+      <img class="xrow-av" id="xAv" alt="">
+      <div class="xrow-id">
+        <div class="xrow-name"><span id="xName"></span><i class="xrow-v" id="xVerified" style="display:none">✓</i></div>
+        <div class="xrow-sub" id="xSub"></div>
+      </div>
+      <div class="xrow-f"><b id="xFollowers">—</b><span>followers</span></div>
+    </a>
     <div class="footer">
       <div class="status-pill" id="dexPaid"><span class="status-dot"></span>DEX Paid · Yes</div>
       <!-- KOL and smart-money COUNTS. Real since the holder lookup landed, and
@@ -688,6 +717,38 @@ function renderDisplay(data){
   applyTier(data);
   document.getElementById('tokenName').textContent = data.token_name || 'Unknown Token';
   document.getElementById('tokenSymbol').textContent = data.token_symbol ? '$' + data.token_symbol : '';
+
+  // ---- the narrative -------------------------------------------------
+  // Precedence matches the feed card: a linked POST wins over the profile,
+  // because a status link is the caller pointing at a claim.
+  const xi = data.x_info;
+  const xRow = document.getElementById('xRow');
+  const xp = xi && xi.profile;
+  if (xp) {
+    xRow.style.display = 'flex';
+    xRow.href = xi.url || ('https://x.com/' + xp.handle);
+    const av = document.getElementById('xAv');
+    if (xp.avatar) { av.src = xp.avatar; av.style.display = ''; } else { av.style.display = 'none'; }
+    document.getElementById('xName').textContent = xp.name || ('@' + xp.handle);
+    document.getElementById('xVerified').style.display = xp.verified ? '' : 'none';
+    // Account age sits next to the handle because "opened three weeks ago" is
+    // the fact that most often reframes the follower count beside it.
+    const bits = ['@' + (xp.handle || '')];
+    if (xp.joined) {
+      try {
+        bits.push('joined ' + new Date(xp.joined).toLocaleDateString('en', { month: 'short', year: 'numeric' }));
+      } catch (e) { /* unparseable date -- the handle alone still stands */ }
+    }
+    if (xi.tweet) bits.push('linked post');
+    document.getElementById('xSub').textContent = bits.join(' · ');
+    const f = xp.followers;
+    document.getElementById('xFollowers').textContent = f == null ? '—'
+      : f >= 1e6 ? (f / 1e6).toFixed(1) + 'M'
+      : f >= 1e3 ? (f / 1e3).toFixed(1) + 'K'
+      : String(f);
+  } else {
+    xRow.style.display = 'none';
+  }
   const chainBadge = document.getElementById('chainBadge');
   chainBadge.textContent = chainName(data.chain);
   chainBadge.style.background = chainColor(data.chain) + '18';
