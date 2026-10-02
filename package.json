@@ -12,7 +12,9 @@
     "build": "cd client && npm run build",
     "electron:dev": "npm run build && electron electron/main.cjs",
     "electron:pack": "npm run build && npm run build:server && electron-builder --win --x64",
-    "build:server": "node build-server.mjs"
+    "build:server": "node build-server.mjs",
+    "start": "node server/index.js",
+    "open": "node -e \"const u='http://localhost:5050';require('child_process').exec((process.platform==='win32'?'start \"\" ':process.platform==='darwin'?'open ':'xdg-open ')+u)\""
   },
   "dependencies": {
     "big-integer": "^1.6.52",

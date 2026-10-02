@@ -177,6 +177,24 @@ export function DashboardScreen({ feed, selected, onSelect, onOpenSettings, onOp
   const [logsOpen, setLogsOpen] = useState(false);
   const [bestOpen, setBestOpen] = useState(false);
   const [logCount, setLogCount] = useState(0);
+  // The filter rail starts OPEN, because a deck whose filters are hidden on
+  // first run reads as having none at all. Remembered per browser after that.
+  const [sideOpen, setSideOpen] = useState(() => {
+    try { return localStorage.getItem('intel.side') !== '0'; } catch { return true; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem('intel.side', sideOpen ? '1' : '0'); } catch { /* private mode */ }
+  }, [sideOpen]);
+  // Whether the socket is actually connected, so the header dot REPORTS the
+  // live state rather than asserting it.
+  const [connected, setConnected] = useState(false);
+  // Whether the inspector sheet is OPEN, which is not the same as which token
+  // is selected. The feed auto-selects the first event so the deck has a
+  // current token; as a third column that was free, but as a sheet it meant
+  // the app opened with a full-screen panel over the feed nobody asked for.
+  // The sheet opens on a click and on a clicked alert, and on nothing else.
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const openToken = (id) => { onSelect(id); setSheetOpen(true); };
 
   // Persist filters on every change so thresholds and chain picks survive
   // a reload instead of silently resetting to defaults. Local storage only --
@@ -269,6 +287,8 @@ export function DashboardScreen({ feed, selected, onSelect, onOpenSettings, onOp
     fetch('/api/logs?limit=1').then(r => r.json()).then(data => { if (Array.isArray(data)) setLogCount(data.length); }).catch(() => {});
     const socket = io({ path: '/socket.io' });
     socket.on('log', () => setLogCount(c => c + 1));
+    socket.on('connect', () => setConnected(true));
+    socket.on('disconnect', () => setConnected(false));
     return () => socket.close();
   }, []);
 
@@ -393,70 +413,144 @@ export function DashboardScreen({ feed, selected, onSelect, onOpenSettings, onOp
       }));
     }
     onSelect(match.id);
+    setSheetOpen(true);
     // `filtered` is deliberately NOT a dependency: it changes on the very
     // reset this effect performs, and re-running would fight itself. The
     // handled-nonce guard is what makes depending on safeFeed safe.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openN, safeFeed]);
 
+  // Which tab the header pill nav is on. This REPLACES the chips that used to
+  // sit above the feed: in the reference the tabs ARE the primary navigation,
+  // they live in the header, and they carry their own counts.
+  const counts = useMemo(() => ({
+    all: safeFeed.length,
+    followups: safeFeed.filter(e => e.type === 'followup').length,
+    watchlist: safeFeed.filter(e => e.watched).length,
+  }), [safeFeed]);
+
+  // The four numbers across the top. Every one is counted from the feed in
+  // front of you -- nothing here is fetched, estimated or carried over, so a
+  // KPI can never disagree with the cards underneath it.
+  const kpis = useMemo(() => {
+    const now = Date.now();
+    const since = (ms) => safeFeed.filter(e => {
+      const t = e.time ? new Date(e.time).getTime() : null;
+      return t != null && !Number.isNaN(t) && now - t <= ms;
+    });
+    const lastHour = since(3600000);
+    const day = since(86400000);
+    // The best RUN, not the best current price: peakMult is how far a call
+    // actually went after it was made. A token with no measured peak is left
+    // out rather than counted as 1.00x, which would be a claim we cannot make.
+    let best = null;
+    for (const e of day) {
+      const m = e.metrics && e.metrics.peakMult;
+      if (m != null && (best == null || m > best.m)) best = { m, sym: e.token && e.token.symbol };
+    }
+    return {
+      lastHour: lastHour.length,
+      followups: lastHour.filter(e => e.type === 'followup').length,
+      watching: counts.watchlist,
+      best,
+    };
+  }, [safeFeed, counts.watchlist]);
+
+  const TABS = [
+    { id: 'All', label: 'Live feed', n: counts.all },
+    { id: 'Follow-ups', label: 'Called again', n: counts.followups },
+    { id: 'Watchlist', label: 'Watchlist', n: counts.watchlist },
+  ];
+
   return (
     <div className="screen active">
-      <header className="topbar">
-        <div className="logo">
-          <Logo size={28} />
-          intel.
-        </div>
+      {/* The reference header: brand left, pill tabs centre, round buttons
+          right. The old bar put a search field here and pushed navigation into
+          a side rail, which is the single biggest reason the deck never read
+          like the scanner no matter how the pills themselves were styled. */}
+      <header className="top">
+        <div className="top-in">
+          <div className="brand">
+            <div className="logo-mark"><Logo size={26} /></div>
+            <div>
+              <h1>intel.</h1>
+              <div className="live">
+                <i className={`dot${connected ? ' on' : ''}`} />
+                <span>{connected ? 'live' : 'connecting...'}</span>
+              </div>
+            </div>
+          </div>
 
-        <div className="search"><input placeholder="Search token, CA, chat, author..." value={filter.search} onChange={e => setFilter(p => ({ ...p, search: e.target.value }))} /></div>
+          <nav className="tabs">
+            {TABS.map(t => (
+              <button key={t.id}
+                      className={filter.chips === t.id ? 'on' : ''}
+                      onClick={() => setFilter(p => ({ ...p, chips: t.id }))}>
+                {t.label}<em>{t.n}</em>
+              </button>
+            ))}
+          </nav>
 
-
-        <div className="top-icons">
-          <button className="top-icon logs-toggle" onClick={() => setLogsOpen(v => !v)} title="System logs">
-            <IconLogs />
-            {logCount > 0 && <span className="logs-badge">{logCount > 99 ? '99+' : logCount}</span>}
+          <button className={`round${sideOpen ? ' on' : ''}`} onClick={() => setSideOpen(v => !v)}
+                  title="Show / hide filters">&#9881;</button>
+          <button className="round" onClick={() => setLogsOpen(v => !v)} title="System logs">
+            <IconLogs />{logCount > 0 && <span className="logs-badge">{logCount > 99 ? '99+' : logCount}</span>}
           </button>
-          <button
-            className={`top-icon${bestOpen ? ' on' : ''}`}
-            onClick={() => setBestOpen(v => !v)}
-            title="Best calls — how far each call actually ran, and which rooms produce runners"
-          ><IconTrophy/></button>
-          <button className="top-icon" onClick={onOpenHistory} title="Notification history"><IconBell/></button>
-          <button className="top-icon" onClick={onOpenSources} title="Choose which groups to watch"><IconGroups/></button>
-          <button className="top-icon" onClick={onOpenSettings} title="Connect Telegram / Discord"><IconGear/></button>
+          <button className={`round${bestOpen ? ' on' : ''}`} onClick={() => setBestOpen(v => !v)}
+                  title="Best calls"><IconTrophy /></button>
+          <button className="round" onClick={onOpenHistory} title="Notification history"><IconBell /></button>
+          <button className="round" onClick={onOpenSources} title="Choose which groups to watch"><IconGroups /></button>
+          <button className="round" onClick={onOpenSettings} title="Connect Telegram / Discord"><IconGear /></button>
         </div>
       </header>
 
-      <div className="dash-body">
-        <Filters
-          filter={filter}
-          setFilter={setFilter}
-          onAlertToggle={toggleAlertChain}
-          onAlertFiltersToggle={toggleAlertFilters}
-          onThresholdChange={onThresholdChange}
-        />
-        {/* Plain layout wrapper -- deliberately NOT `.feed-col`, and it must not
-            scroll. `<Feed>` already renders its own `.dash-col > .feed-col`
-            (the same structure the Inspector uses), so carrying that class and
-            `overflow:auto` here created TWO nested scrollers with one class
-            name: the outer one took the wheel and could not move, the inner one
-            held the actual content. That is what made scrolling feel like it
-            grabbed the wrong thing. One scroller per column. */}
-        <div className="feed-slot" style={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
-          {/* The showcase is a DexScreener browse view, not signals -- it has
-              no caller, no chat and no follow-up state. Rendering it ABOVE the
-              feed pushed real signals below the fold, which read as
-              "attribution and follow-ups disappeared". It now only fills an
-              empty feed, so actual signals always win the viewport. */}
+      <main className={`wrap layout${sideOpen ? '' : ' no-side'}`}>
+        {sideOpen && (
+          <aside className="side">
+            <Filters
+              filter={filter}
+              setFilter={setFilter}
+              onAlertToggle={toggleAlertChain}
+              onAlertFiltersToggle={toggleAlertFilters}
+              onThresholdChange={onThresholdChange}
+            />
+          </aside>
+        )}
+
+        <div className="mainc">
+          <section className="kpis">
+            <div className="kpi"><span>Signals last hour</span><b>{kpis.lastHour}</b></div>
+            <div className="kpi"><span>Called again (1h)</span><b>{kpis.followups}</b></div>
+            <div className="kpi"><span>Watching</span><b>{kpis.watching}</b></div>
+            {/* A dash, not a zero, when nothing in the last day has a measured
+                peak. Zero would read as "every call went nowhere". */}
+            <div className="kpi hot">
+              <span>&#127942; Best run since call (24h)</span>
+              <b>{kpis.best ? `${kpis.best.m.toFixed(2)}x ${kpis.best.sym ? '$' + kpis.best.sym : ''}` : '\u2014'}</b>
+            </div>
+          </section>
+
           {filtered.length === 0 ? showcase : null}
-          <Feed events={filtered} selected={selectedVisible} onSelect={onSelect} filter={filter} setFilter={setFilter} />
+          <Feed events={filtered} selected={selectedVisible} onSelect={openToken}
+                filter={filter} setFilter={setFilter} />
         </div>
-        <Inspector event={selectedVisible} />
-      </div>
+      </main>
+
+      {/* The inspector is a slide-over, not a permanent third column. As a
+          column it was always on screen, competing with the card for the same
+          facts at a third of the width. As a sheet it opens when you ask one
+          token a question, and gets out of the way afterwards. */}
+      {selectedVisible && sheetOpen && (
+        <div className="sheet-bg" onClick={e => { if (e.target === e.currentTarget) setSheetOpen(false); }}>
+          <aside className="sheet">
+            <button className="s-x" onClick={() => setSheetOpen(false)} aria-label="Close">&times;</button>
+            <Inspector event={selectedVisible} />
+          </aside>
+        </div>
+      )}
+
       {logsOpen && <div className="logs-drawer"><LogsPanel /></div>}
 
-      {/* Full-height overlay rather than a drawer: the board is a table with
-          four columns of numbers and squeezing it into the log drawer's strip
-          would make every row wrap. */}
       {bestOpen && (
         <div className="bc-overlay" onClick={e => { if (e.target === e.currentTarget) setBestOpen(false); }}>
           <div className="bc-panel">
@@ -464,9 +558,7 @@ export function DashboardScreen({ feed, selected, onSelect, onOpenSettings, onOp
               <span>Best calls</span>
               <button className="bc-close" onClick={() => setBestOpen(false)}>&times;</button>
             </div>
-            {/* The feed's event id IS the contract address (server payload:
-                `id: d.ca`), so a row can select its token directly. */}
-            <BestCalls onPick={ca => { setBestOpen(false); onSelect(ca); }} />
+            <BestCalls onPick={ca => { setBestOpen(false); openToken(ca); }} />
           </div>
         </div>
       )}

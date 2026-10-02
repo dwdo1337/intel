@@ -1,0 +1,17 @@
+{
+  "manifest_version": 3,
+  "name": "intel. Command Deck — alerts",
+  "version": "0.4.0",
+  "description": "In-page call alerts on any tab, fed by your local intel. Command Deck. Never uses Windows notifications.",
+  "permissions": ["storage", "alarms", "scripting", "tabs"],
+  "host_permissions": ["http://localhost:5050/*", "http://127.0.0.1:5050/*", "<all_urls>"],
+  "background": { "service_worker": "background.js", "type": "module" },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["toast.js", "content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": { "default_popup": "popup.html", "default_title": "intel. Command Deck" }
+}

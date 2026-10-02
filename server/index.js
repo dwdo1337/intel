@@ -3,7 +3,7 @@ import cors from 'cors';
 import fetch from 'node-fetch';
 import { createServer } from 'http';
 import { Server as SocketIOServer } from 'socket.io';
-import WebSocket from 'ws';
+import WebSocket, { WebSocketServer } from 'ws';
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
@@ -74,6 +74,42 @@ app.use(cors({ origin: corsOrigin, credentials: true }));
 app.use(express.json());
 const server = createServer(app);
 const io = new SocketIOServer(server, { path: '/socket.io', cors: { origin: CORS_ORIGINS, credentials: true } });
+
+/**
+ * A PLAIN WebSocket endpoint, for the browser extension only.
+ *
+ * The deck itself speaks Socket.IO and keeps doing so. The extension cannot:
+ * a Manifest V3 service worker has no bundler, and pulling socket.io-client
+ * into it to carry four message shapes would be the tail wagging the dog.
+ * `ws` is already a dependency here, and a native WebSocket is three lines in
+ * the worker.
+ *
+ * It is broadcast-only. The extension never sends anything, so nothing
+ * arriving on this socket is read -- an endpoint that accepts commands from
+ * every page on the machine is not worth the convenience.
+ */
+const alertSockets = new Set();
+const wss = new WebSocketServer({ server, path: '/ws' });
+wss.on('connection', (sock) => {
+  alertSockets.add(sock);
+  sock.on('close', () => alertSockets.delete(sock));
+  sock.on('error', () => alertSockets.delete(sock));
+  try { sock.send(JSON.stringify({ kind: 'init' })); } catch { /* already gone */ }
+});
+// MV3 workers sleep, and an idle socket is one of the things that puts them
+// under. A ping every 20s keeps the connection warm enough to survive.
+setInterval(() => {
+  for (const sock of alertSockets) {
+    if (sock.readyState === 1) { try { sock.send('{"kind":"ping"}'); } catch { /* dropped */ } }
+  }
+}, 20_000);
+
+function broadcastAlert(payload) {
+  const data = JSON.stringify({ kind: 'alert', alert: payload });
+  for (const sock of alertSockets) {
+    if (sock.readyState === 1) { try { sock.send(data); } catch { /* dropped */ } }
+  }
+}
 
 function loadConfig() {
   if (!existsSync(CONFIG_PATH)) return { telegram: {}, discord: {}, gmgn: {} };
@@ -2322,11 +2358,48 @@ function shouldNotify(hit, kind) {
  * are bypassed for watchlist kinds -- see shouldNotify.
  */
 function emitAlert(hit, kind, trigger) {
+  const notify = shouldNotify(hit, kind);
+  // The extension gets ONLY what passed the gate, already decided here. It
+  // has no copy of the user's chain or threshold preferences and must never
+  // grow one -- two places deciding whether to interrupt someone is two
+  // places that can disagree, and the one in the browser is the one nobody
+  // would think to check.
+  if (notify) {
+    broadcastAlert({
+      id: hit.ca,
+      ca: hit.ca,
+      symbol: hit.token_symbol || null,
+      name: hit.token_name || null,
+      image: hit.image_url || null,
+      chain: hit.chain || 'solana',
+      launchpad: hit.launchpad || hit.dex || null,
+      mcap: hit.mcap_usd ?? null,
+      liquidity: hit.liquidity_usd ?? null,
+      holders: hit.holder_count ?? null,
+      source: hit.source || null,
+      chat_name: hit.chat_name || null,
+      author: hit.author || null,
+      message: hit.message_text || '',
+      // The narrative, so the toast on another tab can say what the token is
+      // and not only that something fired.
+      x: hit.x_info && hit.x_info.profile ? {
+        handle: hit.x_info.profile.handle,
+        name: hit.x_info.profile.name,
+        avatar: hit.x_info.profile.avatar || null,
+        followers: hit.x_info.profile.followers ?? null,
+        verified: !!hit.x_info.profile.verified,
+        url: hit.x_info.url || null,
+      } : null,
+      tier: isWatchlistKind(kind) ? 'note' : 'signal',
+      alert_kind: kind,
+      at: Date.now(),
+    });
+  }
   io.emit('ca', {
     ...hit,
     // The whole hit, not just the chain -- the metric gate needs the numbers.
     // The kind matters too: watchlist events bypass the metric gate.
-    _notify: shouldNotify(hit, kind),
+    _notify: notify,
     // Weight, not just reason. 'signal' raises the full card; 'note' raises the
     // compact watch strip. A new call is time-sensitive and earns the
     // interruption; "a token you starred was mentioned again" does not, and
@@ -3468,6 +3541,14 @@ app.get('/api/react-feed', (req, res) => {
   });
   res.json(events);
 });
+
+// The browser extension, served from the deck itself.
+//
+// It is the only way to get alerts onto tabs OTHER than the deck, and a
+// download link that points at a folder on disk is a support question waiting
+// to happen. Chrome loads an unpacked extension from a directory, so this is
+// also what makes "where do I point Load unpacked at" answerable in one line.
+app.use('/extension', express.static(join(__dirname, '..', 'extension')));
 
 app.use(express.static(STATIC_DIR));
 app.get('*', (req, res, next) => {

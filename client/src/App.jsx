@@ -37,6 +37,21 @@ export default function App() {
   // Clicking a toast -- a watch note especially -- should land on that token,
   // not merely raise the window. The main process sends the ca over
   // `open-token`, re-exposed by electron/preload.cjs.
+  // The extension opens the deck at #token=<ca> when one of its in-page alerts
+  // is clicked. Read on mount AND on hashchange, because clicking a second
+  // alert while the deck tab is already open changes the hash without
+  // reloading anything -- without the listener the first token would just stay
+  // on screen and the click would look broken.
+  useEffect(() => {
+    const fromHash = () => {
+      const m = /[#&]token=([^&]+)/.exec(window.location.hash || '');
+      if (m) setOpenReq({ ca: decodeURIComponent(m[1]), n: Date.now() });
+    };
+    fromHash();
+    window.addEventListener('hashchange', fromHash);
+    return () => window.removeEventListener('hashchange', fromHash);
+  }, []);
+
   useEffect(() => {
     const api = window.electronAPI;
     if (!api || typeof api.onOpenToken !== 'function') return;   // browser dev
@@ -61,9 +76,14 @@ export default function App() {
     const socket = io({ path: '/socket.io' });
     socket.on('ca', (hit) => {
       loadFeed(true);
-      // IN-APP TOASTS DISABLED -- Electron already raises a real OS
-      // notification for every signal, so showing one inside the window too
-      // meant two alerts per event, with the in-app one covering the feed.
+      // IN-APP TOASTS ARE THE ALERT NOW.
+      //
+      // They were disabled while the only shipping shell was Electron, which
+      // raised a real OS notification for every signal -- showing one inside
+      // the window too meant two alerts per event. The deck is a browser app,
+      // the alert belongs in the page, and the extension carries the same
+      // toast onto other tabs. Nothing reaches the Windows notification
+      // centre any more, which is what was asked for.
       //
       // The history panel is the record of ALERTS RAISED, so it obeys the same
       // chain filter the toast layer does. It previously recorded every signal
@@ -71,7 +91,14 @@ export default function App() {
       // -- which reads as the filter being ignored, because from the user's
       // side that is indistinguishable from it.
       if (hit && hit._notify === false) return;
-      setHistory(prev => [buildToast(hit), ...prev].slice(0, 50));
+      const t = buildToast(hit);
+      setHistory(prev => [t, ...prev].slice(0, 50));
+      // Three at a time. A burst of calls in one minute is normal and a stack
+      // that grows without limit would cover the feed it is pointing at.
+      setToasts(prev => [t, ...prev.filter(x => x.id !== t.id)].slice(0, 3));
+      // Auto-dismiss, because an alert you have to clear by hand becomes a
+      // chore within the hour and then gets ignored, which defeats it.
+      setTimeout(() => setToasts(prev => prev.filter(x => x.id !== t.id)), 15000);
     });
     socket.on('ca_update', () => loadFeed(true));
     socket.on('ca_remove', () => loadFeed(true));

@@ -6,6 +6,11 @@ const http = require('http');
 const { io } = require('socket.io-client');
 const { showToast, updateToast } = require('./toast.cjs');
 
+// One line to put the Windows toasts back, if running the deck inside Electron
+// ever becomes the main way again. Off because the alert belongs in the
+// browser: the deck's own toast stack and the extension both carry it there.
+const DESKTOP_TOASTS = false;
+
 const BACKEND_PORT = 5050; // must match server/index.js's PORT
 
 // Enforce exactly one running instance. If another copy is started, bring
@@ -329,7 +334,18 @@ async function callerRecord(author) {
 }
 
 function notifySignal(hit) {
-  // Rich borderless toast as primary notification.
+  // DESKTOP TOASTS ARE OFF.
+  //
+  // The deck is a browser app now, and Dawid asked for the alert to live in
+  // the browser rather than on the whole machine. Two things carry it there:
+  // the in-page toast stack in the deck itself, and the extension, which puts
+  // the same alert on whatever tab is in front. Nothing here reaches the
+  // Windows notification centre any more.
+  //
+  // The function is kept rather than deleted because the Electron shell is
+  // still a legitimate way to RUN the server, and the enrichment that used to
+  // hang off the toast still has to happen.
+  if (!DESKTOP_TOASTS) return;
   try {
     showToast(toastPayload(hit));
     // Fetched after the toast is up, then merged in like any other late

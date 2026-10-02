@@ -549,18 +549,7 @@ export function Feed({ events, selected, onSelect, filter, setFilter }) {
   const visible = events;
 
   return (
-    <div className="dash-col">
-      <div className="dash-col-head">Command deck · {visible.length} events</div>
-      <div className="feed-col">
-        <div className="feed-head">
-          <div className="feed-title">Live feed</div>
-          <div className="feed-chips">
-            {CHIPS.map(c => (
-              <span key={c.id} className={`chip ${chip === c.id ? 'active' : ''}`}
-                    onClick={() => setChip(c.id)}>{c.label}</span>
-            ))}
-          </div>
-        </div>
+    <div className="list">
 
         {visible.length === 0 ? (
           <div className="feed-empty">
@@ -595,7 +584,6 @@ export function Feed({ events, selected, onSelect, filter, setFilter }) {
         ) : visible.map((ev, i) => (
           <MsgCard key={ev.id} event={ev} active={selected?.id === ev.id} onClick={() => onSelect(ev.id)} index={i} />
         ))}
-      </div>
     </div>
   );
 }

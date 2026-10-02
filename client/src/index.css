@@ -1553,3 +1553,128 @@ html,body{font-size:16px;line-height:1.3}
 .fx-seg-btn{padding:10px 14px;font-size:14px;flex:1 1 auto;white-space:nowrap}
 .fx-chain{padding:11px 12px;gap:8px}
 .fx-chain-name{font-size:14px;overflow:hidden;text-overflow:ellipsis}
+
+/* =====================================================================
+   THE LAYOUT, REBUILT
+   ---------------------------------------------------------------------
+   Three previous passes restyled the CONTROLS and the deck still read as
+   the old app, because the thing that was wrong was the LAYOUT:
+
+     before   fixed-viewport, 3 columns: filters | feed | inspector,
+              each its own scroller, feed squeezed to a third of the width
+     after    one page that scrolls, sticky header with pill tabs, a
+              centred 1100px column, filters as a collapsible side, the
+              inspector as a slide-over sheet
+
+   A card that wants 603px cannot look like the reference inside a 420px
+   middle column, whatever its font sizes are. This is the file that was
+   actually needed.
+   ===================================================================== */
+
+/* The page scrolls now. The old deck capped every ancestor at the
+   viewport so the three columns could scroll independently; with one
+   column there is one scroller, and it is the page. */
+html, body { height: auto; overflow: visible; }
+#root, .app { height: auto; min-height: 100%; display: block; }
+.screen, .screen.active { display: block; height: auto; overflow: visible; }
+
+/* -- header ----------------------------------------------------------- */
+.top { position: sticky; top: 0; z-index: 20; background: #000d;
+  backdrop-filter: blur(16px); border-bottom: 1px solid var(--line); }
+.top-in { max-width: 1100px; margin: 0 auto; padding: 14px 20px;
+  display: flex; align-items: center; gap: 16px; }
+.brand { display: flex; align-items: center; gap: 12px; margin-right: auto; }
+.logo-mark { width: 46px; height: 46px; border-radius: 14px; background: var(--accent);
+  display: grid; place-items: center; color: var(--accent-ink); flex: none; }
+.logo-mark svg { color: var(--accent-ink); }
+.top h1 { margin: 0; font-size: 24px; font-weight: 900; letter-spacing: -.5px; }
+.live { display: flex; align-items: center; gap: 6px; font-size: 13px;
+  color: var(--muted); font-weight: 600; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--sell); flex: none; }
+.dot.on { background: var(--accent); animation: ping 1.6s infinite; }
+@keyframes ping {
+  0%   { box-shadow: 0 0 0 0 rgba(43,240,140,.6); }
+  70%  { box-shadow: 0 0 0 8px rgba(43,240,140,0); }
+}
+
+/* The tabs ARE the navigation, and white-on-black is how the reference
+   says "you are here". Tinting the active one green, as the old chips
+   did, puts it in the same colour as every accented value on the page. */
+.tabs { display: flex; gap: 4px; background: var(--surface); padding: 4px; border-radius: 99px; }
+.tabs button { border: 0; background: none; padding: 10px 18px; border-radius: 99px;
+  font-weight: 700; font-size: 15px; color: var(--muted); cursor: pointer; white-space: nowrap; }
+.tabs button em { font-style: normal; font-size: 12px; background: var(--line);
+  padding: 2px 8px; border-radius: 99px; margin-left: 6px; font-weight: 800; }
+.tabs button.on { background: #fff; color: #000; }
+.tabs button.on em { background: #000; color: #fff; }
+
+.round { position: relative; width: 46px; height: 46px; border-radius: 50%; border: 0;
+  background: var(--surface); font-size: 20px; cursor: pointer; color: var(--muted);
+  display: grid; place-items: center; flex: none; }
+.round:hover { background: var(--surface2); color: var(--text); }
+.round.on { background: var(--accent-dim); color: var(--accent); }
+.round svg { width: 20px; height: 20px; }
+
+/* -- body ------------------------------------------------------------- */
+.wrap { max-width: 1100px; margin: 0 auto; padding: 20px 20px 80px; }
+.layout { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 20px; align-items: start; }
+.layout.no-side { grid-template-columns: minmax(0, 1fr); }
+/* The rail scrolls with its own content when it is taller than the
+   window, and sticks under the header when it is not. */
+.side { position: sticky; top: 90px; max-height: calc(100vh - 110px); overflow: auto;
+  display: flex; flex-direction: column; gap: 12px; }
+.mainc { min-width: 0; }
+
+.kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+.kpi { background: var(--surface); border: 0; border-radius: 20px; padding: 16px 18px; box-shadow: none; }
+.kpi span { display: block; font-size: 13px; color: var(--muted); font-weight: 600;
+  margin-bottom: 4px; text-transform: none; letter-spacing: 0; }
+.kpi b { font-size: 30px; font-weight: 900; letter-spacing: -1px; display: block; }
+.kpi.hot { background: linear-gradient(135deg, rgba(43,240,140,.15), var(--surface) 70%); }
+.kpi.hot b { font-size: 24px; }
+
+.list { display: flex; flex-direction: column; gap: 16px; }
+
+/* -- the inspector, now a sheet --------------------------------------- */
+.sheet-bg { position: fixed; inset: 0; z-index: 40; background: #000b;
+  backdrop-filter: blur(6px); display: flex; justify-content: flex-end; }
+.sheet { width: min(560px, 100%); height: 100%; overflow: auto; background: var(--surface);
+  position: relative; animation: slide .25s ease-out; }
+@keyframes slide { from { transform: translateX(40px); opacity: 0; } }
+.s-x { position: absolute; top: 14px; right: 14px; z-index: 2; width: 42px; height: 42px;
+  border-radius: 50%; border: 0; background: #000a; color: #fff; font-size: 20px; cursor: pointer; }
+
+/* -- things the old three-column layout owned ------------------------- */
+/* These classes still exist in Inspector/Feed markup. They must stop
+   behaving like columns or they re-impose the layout we just removed. */
+.dash-col { display: block; border: 0; overflow: visible; }
+.dash-col-head { display: none; }
+.in-col, .feed-col, .filters-col, .inspector-col { display: block; overflow: visible; padding: 0; }
+.dash-body { display: block; }
+.fx { padding: 0; }
+
+@media (max-width: 1000px) {
+  .layout { grid-template-columns: minmax(0, 1fr); }
+  .side { position: static; max-height: none; }
+  .kpis { grid-template-columns: 1fr 1fr; }
+  .top-in { flex-wrap: wrap; }
+  .tabs { order: 3; width: 100%; }
+  .tabs button { flex: 1; }
+}
+
+/* Exactly the reference's numbers: 320px rail, 24px gutter, sticky at 92px.
+   Mine were within twenty pixels of each by eye, which is the kind of
+   near-miss that reads as "similar to" rather than "the same as". */
+.layout{grid-template-columns:320px minmax(0,1fr);gap:24px}
+.side{top:92px;max-height:calc(100vh - 110px)}
+
+/* The rail used to carry its own tab segment and the feed its own chip row.
+   Both are now the header's pill tabs. A fact shown in three places is a
+   fact that can disagree with itself in two of them. */
+.side .fx-segment{display:none}
+
+/* Six across, as the reference has it. An Intel rule from the three-column
+   era was still folding this to three, which at full width leaves the strip
+   half empty and breaks the one thing a fixed row is for. */
+.c-stats{grid-template-columns:repeat(6,1fr)}
+@media (max-width:860px){.c-stats{grid-template-columns:repeat(3,1fr)}}
